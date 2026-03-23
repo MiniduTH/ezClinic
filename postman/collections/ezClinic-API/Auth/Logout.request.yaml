@@ -1,0 +1,6 @@
+$kind: http-request
+name: Logout
+method: POST
+url: '{{baseUrl}}/auth/logout'
+description: Log out the current user and invalidate the session.
+order: 2000

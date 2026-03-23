@@ -1,0 +1,23 @@
+$kind: collection
+name: ezClinic API
+description: REST API collection for the ezClinic clinic management system. Covers authentication, patient management, doctor management, appointments, telemedicine sessions, and admin operations.
+variables:
+  - key: baseUrl
+    value: 'http://localhost:3000/api'
+  - key: authToken
+    value: ''
+  - key: patientId
+    value: '1'
+  - key: doctorId
+    value: '1'
+  - key: appointmentId
+    value: '1'
+  - key: sessionId
+    value: '1'
+  - key: userId
+    value: '1'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'

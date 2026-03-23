@@ -1,0 +1,15 @@
+# Use this workspace to collaborate
+workspace:
+  id: 6c390112-1615-4dd2-8241-8e849e578d6a
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+cloudResources:
+  collections:
+    ..\postman\collections\ezClic-APIs: 39919287-6cd7f153-a1a9-45ce-acb7-fe3ce3ec0925
+    ..\postman\collections\ezClinic API: 39919287-b590626c-f423-46ae-93cf-dc63cf451ba3
+
+# All resources in the `postman/` folder are automatically registered in Local View.
+# Point to additional files outside the `postman/` folder to register them individually. Example:
+#localResources:
+#  collections:
+#    - ../tests/E2E Test Collection/
