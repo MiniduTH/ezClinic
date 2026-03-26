@@ -7,6 +7,8 @@ export default function Sidebar() {
     { name: 'Patients', path: '/patients', icon: '👤' },
     { name: 'Doctors', path: '/doctors', icon: '🩺' },
     { name: 'Appointments', path: '/appointments', icon: '📅' },
+    { name: 'Prescriptions', path: '/prescriptions', icon: '💊' },
+    { name: 'Availability', path: '/availability', icon: '🗓️' },
     { name: 'Telemedicine', path: '/telemedicine', icon: '📹' },
     { name: 'Admin', path: '/admin', icon: '⚙️' },
   ];

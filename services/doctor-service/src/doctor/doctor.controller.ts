@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -15,6 +16,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiQuery,
+  ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { DoctorService } from './doctor.service';
@@ -32,7 +34,10 @@ export class DoctorController {
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new doctor' })
-  @ApiResponse({ status: 201, description: 'Doctor registered successfully. Awaiting admin verification.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Doctor registered successfully. Awaiting admin verification.',
+  })
   @ApiResponse({ status: 409, description: 'Email already exists.' })
   register(@Body() createDoctorDto: CreateDoctorDto) {
     return this.doctorService.create(createDoctorDto);
@@ -55,7 +60,9 @@ export class DoctorController {
 
   @Get('me')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get authenticated doctor profile (placeholder — uses ID for now)' })
+  @ApiOperation({
+    summary: 'Get authenticated doctor profile (placeholder — uses ID for now)',
+  })
   @ApiResponse({ status: 200, description: 'Profile found.' })
   getMe() {
     // TODO: Extract doctor ID from JWT claims once Auth guard is wired
@@ -89,8 +96,12 @@ export class DoctorController {
 
   @Post(':doctorId/availability')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Add an availability slot' })
+  @ApiOperation({ summary: 'Add a single availability slot' })
   @ApiResponse({ status: 201, description: 'Slot added.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Slot overlaps with an existing slot.',
+  })
   addAvailability(
     @Param('doctorId') doctorId: string,
     @Body() dto: CreateAvailabilityDto,
@@ -98,21 +109,74 @@ export class DoctorController {
     return this.doctorService.addAvailability(doctorId, dto);
   }
 
+  @Post(':doctorId/availability/bulk')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Add multiple availability slots at once' })
+  @ApiResponse({
+    status: 201,
+    description: 'All slots added successfully.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'One or more slots overlap — no slots saved.',
+  })
+  addBulkAvailability(
+    @Param('doctorId') doctorId: string,
+    @Body() dtos: CreateAvailabilityDto[],
+  ) {
+    return this.doctorService.addBulkAvailability(doctorId, dtos);
+  }
+
   @Get(':doctorId/availability')
-  @ApiOperation({ summary: "Get a doctor's availability slots" })
+  @ApiOperation({ summary: "Get all of a doctor's availability slots" })
   getAvailability(@Param('doctorId') doctorId: string) {
     return this.doctorService.getAvailability(doctorId);
+  }
+
+  @Get(':doctorId/availability/:day')
+  @ApiOperation({ summary: 'Get availability for a specific day' })
+  @ApiParam({
+    name: 'day',
+    enum: [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ],
+  })
+  getAvailabilityByDay(
+    @Param('doctorId') doctorId: string,
+    @Param('day') day: string,
+  ) {
+    return this.doctorService.getAvailabilityByDay(doctorId, day);
   }
 
   @Put(':doctorId/availability/:slotId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update an availability slot' })
+  @ApiResponse({
+    status: 409,
+    description: 'Updated slot overlaps with an existing slot.',
+  })
   updateAvailability(
     @Param('doctorId') doctorId: string,
     @Param('slotId') slotId: string,
     @Body() dto: UpdateAvailabilityDto,
   ) {
     return this.doctorService.updateAvailability(doctorId, slotId, dto);
+  }
+
+  @Patch(':doctorId/availability/:slotId/toggle')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Toggle a slot active/inactive' })
+  toggleAvailability(
+    @Param('doctorId') doctorId: string,
+    @Param('slotId') slotId: string,
+  ) {
+    return this.doctorService.toggleAvailability(doctorId, slotId);
   }
 
   @Delete(':doctorId/availability/:slotId')
@@ -124,5 +188,28 @@ export class DoctorController {
     @Param('slotId') slotId: string,
   ) {
     return this.doctorService.removeAvailability(doctorId, slotId);
+  }
+
+  @Delete(':doctorId/availability/day/:day')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Clear all availability for a specific day' })
+  @ApiParam({
+    name: 'day',
+    enum: [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ],
+  })
+  clearDayAvailability(
+    @Param('doctorId') doctorId: string,
+    @Param('day') day: string,
+  ) {
+    return this.doctorService.clearDayAvailability(doctorId, day);
   }
 }

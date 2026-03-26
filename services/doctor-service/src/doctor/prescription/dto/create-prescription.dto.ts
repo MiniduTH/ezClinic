@@ -4,12 +4,13 @@ import {
   IsOptional,
   IsString,
   IsArray,
+  IsDateString,
   ValidateNested,
   IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-class MedicationDto {
+export class MedicationDto {
   @ApiProperty({ example: 'Aspirin 75mg' })
   @IsNotEmpty()
   @IsString()
@@ -42,6 +43,22 @@ export class CreatePrescriptionDto {
   @IsUUID()
   patientId: string;
 
+  @ApiPropertyOptional({
+    description: 'Patient name (for display on the prescription)',
+    example: 'Nethmi Perera',
+  })
+  @IsOptional()
+  @IsString()
+  patientName?: string;
+
+  @ApiPropertyOptional({
+    description: 'Diagnosis summary',
+    example: 'Mild Hypertension (Stage 1)',
+  })
+  @IsOptional()
+  @IsString()
+  diagnosis?: string;
+
   @ApiProperty({ description: 'List of medications', type: [MedicationDto] })
   @IsArray()
   @ValidateNested({ each: true })
@@ -52,4 +69,12 @@ export class CreatePrescriptionDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({
+    description: 'Suggested follow-up date (YYYY-MM-DD)',
+    example: '2026-04-20',
+  })
+  @IsOptional()
+  @IsDateString()
+  followUpDate?: string;
 }
