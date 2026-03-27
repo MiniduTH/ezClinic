@@ -58,6 +58,16 @@ export class DoctorController {
     return this.doctorService.findAll({ page, limit, specialization, search });
   }
 
+  @Patch(':id/verify')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '(Admin) Verify a doctor registration' })
+  @ApiResponse({ status: 200, description: 'Doctor verified successfully.' })
+  @ApiResponse({ status: 400, description: 'Doctor is already verified.' })
+  @ApiResponse({ status: 404, description: 'Doctor not found.' })
+  verifyDoctor(@Param('id') id: string) {
+    return this.doctorService.verify(id);
+  }
+
   @Get('me')
   @ApiBearerAuth()
   @ApiOperation({

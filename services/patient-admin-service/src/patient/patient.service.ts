@@ -8,13 +8,32 @@ import { Repository } from 'typeorm';
 import { Patient } from './entities/patient.entity';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
+import { ConfigService } from '@nestjs/config';
+import { MedicalReport } from './entities/medical-report.entity';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { v4 as uuidv4 } from 'uuid';
+import * as path from 'path';
 
 @Injectable()
 export class PatientService {
   constructor(
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
-  ) {}
+    @InjectRepository(MedicalReport)
+    private readonly reportRepository: Repository<MedicalReport>,
+    private readonly configService: ConfigService,
+  ) {
+    this.s3Client = new S3Client({
+      region: 'auto',
+      endpoint: this.configService.get<string>('R2_ENDPOINT') || '',
+      credentials: {
+        accessKeyId: this.configService.get<string>('R2_ACCESS_KEY_ID') || '',
+        secretAccessKey: this.configService.get<string>('R2_SECRET_ACCESS_KEY') || '',
+      },
+    });
+  }
+
+  private readonly s3Client: S3Client;
 
   async create(createPatientDto: CreatePatientDto): Promise<Patient> {
     // Check if a patient with the given email already exists
@@ -73,5 +92,33 @@ export class PatientService {
   async remove(id: string): Promise<void> {
     const patient = await this.findOne(id);
     await this.patientRepository.remove(patient);
+  }
+
+  async uploadReport(patientId: string, title: string, file: Express.Multer.File): Promise<MedicalReport> {
+    const patient = await this.findOne(patientId);
+    
+    const fileExtension = path.extname(file.originalname);
+    const uniqueFileName = `${uuidv4()}${fileExtension}`;
+    
+    // Upload to Cloudflare R2
+    const bucketName = this.configService.get<string>('R2_BUCKET_NAME');
+    await this.s3Client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: uniqueFileName,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    }));
+
+    const publicUrl = this.configService.get<string>('R2_PUBLIC_URL');
+    const fileUrl = `${publicUrl}/${uniqueFileName}`;
+
+    const report = this.reportRepository.create({
+      patient,
+      title,
+      fileUrl,
+      fileType: file.mimetype,
+    });
+
+    return await this.reportRepository.save(report);
   }
 }

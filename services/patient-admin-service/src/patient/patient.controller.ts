@@ -9,8 +9,11 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { PatientService } from './patient.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
@@ -62,5 +65,30 @@ export class PatientController {
   @ApiOperation({ summary: 'Delete a patient' })
   remove(@Param('id') id: string) {
     return this.patientService.remove(id);
+  }
+
+  @Post(':id/reports')
+  @ApiOperation({ summary: 'Upload a medical report for a patient' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: ['title', 'file'],
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  uploadReport(
+    @Param('id') id: string,
+    @Body('title') title: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.patientService.uploadReport(id, title, file);
   }
 }

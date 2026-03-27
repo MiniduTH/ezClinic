@@ -31,6 +31,11 @@ export default function PatientProfilePage() {
   const [formData, setFormData] = useState<Partial<Patient>>({});
   const [saving, setSaving] = useState(false);
 
+  // Report Upload State
+  const [reportTitle, setReportTitle] = useState("");
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [uploadingReport, setUploadingReport] = useState(false);
+
   useEffect(() => {
     if (!id) return;
     async function fetchPatient() {
@@ -84,6 +89,32 @@ export default function PatientProfilePage() {
       alert(err.message || "Failed to update.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleReportUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reportFile || !reportTitle) return;
+
+    setUploadingReport(true);
+    try {
+      const data = new FormData();
+      data.append("title", reportTitle);
+      data.append("file", reportFile);
+
+      const response = await fetch(`http://localhost:3001/api/v1/patients/${id}/reports`, {
+        method: "POST",
+        body: data,
+      });
+
+      if (!response.ok) throw new Error("Failed to upload report.");
+      alert("Report uploaded successfully!");
+      setReportTitle("");
+      setReportFile(null);
+    } catch (err: any) {
+      alert(err.message || "Failed to upload report.");
+    } finally {
+      setUploadingReport(false);
     }
   };
 
@@ -307,6 +338,52 @@ export default function PatientProfilePage() {
                   </div>
                 </form>
               )}
+              
+              {/* Medical Reports Section */}
+              <div className="mt-8 bg-white/50 rounded-2xl p-6 border border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                  Medical Reports
+                </h3>
+                
+                <form onSubmit={handleReportUpload} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Report Title</label>
+                    <div className="mt-1">
+                      <input
+                        type="text"
+                        value={reportTitle}
+                        onChange={(e) => setReportTitle(e.target.value)}
+                        required
+                        placeholder="e.g. Blood Test Results"
+                        className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-2.5 border bg-gray-50 outline-none transition-shadow"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">File</label>
+                    <div className="mt-1">
+                      <input
+                        type="file"
+                        onChange={(e) => setReportFile(e.target.files ? e.target.files[0] : null)}
+                        required
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={uploadingReport || !reportFile || !reportTitle}
+                      className="bg-indigo-600 border border-transparent rounded-xl shadow-sm py-2 px-6 inline-flex justify-center text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:bg-indigo-400"
+                    >
+                      {uploadingReport ? "Uploading..." : "Upload Report"}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         </div>

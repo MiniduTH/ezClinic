@@ -113,6 +113,16 @@ export class DoctorService {
     return this.wrap(doctor);
   }
 
+  async verify(id: string) {
+    const { data: doctor } = await this.findOne(id);
+    if (doctor.isVerified) {
+      throw new BadRequestException('Doctor is already verified');
+    }
+    doctor.isVerified = true;
+    const saved = await this.doctorRepository.save(doctor);
+    return this.wrap(saved, 'Doctor verified successfully.');
+  }
+
   async update(id: string, updateDoctorDto: UpdateDoctorDto) {
     const { data: doctor } = await this.findOne(id);
     Object.assign(doctor, updateDoctorDto);
