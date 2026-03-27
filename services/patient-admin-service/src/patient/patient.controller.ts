@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Patch,
+  Put,
   Param,
   Delete,
   HttpCode,
@@ -42,8 +43,17 @@ export class PatientController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a patient profile' })
+  @ApiOperation({ summary: 'Update a patient profile (partial)' })
   update(@Param('id') id: string, @Body() updatePatientDto: UpdatePatientDto) {
+    return this.patientService.update(id, updatePatientDto);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update a patient profile (full)' })
+  @ApiResponse({ status: 200, description: 'Profile updated.' })
+  @ApiResponse({ status: 404, description: 'Patient not found.' })
+  putUpdate(@Param('id') id: string, @Body() updatePatientDto: UpdatePatientDto) {
+    // Reusing the update service method since UpdatePatientDto covers fields
     return this.patientService.update(id, updatePatientDto);
   }
 
