@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -21,9 +22,19 @@ export class DoctorService {
     private readonly availabilityRepository: Repository<Availability>,
   ) {}
 
+  // ─── Helper: standard response wrapper ────────────────────────────
+
+  private wrap(data: any, message?: string) {
+    return {
+      success: true,
+      data,
+      ...(message && { message }),
+    };
+  }
+
   // ─── Doctor Profile ────────────────────────────────────────────────
 
-  async create(createDoctorDto: CreateDoctorDto): Promise<Doctor> {
+  async create(createDoctorDto: CreateDoctorDto) {
     const existing = await this.doctorRepository.findOne({
       where: { email: createDoctorDto.email },
     });
@@ -33,7 +44,8 @@ export class DoctorService {
     }
 
     const doctor = this.doctorRepository.create(createDoctorDto);
-    return await this.doctorRepository.save(doctor);
+    const saved = await this.doctorRepository.save(doctor);
+    return this.wrap(saved, 'Doctor registered successfully. Awaiting admin verification.');
   }
 
   async findAll(query: {
@@ -68,6 +80,7 @@ export class DoctorService {
       .getManyAndCount();
 
     return {
+      success: true,
       data,
       pagination: {
         page,
@@ -78,7 +91,7 @@ export class DoctorService {
     };
   }
 
-  async findOne(id: string): Promise<Doctor> {
+  async findOne(id: string) {
     const doctor = await this.doctorRepository.findOne({
       where: { id },
       relations: ['availability'],
@@ -86,10 +99,10 @@ export class DoctorService {
     if (!doctor) {
       throw new NotFoundException(`Doctor with ID ${id} not found`);
     }
-    return doctor;
+    return this.wrap(doctor);
   }
 
-  async findByAuth0Id(auth0Id: string): Promise<Doctor> {
+  async findByAuth0Id(auth0Id: string) {
     const doctor = await this.doctorRepository.findOne({
       where: { auth0Id },
       relations: ['availability'],
@@ -97,55 +110,164 @@ export class DoctorService {
     if (!doctor) {
       throw new NotFoundException(`Doctor not found`);
     }
-    return doctor;
+    return this.wrap(doctor);
   }
 
-  async update(id: string, updateDoctorDto: UpdateDoctorDto): Promise<Doctor> {
-    const doctor = await this.findOne(id);
+  async update(id: string, updateDoctorDto: UpdateDoctorDto) {
+    const { data: doctor } = await this.findOne(id);
     Object.assign(doctor, updateDoctorDto);
-    return await this.doctorRepository.save(doctor);
+    const saved = await this.doctorRepository.save(doctor);
+    return this.wrap(saved, 'Doctor profile updated successfully.');
   }
 
   async remove(id: string): Promise<void> {
-    const doctor = await this.findOne(id);
+    const { data: doctor } = await this.findOne(id);
     await this.doctorRepository.remove(doctor);
   }
 
   // ─── Availability ─────────────────────────────────────────────────
 
-  async addAvailability(
+  /**
+   * Checks whether a new slot overlaps with existing slots for the same
+   * doctor on the same day.
+   */
+  private async checkOverlap(
     doctorId: string,
-    dto: CreateAvailabilityDto,
-  ): Promise<Availability> {
-    const doctor = await this.findOne(doctorId);
+    dayOfWeek: string,
+    startTime: string,
+    endTime: string,
+    excludeSlotId?: string,
+  ): Promise<void> {
+    // Validate start < end
+    if (startTime >= endTime) {
+      throw new BadRequestException('Start time must be before end time.');
+    }
+
+    const qb = this.availabilityRepository
+      .createQueryBuilder('slot')
+      .where('slot.doctor_id = :doctorId', { doctorId })
+      .andWhere('slot.day_of_week = :dayOfWeek', { dayOfWeek })
+      .andWhere(
+        '(slot.start_time < :endTime AND slot.end_time > :startTime)',
+        { startTime, endTime },
+      );
+
+    if (excludeSlotId) {
+      qb.andWhere('slot.id != :excludeSlotId', { excludeSlotId });
+    }
+
+    const overlapping = await qb.getOne();
+
+    if (overlapping) {
+      throw new ConflictException(
+        `This slot overlaps with an existing slot on ${dayOfWeek} ` +
+        `(${overlapping.startTime}–${overlapping.endTime}). ` +
+        `Please adjust the times.`,
+      );
+    }
+  }
+
+  async addAvailability(doctorId: string, dto: CreateAvailabilityDto) {
+    const { data: doctor } = await this.findOne(doctorId);
+
+    // Check for overlapping slots on the same day
+    await this.checkOverlap(doctorId, dto.dayOfWeek, dto.startTime, dto.endTime);
+
     const slot = this.availabilityRepository.create({
       ...dto,
       doctor,
     });
-    return await this.availabilityRepository.save(slot);
+    const saved = await this.availabilityRepository.save(slot);
+    return this.wrap(saved, 'Availability slot added.');
   }
 
-  async getAvailability(doctorId: string): Promise<Availability[]> {
+  async addBulkAvailability(doctorId: string, dtos: CreateAvailabilityDto[]) {
+    const { data: doctor } = await this.findOne(doctorId);
+
+    // Validate all slots first, don't save any if one fails
+    for (const dto of dtos) {
+      await this.checkOverlap(doctorId, dto.dayOfWeek, dto.startTime, dto.endTime);
+    }
+
+    const slots = dtos.map((dto) =>
+      this.availabilityRepository.create({ ...dto, doctor }),
+    );
+    const saved = await this.availabilityRepository.save(slots);
+    return this.wrap(saved, `${saved.length} availability slots added.`);
+  }
+
+  async getAvailability(doctorId: string) {
     // Verify doctor exists
     await this.findOne(doctorId);
-    return await this.availabilityRepository.find({
+
+    const slots = await this.availabilityRepository.find({
       where: { doctor: { id: doctorId } },
+      order: {
+        dayOfWeek: 'ASC',
+        startTime: 'ASC',
+      },
     });
+
+    // Group by day for a cleaner response
+    const grouped = this.groupByDay(slots);
+
+    return this.wrap({
+      slots,
+      grouped,
+    });
+  }
+
+  async getAvailabilityByDay(doctorId: string, dayOfWeek: string) {
+    await this.findOne(doctorId);
+
+    const slots = await this.availabilityRepository.find({
+      where: { doctor: { id: doctorId }, dayOfWeek, isActive: true },
+      order: { startTime: 'ASC' },
+    });
+
+    return this.wrap(slots);
   }
 
   async updateAvailability(
     doctorId: string,
     slotId: string,
     dto: UpdateAvailabilityDto,
-  ): Promise<Availability> {
+  ) {
     const slot = await this.availabilityRepository.findOne({
       where: { id: slotId, doctor: { id: doctorId } },
     });
     if (!slot) {
       throw new NotFoundException(`Availability slot ${slotId} not found`);
     }
+
+    // If times or day changed, check for overlaps
+    const newDay = dto.dayOfWeek || slot.dayOfWeek;
+    const newStart = dto.startTime || slot.startTime;
+    const newEnd = dto.endTime || slot.endTime;
+
+    if (dto.dayOfWeek || dto.startTime || dto.endTime) {
+      await this.checkOverlap(doctorId, newDay, newStart, newEnd, slotId);
+    }
+
     Object.assign(slot, dto);
-    return await this.availabilityRepository.save(slot);
+    const saved = await this.availabilityRepository.save(slot);
+    return this.wrap(saved, 'Availability slot updated.');
+  }
+
+  async toggleAvailability(doctorId: string, slotId: string) {
+    const slot = await this.availabilityRepository.findOne({
+      where: { id: slotId, doctor: { id: doctorId } },
+    });
+    if (!slot) {
+      throw new NotFoundException(`Availability slot ${slotId} not found`);
+    }
+
+    slot.isActive = !slot.isActive;
+    const saved = await this.availabilityRepository.save(slot);
+    return this.wrap(
+      saved,
+      `Slot ${saved.isActive ? 'activated' : 'deactivated'}.`,
+    );
   }
 
   async removeAvailability(doctorId: string, slotId: string): Promise<void> {
@@ -156,5 +278,41 @@ export class DoctorService {
       throw new NotFoundException(`Availability slot ${slotId} not found`);
     }
     await this.availabilityRepository.remove(slot);
+  }
+
+  async clearDayAvailability(
+    doctorId: string,
+    dayOfWeek: string,
+  ): Promise<void> {
+    await this.findOne(doctorId);
+    await this.availabilityRepository.delete({
+      doctor: { id: doctorId },
+      dayOfWeek,
+    });
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────────────
+
+  private groupByDay(slots: Availability[]) {
+    const dayOrder = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+
+    const grouped: Record<string, Availability[]> = {};
+
+    for (const day of dayOrder) {
+      const daySlots = slots.filter((s) => s.dayOfWeek === day);
+      if (daySlots.length > 0) {
+        grouped[day] = daySlots;
+      }
+    }
+
+    return grouped;
   }
 }

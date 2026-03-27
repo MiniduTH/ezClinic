@@ -24,7 +24,14 @@ export class PrescriptionController {
   @Post('doctors/:doctorId/prescriptions')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Issue a digital prescription' })
-  @ApiResponse({ status: 201, description: 'Prescription issued successfully.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Prescription issued successfully.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation error (no medications or invalid follow-up date).',
+  })
   create(
     @Param('doctorId') doctorId: string,
     @Body() dto: CreatePrescriptionDto,
@@ -58,9 +65,18 @@ export class PrescriptionController {
     return this.prescriptionService.findByPatient(patientId, page, limit);
   }
 
+  @Get('appointments/:appointmentId/prescription')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get prescription for a specific appointment' })
+  @ApiResponse({ status: 200, description: 'Prescription found.' })
+  @ApiResponse({ status: 404, description: 'No prescription for this appointment.' })
+  findByAppointment(@Param('appointmentId') appointmentId: string) {
+    return this.prescriptionService.findByAppointment(appointmentId);
+  }
+
   @Get('prescriptions/:id')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get a specific prescription' })
+  @ApiOperation({ summary: 'Get a specific prescription with summary' })
   @ApiResponse({ status: 200, description: 'Prescription found.' })
   @ApiResponse({ status: 404, description: 'Prescription not found.' })
   findOne(@Param('id') id: string) {

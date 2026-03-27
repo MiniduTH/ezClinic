@@ -26,4 +26,16 @@ export class Availability {
 
   @Column({ name: 'end_time', type: 'time' })
   endTime: string;
+
+  @Column({ name: 'is_active', default: true })
+  isActive: boolean;
+
+  @Column({ name: 'max_patients', default: 1 })
+  maxPatients: number;
+
+  @Column({
+    name: 'consultation_type',
+    default: 'both',
+  })
+  consultationType: string;
 }

@@ -22,8 +22,14 @@ export class Prescription {
   @Column({ name: 'patient_id' })
   patientId: string;
 
+  @Column({ name: 'patient_name', nullable: true })
+  patientName: string;
+
   @Column({ name: 'appointment_id' })
   appointmentId: string;
+
+  @Column({ nullable: true })
+  diagnosis: string;
 
   @Column({ type: 'jsonb' })
   medications: {
@@ -35,6 +41,9 @@ export class Prescription {
 
   @Column({ type: 'text', nullable: true })
   notes: string;
+
+  @Column({ name: 'follow_up_date', type: 'date', nullable: true })
+  followUpDate: Date;
 
   @CreateDateColumn({ name: 'issued_at' })
   issuedAt: Date;
