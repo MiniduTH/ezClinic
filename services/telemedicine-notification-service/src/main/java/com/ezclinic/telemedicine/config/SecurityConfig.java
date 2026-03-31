@@ -12,8 +12,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(csrf -> csrf.disable())
+        http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // Open endpoints for documentation
                         .requestMatchers(
@@ -25,7 +24,7 @@ public class SecurityConfig {
                             "/v3/api-docs/**"
                         ).permitAll()
                         // Require authentication for all other endpoints
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 )
                 // Configure JWT OAuth2 Resource Server
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));
