@@ -1,13 +1,15 @@
 server:
-  port: ${PORT:8080}
+  port: ${PORT:8090}
   servlet:
     context-path: /api/v1
 
 spring:
   application:
     name: telemedicine-notification-service
+  config:
+    import: optional:file:.env[.properties]
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:ezclinic_telemedicine_db}
+    url: jdbc:postgresql://db.oaokleeqgamubczymgaf.supabase.co:5432/postgres?user=${DB_USER}&password=${DB_PASSWORD}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
@@ -15,10 +17,6 @@ spring:
     hibernate:
       ddl-auto: ${DDL_AUTO:update}
     show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
   security:
     oauth2:
       resourceserver:
@@ -50,8 +48,8 @@ jitsi:
   app-secret: ${JITSI_APP_SECRET:}
 
 gemini:
-  api-key: ${GEMINI_API_KEY:}
-  model: ${GEMINI_MODEL:gemini-2.0-flash}
+  api-key: ${GEMINI_API_KEY}
+  model: ${GEMINI_MODEL:gemini-3.1-pro-preview}
 
 services:
   appointment-service-url: ${APPOINTMENT_SERVICE_URL:http://localhost:3004/api/v1}
@@ -62,6 +60,8 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     operations-sorter: method
+    disable-swagger-default-url: true
+  show-actuator: false
 
 app:
   cors:

@@ -16,7 +16,14 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // Open endpoints for documentation
-                        .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers(
+                            "/api-docs/**",
+                            "/swagger-ui/**",
+                            "/swagger-ui.html",
+                            "/swagger-resources/**",
+                            "/webjars/**",
+                            "/v3/api-docs/**"
+                        ).permitAll()
                         // Require authentication for all other endpoints
                         .anyRequest().authenticated()
                 )
