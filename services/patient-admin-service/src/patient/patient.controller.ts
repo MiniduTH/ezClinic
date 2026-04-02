@@ -91,4 +91,23 @@ export class PatientController {
   ) {
     return this.patientService.uploadReport(id, title, file);
   }
+
+  @Get(':id/reports')
+  @ApiOperation({ summary: 'Get all medical reports for a patient' })
+  getReports(@Param('id') id: string) {
+    return this.patientService.getReports(id);
+  }
+
+  @Get(':id/reports/:reportId')
+  @ApiOperation({ summary: 'Get a specific medical report' })
+  getReport(@Param('id') id: string, @Param('reportId') reportId: string) {
+    return this.patientService.getReport(id, reportId);
+  }
+
+  @Delete(':id/reports/:reportId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a medical report' })
+  deleteReport(@Param('id') id: string, @Param('reportId') reportId: string) {
+    return this.patientService.deleteReport(id, reportId);
+  }
 }

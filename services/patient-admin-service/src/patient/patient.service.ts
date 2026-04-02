@@ -121,4 +121,31 @@ export class PatientService {
 
     return await this.reportRepository.save(report);
   }
+
+  async getReports(patientId: string): Promise<MedicalReport[]> {
+    const patient = await this.findOne(patientId);
+    return await this.reportRepository.find({
+      where: { patient: { id: patient.id } },
+      order: { uploadedAt: 'DESC' },
+    });
+  }
+
+  async getReport(patientId: string, reportId: string): Promise<MedicalReport> {
+    const report = await this.reportRepository.findOne({
+      where: { id: reportId, patient: { id: patientId } },
+    });
+    if (!report) {
+      throw new NotFoundException(`Medical report with ID ${reportId} not found for this patient`);
+    }
+    return report;
+  }
+
+  async deleteReport(patientId: string, reportId: string): Promise<void> {
+    const report = await this.getReport(patientId, reportId);
+    
+    // In a real scenario, you'd also want to delete the file from Cloudflare R2
+    // using DeleteObjectCommand from @aws-sdk/client-s3
+
+    await this.reportRepository.remove(report);
+  }
 }
