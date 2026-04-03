@@ -35,4 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
-services/telemedicine-notification-service/.env
+
+### Environment Variables ###
+.env
