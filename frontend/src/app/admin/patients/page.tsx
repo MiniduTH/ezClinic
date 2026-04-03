@@ -21,7 +21,7 @@ export default function AdminPatientList() {
   useEffect(() => {
     async function fetchPatients() {
       try {
-        const response = await fetch("http://localhost:3001/api/v1/patients");
+        const response = await fetch("http://localhost:3001/api/v1/admins/platform/patients");
         if (!response.ok) throw new Error("Failed to fetch patients.");
         const data = await response.json();
         setPatients(data);
