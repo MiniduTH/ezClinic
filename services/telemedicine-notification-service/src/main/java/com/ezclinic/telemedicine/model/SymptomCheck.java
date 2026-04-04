@@ -3,8 +3,6 @@ package com.ezclinic.telemedicine.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -21,12 +19,10 @@ public class SymptomCheck {
     @Column(name = "patient_id", nullable = false)
     private UUID patientId;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "TEXT")
     private String symptoms;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "ai_suggestion", columnDefinition = "jsonb")
+    @Column(name = "ai_suggestion", columnDefinition = "TEXT")
     private String aiSuggestion;
 
     @CreationTimestamp
