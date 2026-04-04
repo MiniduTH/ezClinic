@@ -1,10 +1,16 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import * as path from 'path';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Serve uploaded files as static assets at /uploads/*
+  const uploadsDir = path.resolve(process.cwd(), 'uploads');
+  app.useStaticAssets(uploadsDir, { prefix: '/uploads' });
 
   // Global prefix
   app.setGlobalPrefix('api/v1');
