@@ -28,19 +28,13 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASS:guest}
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+
 
 # -- Custom properties --
+
+mailtrap:
+  api-key: ${MAILTRAP_API_KEY}
+  sender: ${SENDER}
 
 jitsi:
   domain: ${JITSI_DOMAIN:meet.jit.si}

@@ -39,7 +39,8 @@ public class NotificationService {
 
         try {
             if (request.getType() == NotificationType.EMAIL) {
-                emailService.sendEmail(request.getRecipientEmail(), request.getSubject(), request.getContent());
+//                emailService.sendEmail(request.getRecipientEmail(), request.getSubject(), request.getContent());
+                emailService.sendEmailViaAPI(request.getRecipientEmail(),request.getSubject(), request.getContent());
             }
             notification.setStatus(NotificationStatus.SENT);
             notification.setSentAt(Instant.now());

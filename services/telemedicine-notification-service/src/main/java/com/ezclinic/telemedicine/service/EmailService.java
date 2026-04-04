@@ -1,32 +1,51 @@
 package com.ezclinic.telemedicine.service;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import io.mailtrap.client.MailtrapClient;
+import io.mailtrap.config.MailtrapConfig;
+import io.mailtrap.factory.MailtrapClientFactory;
+import io.mailtrap.model.request.emails.Address;
+import io.mailtrap.model.request.emails.MailtrapMail;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    @Value("${mailtrap.api-key}")
+    private String API_KEY;
+    @Value("${mailtrap.sender}")
+    private String SENDER_EMAIL;
 
-    public void sendEmail(String to, String subject, String body) {
+    public void sendEmailViaAPI(String recipientEmail, String subject, String content){
+
+        final MailtrapConfig config = new MailtrapConfig.Builder()
+                .token(API_KEY)
+                .build();
+
+        final MailtrapClient client = MailtrapClientFactory.createMailtrapClient(config);
+
+        final MailtrapMail mail = MailtrapMail.builder()
+                .from(new Address(SENDER_EMAIL, "Notification From ezClinic :)"))
+                .to(List.of(new Address(recipientEmail)))
+                .subject(subject)
+                .text(content)
+                .category("Integration Test")
+                .build();
+
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(body, true);
-            mailSender.send(message);
-            log.info("Email sent successfully to: {}", to);
-        } catch (MessagingException e) {
-            log.error("Failed to send email to: {}", to, e);
-            throw new RuntimeException("Failed to send email", e);
+
+            client.send(mail);
+
+            System.out.println("Email Sent Successfully via API...");
+        } catch (Exception e) {
+            System.out.println("Caught exception : " + e);
         }
+
     }
 }
