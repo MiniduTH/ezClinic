@@ -18,11 +18,7 @@ import { Admin } from './admin/entities/admin.entity';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        host: config.get<string>('DB_HOST', 'localhost'),
-        port: config.get<number>('DB_PORT', 5432),
-        username: config.get<string>('DB_USER', 'postgres'),
-        password: config.get<string>('DB_PASSWORD', ''),
-        database: config.get<string>('DB_NAME', 'ezclnic_patient_db'),
+        url: config.get<string>('DATABASE_URL'),
         entities: [Patient, MedicalReport, Admin],
         synchronize: config.get<string>('NODE_ENV') !== 'production', // Auto-migrate in dev only
         ssl: config.get<string>('NODE_ENV') === 'production'
