@@ -1,0 +1,62 @@
+server:
+  port: ${PORT:8090}
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: telemedicine-notification-service
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: jdbc:postgresql://db.oaokleeqgamubczymgaf.supabase.co:5432/postgres?user=${DB_USER}&password=${DB_PASSWORD}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:update}
+    show-sql: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://${AUTH0_DOMAIN:your-tenant.auth0.com}/
+          audiences: ${AUTH0_AUDIENCE:https://api.ezclinic.com}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
+
+
+# -- Custom properties --
+
+mailtrap:
+  api-key: ${MAILTRAP_API_KEY}
+  sender: ${SENDER}
+
+jitsi:
+  domain: ${JITSI_DOMAIN:meet.jit.si}
+  app-id: ${JITSI_APP_ID:}
+  app-secret: ${JITSI_APP_SECRET:}
+
+gemini:
+  api-key: ${GEMINI_API_KEY}
+  model: ${GEMINI_MODEL:gemini-2.5-flash}
+
+services:
+  appointment-service-url: ${APPOINTMENT_SERVICE_URL:http://localhost:3004/api/v1}
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    disable-swagger-default-url: true
+  show-actuator: false
+
+app:
+  cors:
+    allowed-origins: ${FRONTEND_URL:http://localhost:3000}
