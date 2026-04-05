@@ -1,0 +1,373 @@
+openapi: 3.0.0
+info:
+  title: ezClinic - Patient & Admin Service
+  description: REST API for patient registration, profile management, medical reports, and admin operations. Owner - Minidu.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:3001/api/v1
+    description: Local Development Server
+
+paths:
+  /patients/register:
+    post:
+      summary: Register a new patient
+      tags: [Patients]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePatientDto'
+      responses:
+        '201':
+          description: Patient successfully registered
+        '409':
+          description: Email already exists
+
+  /patients:
+    get:
+      summary: Get all patients
+      tags: [Patients]
+      responses:
+        '200':
+          description: List of patients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Patient'
+
+  /patients/{id}:
+    get:
+      summary: Get a specific patient profile
+      tags: [Patients]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Patient profile found
+        '404':
+          description: Patient not found
+    patch:
+      summary: Update a patient profile (partial)
+      tags: [Patients]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePatientDto'
+      responses:
+        '200':
+          description: Patient updated
+    put:
+      summary: Update a patient profile (full)
+      tags: [Patients]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePatientDto'
+      responses:
+        '200':
+          description: Patient updated
+    delete:
+      summary: Delete a patient
+      tags: [Patients]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Patient deleted
+
+  /patients/{id}/reports:
+    get:
+      summary: Get all medical reports for a patient
+      tags: [Patient Medical Reports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of medical reports
+    post:
+      summary: Upload a medical report
+      tags: [Patient Medical Reports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Report uploaded successfully
+
+  /patients/{id}/reports/{reportId}:
+    get:
+      summary: Get a specific medical report
+      tags: [Patient Medical Reports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Report found
+    delete:
+      summary: Delete a medical report
+      tags: [Patient Medical Reports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Report deleted
+
+  /admins/register:
+    post:
+      summary: Register a new admin
+      tags: [Admins]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAdminDto'
+      responses:
+        '201':
+          description: Admin successfully registered
+        '409':
+          description: Email already exists
+
+  /admins:
+    get:
+      summary: Get all admins
+      tags: [Admins]
+      responses:
+        '200':
+          description: List of admins
+
+  /admins/{id}:
+    get:
+      summary: Get a specific admin
+      tags: [Admins]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Admin found
+    patch:
+      summary: Update an admin
+      tags: [Admins]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAdminDto'
+      responses:
+        '200':
+          description: Admin updated
+    delete:
+      summary: Delete an admin
+      tags: [Admins]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Admin deleted
+
+  /admins/platform/stats:
+    get:
+      summary: Get platform statistics for admin dashboard
+      tags: [Admin Platform Operations]
+      responses:
+        '200':
+          description: Dashboard stats returning total patients, admins, and recent registrations.
+
+  /admins/platform/patients:
+    get:
+      summary: Get all patients with full details (Admin User Management)
+      tags: [Admin Platform Operations]
+      responses:
+        '200':
+          description: List of all patients and their reports
+
+  /admins/platform/patients/{id}:
+    get:
+      summary: Get a single patient with full details for Admin
+      tags: [Admin Platform Operations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Complete patient record
+
+    delete:
+      summary: Delete a patient account (Admin operation)
+      tags: [Admin Platform Operations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Patient account deleted
+
+components:
+  schemas:
+    CreatePatientDto:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        auth0Id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        dob:
+          type: string
+          format: date
+        gender:
+          type: string
+        address:
+          type: string
+        avatarUrl:
+          type: string
+
+    UpdatePatientDto:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        dob:
+          type: string
+          format: date
+        gender:
+          type: string
+        address:
+          type: string
+
+    CreateAdminDto:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        auth0Id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+
+    UpdateAdminDto:
+      type: object
+      properties:
+        name:
+          type: string
+
+    Patient:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        auth0Id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        dob:
+          type: string
+        gender:
+          type: string
+        address:
+          type: string
+        avatarUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
