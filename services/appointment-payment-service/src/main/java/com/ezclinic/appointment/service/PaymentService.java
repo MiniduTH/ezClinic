@@ -1,26 +1,23 @@
 package com.ezclinic.appointment.service;
 
+import com.ezclinic.appointment.dto.PayHereHashResponse;
 import com.ezclinic.appointment.dto.PaymentResponse;
 import com.ezclinic.appointment.enums.AppointmentStatus;
 import com.ezclinic.appointment.enums.PaymentStatus;
+import com.ezclinic.appointment.event.EventPublisher;
 import com.ezclinic.appointment.model.Appointment;
 import com.ezclinic.appointment.model.Payment;
 import com.ezclinic.appointment.repository.AppointmentRepository;
 import com.ezclinic.appointment.repository.PaymentRepository;
-import com.stripe.Stripe;
-import com.stripe.exception.SignatureVerificationException;
-import com.stripe.exception.StripeException;
-import com.stripe.model.Event;
-import com.stripe.model.checkout.Session;
-import com.stripe.net.Webhook;
-import com.stripe.param.checkout.SessionCreateParams;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
+import java.security.MessageDigest;
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -29,16 +26,13 @@ import java.util.UUID;
 public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final AppointmentRepository appointmentRepository;
+    private final EventPublisher eventPublisher;
 
-    @Value("${stripe.secret-key}") private String stripeSecretKey;
-    @Value("${stripe.webhook-secret}") private String stripeWebhookSecret;
-    @Value("${app.cors.allowed-origins:http://localhost:3000}") private String frontendUrl;
-
-    @PostConstruct
-    public void init() { Stripe.apiKey = stripeSecretKey; }
+    @Value("${payhere.merchant-id}") private String merchantId;
+    @Value("${payhere.merchant-secret}") private String merchantSecret;
 
     @Transactional
-    public Map<String, String> createCheckoutSession(UUID appointmentId, BigDecimal amount) throws StripeException {
+    public PayHereHashResponse generatePayHereHash(UUID appointmentId, BigDecimal amount) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found: " + appointmentId));
         if (appointment.getStatus() == AppointmentStatus.CANCELLED)
@@ -46,51 +40,95 @@ public class PaymentService {
         if (paymentRepository.findByAppointmentId(appointmentId).isPresent())
             throw new IllegalStateException("Payment already exists for this appointment");
 
-        SessionCreateParams params = SessionCreateParams.builder()
-                .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(frontendUrl + "/appointments?payment=success&appointmentId=" + appointmentId)
-                .setCancelUrl(frontendUrl + "/appointments?payment=cancelled&appointmentId=" + appointmentId)
-                .addLineItem(SessionCreateParams.LineItem.builder().setQuantity(1L)
-                        .setPriceData(SessionCreateParams.LineItem.PriceData.builder().setCurrency("lkr")
-                                .setUnitAmount(amount.multiply(BigDecimal.valueOf(100)).longValue())
-                                .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                        .setName("Consultation Fee - Appointment #" + appointmentId.toString().substring(0, 8))
-                                        .setDescription("ezClinic Medical Consultation").build()).build()).build())
-                .putMetadata("appointment_id", appointmentId.toString()).build();
+        // Format amount accurately to two decimal places
+        DecimalFormat df = new DecimalFormat("0.00");
+        String formattedAmount = df.format(amount);
+        String currency = "LKR";
 
-        Session session = Session.create(params);
-        paymentRepository.save(Payment.builder().appointment(appointment).amount(amount)
-                .status(PaymentStatus.PENDING).stripeSessionId(session.getId()).build());
-        log.info("Stripe checkout created for appointment {}: {}", appointmentId, session.getId());
-        return Map.of("sessionId", session.getId(), "checkoutUrl", session.getUrl());
+        try {
+            // Hash = uppercase(md5(merchant_id + order_id + amount + currency + uppercase(md5(merchant_secret))))
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            String hashedSecret = bytesToHex(md.digest(merchantSecret.getBytes())).toUpperCase();
+            String hashString = merchantId + appointmentId.toString() + formattedAmount + currency + hashedSecret;
+            String finalHash = bytesToHex(md.digest(hashString.getBytes())).toUpperCase();
+
+            paymentRepository.save(Payment.builder()
+                    .appointment(appointment)
+                    .amount(amount)
+                    .status(PaymentStatus.PENDING)
+                    .build());
+
+            return PayHereHashResponse.builder()
+                    .merchantId(merchantId)
+                    .orderId(appointmentId.toString())
+                    .amount(formattedAmount)
+                    .currency(currency)
+                    .hash(finalHash)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to generate PayHere Hash", e);
+            throw new RuntimeException("Payment processing failed internally");
+        }
     }
 
     @Transactional
-    public void handleWebhook(String payload, String sigHeader) {
-        Event event;
-        try { event = Webhook.constructEvent(payload, sigHeader, stripeWebhookSecret); }
-        catch (SignatureVerificationException e) { throw new SecurityException("Invalid Stripe webhook signature"); }
-        catch (Exception e) { throw new RuntimeException("Failed to parse Stripe webhook"); }
+    public void handlePayHereNotify(Map<String, String> payload) {
+        String md5sig = payload.get("md5sig");
+        String status = payload.get("status_code");
+        String orderId = payload.get("order_id");
+        String payhereAmount = payload.get("payhere_amount");
+        String payhereCurrency = payload.get("payhere_currency");
+        String paymentId = payload.get("payment_id");
 
-        if ("checkout.session.completed".equals(event.getType())) {
-            Session session = (Session) event.getDataObjectDeserializer().getObject()
-                    .orElseThrow(() -> new RuntimeException("Failed to deserialize Stripe session"));
-            Payment payment = paymentRepository.findByStripeSessionId(session.getId())
-                    .orElseThrow(() -> new RuntimeException("Payment not found for session: " + session.getId()));
-            payment.setStatus(PaymentStatus.PAID);
-            payment.setStripePaymentIntentId(session.getPaymentIntent());
-            payment.setTransactionId(session.getPaymentIntent());
-            payment.setPaidAt(LocalDateTime.now());
-            paymentRepository.save(payment);
-            Appointment a = payment.getAppointment();
-            a.setStatus(AppointmentStatus.CONFIRMED);
-            appointmentRepository.save(a);
-            log.info("Payment completed for appointment {}", a.getId());
+        try {
+            // Webhook Hash = uppercase(md5(merchant_id + order_id + payhere_amount + payhere_currency + status_code + uppercase(md5(merchant_secret))))
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            String hashedSecret = bytesToHex(md.digest(merchantSecret.getBytes())).toUpperCase();
+            String hashString = merchantId + orderId + payhereAmount + payhereCurrency + status + hashedSecret;
+            String generatedSig = bytesToHex(md.digest(hashString.getBytes())).toUpperCase();
+
+            if (!generatedSig.equals(md5sig)) {
+                throw new SecurityException("PayHere signature verification failed");
+            }
+
+            Payment payment = paymentRepository.findByAppointmentId(UUID.fromString(orderId))
+                    .orElseThrow(() -> new RuntimeException("Payment not found for order: " + orderId));
+
+            if ("2".equals(status)) { // 2 = Success in PayHere
+                payment.setStatus(PaymentStatus.PAID);
+                payment.setGatewayReferenceId(paymentId);
+                payment.setTransactionId(paymentId);
+                payment.setPaidAt(LocalDateTime.now());
+                paymentRepository.save(payment);
+                
+                Appointment a = payment.getAppointment();
+                a.setStatus(AppointmentStatus.CONFIRMED);
+                appointmentRepository.save(a);
+                
+                log.info("PayHere payment completed for appointment {}", a.getId());
+                eventPublisher.publishPaymentCompleted(payment);
+            } else if ("-1".equals(status) || "-2".equals(status)) {
+                payment.setStatus(PaymentStatus.FAILED);
+                paymentRepository.save(payment);
+            }
+
+        } catch (Exception e) {
+            log.error("Webhook processing failed", e);
+            throw new RuntimeException("Failed to process webhook");
         }
     }
 
     public PaymentResponse getPaymentByAppointment(UUID appointmentId) {
         return PaymentResponse.fromEntity(paymentRepository.findByAppointmentId(appointmentId)
                 .orElseThrow(() -> new IllegalArgumentException("No payment found for appointment: " + appointmentId)));
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
     }
 }
