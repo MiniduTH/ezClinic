@@ -6,6 +6,8 @@ server:
 spring:
   application:
     name: auth-service
+  config:
+    import: optional:file:.env[.properties]
 
   # ── JPA / Hibernate ──
   datasource:
