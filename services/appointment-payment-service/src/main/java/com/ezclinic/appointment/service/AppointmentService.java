@@ -3,6 +3,7 @@ package com.ezclinic.appointment.service;
 import com.ezclinic.appointment.dto.*;
 import com.ezclinic.appointment.enums.AppointmentStatus;
 import com.ezclinic.appointment.enums.AppointmentType;
+import com.ezclinic.appointment.event.EventPublisher;
 import com.ezclinic.appointment.model.Appointment;
 import com.ezclinic.appointment.repository.AppointmentRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @Service @RequiredArgsConstructor @Slf4j
 public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
+    private final EventPublisher eventPublisher;
 
     @Transactional
     public AppointmentResponse createAppointment(UUID patientId, CreateAppointmentRequest request) {
@@ -31,6 +33,7 @@ public class AppointmentService {
                 .notes(request.getNotes()).status(AppointmentStatus.PENDING).build();
         Appointment saved = appointmentRepository.save(appointment);
         log.info("Appointment booked: {} for patient {} with doctor {}", saved.getId(), patientId, request.getDoctorId());
+        eventPublisher.publishAppointmentBooked(saved);
         return AppointmentResponse.fromEntity(saved);
     }
 
@@ -72,7 +75,9 @@ public class AppointmentService {
         if (a.getStatus() == AppointmentStatus.COMPLETED || a.getStatus() == AppointmentStatus.CANCELLED)
             throw new IllegalStateException("Appointment is already " + a.getStatus());
         a.setStatus(AppointmentStatus.CANCELLED);
-        return AppointmentResponse.fromEntity(appointmentRepository.save(a));
+        Appointment saved = appointmentRepository.save(a);
+        eventPublisher.publishAppointmentCancelled(saved);
+        return AppointmentResponse.fromEntity(saved);
     }
 
     @Transactional
@@ -81,6 +86,8 @@ public class AppointmentService {
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found: " + id));
         if (!a.getDoctorId().equals(doctorId)) throw new SecurityException("Only the assigned doctor can update status");
         a.setStatus(AppointmentStatus.valueOf(status));
-        return AppointmentResponse.fromEntity(appointmentRepository.save(a));
+        Appointment saved = appointmentRepository.save(a);
+        eventPublisher.publishAppointmentStatusUpdated(saved);
+        return AppointmentResponse.fromEntity(saved);
     }
 }

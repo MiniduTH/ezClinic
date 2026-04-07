@@ -12,8 +12,8 @@ public class PaymentResponse {
     private UUID appointmentId;
     private BigDecimal amount;
     private String status;
+    private String gatewayReferenceId;
     private String transactionId;
-    private String stripeSessionId;
     private LocalDateTime paidAt;
     private LocalDateTime createdAt;
 
@@ -21,7 +21,8 @@ public class PaymentResponse {
         return PaymentResponse.builder()
                 .id(p.getId()).appointmentId(p.getAppointment().getId())
                 .amount(p.getAmount()).status(p.getStatus().name())
-                .transactionId(p.getTransactionId()).stripeSessionId(p.getStripeSessionId())
+                .gatewayReferenceId(p.getGatewayReferenceId())
+                .transactionId(p.getTransactionId())
                 .paidAt(p.getPaidAt()).createdAt(p.getCreatedAt()).build();
     }
 }

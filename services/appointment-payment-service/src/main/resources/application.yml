@@ -27,15 +27,10 @@ spring:
         jwt:
           issuer-uri: https://${AUTH0_DOMAIN:your-tenant.auth0.com}/
           audiences: ${AUTH0_AUDIENCE:https://api.ezclinic.com}
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USER:guest}
-    password: ${RABBITMQ_PASS:guest}
 
-stripe:
-  secret-key: ${STRIPE_SECRET_KEY:sk_test_xxxx}
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_xxxx}
+payhere:
+  merchant-id: ${PAYHERE_MERCHANT_ID:}
+  merchant-secret: ${PAYHERE_MERCHANT_SECRET:}
 
 services:
   doctor-service-url: ${DOCTOR_SERVICE_URL:http://localhost:3002/api/v1}
