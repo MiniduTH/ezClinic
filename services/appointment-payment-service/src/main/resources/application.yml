@@ -6,8 +6,10 @@ server:
 spring:
   application:
     name: appointment-payment-service
-  datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:ezclinic_appointment_db}
+  config:
+    import: optional:file:.env[.properties]
+
+  # ── JPA / Hibernate ──
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
