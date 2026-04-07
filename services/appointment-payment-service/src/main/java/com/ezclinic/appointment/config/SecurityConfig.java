@@ -25,7 +25,7 @@ public class SecurityConfig {
         http.cors(Customizer.withDefaults()).csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/payments/webhook").permitAll()
+                .requestMatchers("/payments/notify").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/health").permitAll()
                 .anyRequest().authenticated())

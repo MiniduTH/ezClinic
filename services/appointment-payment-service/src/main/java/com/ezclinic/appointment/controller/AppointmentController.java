@@ -23,6 +23,8 @@ public class AppointmentController {
     private final AppointmentService appointmentService;
     private final DoctorServiceClient doctorServiceClient;
 
+
+
     @GetMapping("/doctors")
     @Operation(summary = "Search doctors by specialization (proxies doctor-service)")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> searchDoctors(

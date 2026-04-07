@@ -23,8 +23,7 @@ public class Payment {
     @Enumerated(EnumType.STRING) @Column(nullable = false) @Builder.Default
     private PaymentStatus status = PaymentStatus.PENDING;
 
-    @Column(name = "stripe_session_id") private String stripeSessionId;
-    @Column(name = "stripe_payment_intent_id") private String stripePaymentIntentId;
+    @Column(name = "gateway_reference_id") private String gatewayReferenceId;
     @Column(name = "transaction_id") private String transactionId;
     @Column(name = "paid_at") private LocalDateTime paidAt;
 
