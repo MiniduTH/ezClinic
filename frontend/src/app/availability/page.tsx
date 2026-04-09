@@ -54,8 +54,8 @@ interface Slot {
 type ModalMode = "add" | "edit";
 
 export default function AvailabilityPage() {
-  // Replace with actual doctor ID from auth context
-  const doctorId = "placeholder-doctor-id";
+  // TODO: Replace with actual doctor ID from Auth0 JWT once auth is wired up
+  const doctorId = "69d71304d77fd0bbf5ec13eb";
 
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(false);

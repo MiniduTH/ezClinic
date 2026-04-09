@@ -72,8 +72,8 @@ export default function PrescriptionPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Replace with actual doctor ID from auth context
-  const doctorId = "placeholder-doctor-id";
+  // TODO: Replace with actual doctor ID from Auth0 JWT once auth is wired up
+  const doctorId = "69d71304d77fd0bbf5ec13eb";
 
   const updateField = (field: keyof PrescriptionForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));

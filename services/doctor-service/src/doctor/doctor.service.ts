@@ -4,10 +4,10 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Doctor } from './entities/doctor.entity';
-import { Availability } from './entities/availability.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { Doctor, DoctorDocument } from './schemas/doctor.schema';
+import { Availability, AvailabilityDocument } from './schemas/availability.schema';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { CreateAvailabilityDto } from './dto/create-availability.dto';
@@ -16,131 +16,104 @@ import { UpdateAvailabilityDto } from './dto/update-availability.dto';
 @Injectable()
 export class DoctorService {
   constructor(
-    @InjectRepository(Doctor)
-    private readonly doctorRepository: Repository<Doctor>,
-    @InjectRepository(Availability)
-    private readonly availabilityRepository: Repository<Availability>,
+    @InjectModel(Doctor.name) private readonly doctorModel: Model<DoctorDocument>,
+    @InjectModel(Availability.name) private readonly availabilityModel: Model<AvailabilityDocument>,
   ) {}
 
-  // ─── Helper: standard response wrapper ────────────────────────────
+  // ─── Helper ───────────────────────────────────────────────────────
 
   private wrap(data: any, message?: string) {
-    return {
-      success: true,
-      data,
-      ...(message && { message }),
-    };
+    return { success: true, data, ...(message && { message }) };
   }
 
   // ─── Doctor Profile ────────────────────────────────────────────────
 
-  async create(createDoctorDto: CreateDoctorDto) {
-    const existing = await this.doctorRepository.findOne({
-      where: { email: createDoctorDto.email },
-    });
+  async create(dto: CreateDoctorDto) {
+    const existing = await this.doctorModel.findOne({ email: dto.email.toLowerCase() });
+    if (existing) throw new ConflictException('Doctor with this email already exists');
 
-    if (existing) {
-      throw new ConflictException('Doctor with this email already exists');
-    }
-
-    const doctor = this.doctorRepository.create(createDoctorDto);
-    const saved = await this.doctorRepository.save(doctor);
-    return this.wrap(saved, 'Doctor registered successfully. Awaiting admin verification.');
+    const doctor = await this.doctorModel.create(dto);
+    return this.wrap(doctor, 'Doctor registered successfully. Awaiting admin verification.');
   }
 
-  async findAll(query: {
-    page?: number;
-    limit?: number;
-    specialization?: string;
-    search?: string;
-  }) {
+  async findAll(query: { page?: number; limit?: number; specialization?: string; search?: string }) {
     const page = query.page || 1;
     const limit = query.limit || 10;
-
-    const qb = this.doctorRepository
-      .createQueryBuilder('doctor')
-      .leftJoinAndSelect('doctor.availability', 'availability')
-      .where('doctor.isVerified = :verified', { verified: true });
+    const filter: any = { isVerified: true };
 
     if (query.specialization) {
-      qb.andWhere('doctor.specialization ILIKE :spec', {
-        spec: `%${query.specialization}%`,
-      });
+      filter.specialization = { $regex: query.specialization, $options: 'i' };
     }
-
     if (query.search) {
-      qb.andWhere('(doctor.name ILIKE :search OR doctor.email ILIKE :search)', {
-        search: `%${query.search}%`,
-      });
+      filter.$or = [
+        { name: { $regex: query.search, $options: 'i' } },
+        { email: { $regex: query.search, $options: 'i' } },
+      ];
     }
 
-    const [data, totalItems] = await qb
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
+    const [data, totalItems] = await Promise.all([
+      this.doctorModel.find(filter).skip((page - 1) * limit).limit(limit).lean(),
+      this.doctorModel.countDocuments(filter),
+    ]);
+
+    // Attach availability counts
+    const ids = data.map((d) => (d as any)._id);
+    const avail = await this.availabilityModel.find({ doctorId: { $in: ids } }).lean();
+
+    const enriched = data.map((doc) => ({
+      ...doc,
+      id: (doc as any)._id.toString(),
+      availability: avail.filter((a) => a.doctorId.toString() === (doc as any)._id.toString()),
+    }));
 
     return {
       success: true,
-      data,
-      pagination: {
-        page,
-        limit,
-        totalItems,
-        totalPages: Math.ceil(totalItems / limit),
-      },
+      data: enriched,
+      pagination: { page, limit, totalItems, totalPages: Math.ceil(totalItems / limit) },
     };
   }
 
   async findOne(id: string) {
-    const doctor = await this.doctorRepository.findOne({
-      where: { id },
-      relations: ['availability'],
-    });
-    if (!doctor) {
-      throw new NotFoundException(`Doctor with ID ${id} not found`);
-    }
-    return this.wrap(doctor);
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException(`Doctor ${id} not found`);
+    const doctor = await this.doctorModel.findById(id).lean();
+    if (!doctor) throw new NotFoundException(`Doctor with ID ${id} not found`);
+    const availability = await this.availabilityModel.find({ doctorId: new Types.ObjectId(id) }).lean();
+    return this.wrap({ ...doctor, id: (doctor as any)._id.toString(), availability });
   }
 
   async findByAuth0Id(auth0Id: string) {
-    const doctor = await this.doctorRepository.findOne({
-      where: { auth0Id },
-      relations: ['availability'],
-    });
-    if (!doctor) {
-      throw new NotFoundException(`Doctor not found`);
-    }
-    return this.wrap(doctor);
+    const doctor = await this.doctorModel.findOne({ auth0Id }).lean();
+    if (!doctor) throw new NotFoundException('Doctor not found');
+    const availability = await this.availabilityModel.find({ doctorId: (doctor as any)._id }).lean();
+    return this.wrap({ ...doctor, id: (doctor as any)._id.toString(), availability });
   }
 
   async verify(id: string) {
-    const { data: doctor } = await this.findOne(id);
-    if (doctor.isVerified) {
-      throw new BadRequestException('Doctor is already verified');
-    }
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException(`Doctor ${id} not found`);
+    const doctor = await this.doctorModel.findById(id);
+    if (!doctor) throw new NotFoundException(`Doctor with ID ${id} not found`);
+    if (doctor.isVerified) throw new BadRequestException('Doctor is already verified');
     doctor.isVerified = true;
-    const saved = await this.doctorRepository.save(doctor);
-    return this.wrap(saved, 'Doctor verified successfully.');
+    await doctor.save();
+    return this.wrap(doctor, 'Doctor verified successfully.');
   }
 
-  async update(id: string, updateDoctorDto: UpdateDoctorDto) {
-    const { data: doctor } = await this.findOne(id);
-    Object.assign(doctor, updateDoctorDto);
-    const saved = await this.doctorRepository.save(doctor);
-    return this.wrap(saved, 'Doctor profile updated successfully.');
+  async update(id: string, dto: UpdateDoctorDto) {
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException(`Doctor ${id} not found`);
+    const doctor = await this.doctorModel.findByIdAndUpdate(id, dto, { new: true });
+    if (!doctor) throw new NotFoundException(`Doctor with ID ${id} not found`);
+    return this.wrap(doctor, 'Doctor profile updated successfully.');
   }
 
   async remove(id: string): Promise<void> {
-    const { data: doctor } = await this.findOne(id);
-    await this.doctorRepository.remove(doctor);
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException(`Doctor ${id} not found`);
+    const result = await this.doctorModel.findByIdAndDelete(id);
+    if (!result) throw new NotFoundException(`Doctor with ID ${id} not found`);
+    await this.availabilityModel.deleteMany({ doctorId: new Types.ObjectId(id) });
   }
 
   // ─── Availability ─────────────────────────────────────────────────
 
-  /**
-   * Checks whether a new slot overlaps with existing slots for the same
-   * doctor on the same day.
-   */
   private async checkOverlap(
     doctorId: string,
     dayOfWeek: string,
@@ -148,181 +121,117 @@ export class DoctorService {
     endTime: string,
     excludeSlotId?: string,
   ): Promise<void> {
-    // Validate start < end
-    if (startTime >= endTime) {
-      throw new BadRequestException('Start time must be before end time.');
-    }
+    if (startTime >= endTime) throw new BadRequestException('Start time must be before end time.');
 
-    const qb = this.availabilityRepository
-      .createQueryBuilder('slot')
-      .where('slot.doctor_id = :doctorId', { doctorId })
-      .andWhere('slot.day_of_week = :dayOfWeek', { dayOfWeek })
-      .andWhere(
-        '(slot.start_time < :endTime AND slot.end_time > :startTime)',
-        { startTime, endTime },
-      );
+    const filter: any = {
+      doctorId: new Types.ObjectId(doctorId),
+      dayOfWeek,
+      startTime: { $lt: endTime },
+      endTime: { $gt: startTime },
+    };
+    if (excludeSlotId) filter._id = { $ne: new Types.ObjectId(excludeSlotId) };
 
-    if (excludeSlotId) {
-      qb.andWhere('slot.id != :excludeSlotId', { excludeSlotId });
-    }
-
-    const overlapping = await qb.getOne();
-
+    const overlapping = await this.availabilityModel.findOne(filter).lean();
     if (overlapping) {
       throw new ConflictException(
         `This slot overlaps with an existing slot on ${dayOfWeek} ` +
-        `(${overlapping.startTime}–${overlapping.endTime}). ` +
-        `Please adjust the times.`,
+        `(${overlapping.startTime}–${overlapping.endTime}). Please adjust the times.`,
       );
     }
   }
 
   async addAvailability(doctorId: string, dto: CreateAvailabilityDto) {
-    const { data: doctor } = await this.findOne(doctorId);
-
-    // Check for overlapping slots on the same day
+    await this.findOne(doctorId); // verify doctor exists
     await this.checkOverlap(doctorId, dto.dayOfWeek, dto.startTime, dto.endTime);
-
-    const slot = this.availabilityRepository.create({
-      ...dto,
-      doctor,
-    });
-    const saved = await this.availabilityRepository.save(slot);
-    return this.wrap(saved, 'Availability slot added.');
+    const slot = await this.availabilityModel.create({ ...dto, doctorId: new Types.ObjectId(doctorId) });
+    return this.wrap(slot, 'Availability slot added.');
   }
 
   async addBulkAvailability(doctorId: string, dtos: CreateAvailabilityDto[]) {
-    const { data: doctor } = await this.findOne(doctorId);
-
-    // Validate all slots first, don't save any if one fails
+    await this.findOne(doctorId);
     for (const dto of dtos) {
       await this.checkOverlap(doctorId, dto.dayOfWeek, dto.startTime, dto.endTime);
     }
-
-    const slots = dtos.map((dto) =>
-      this.availabilityRepository.create({ ...dto, doctor }),
+    const slots = await this.availabilityModel.insertMany(
+      dtos.map((dto) => ({ ...dto, doctorId: new Types.ObjectId(doctorId) })),
     );
-    const saved = await this.availabilityRepository.save(slots);
-    return this.wrap(saved, `${saved.length} availability slots added.`);
+    return this.wrap(slots, `${slots.length} availability slots added.`);
   }
 
   async getAvailability(doctorId: string) {
-    // Verify doctor exists
     await this.findOne(doctorId);
-
-    const slots = await this.availabilityRepository.find({
-      where: { doctor: { id: doctorId } },
-      order: {
-        dayOfWeek: 'ASC',
-        startTime: 'ASC',
-      },
-    });
-
-    // Group by day for a cleaner response
-    const grouped = this.groupByDay(slots);
-
-    return this.wrap({
-      slots,
-      grouped,
-    });
+    const slots = await this.availabilityModel
+      .find({ doctorId: new Types.ObjectId(doctorId) })
+      .sort({ dayOfWeek: 1, startTime: 1 })
+      .lean();
+    const grouped = this.groupByDay(slots as any[]);
+    return this.wrap({ slots, grouped });
   }
 
   async getAvailabilityByDay(doctorId: string, dayOfWeek: string) {
     await this.findOne(doctorId);
-
-    const slots = await this.availabilityRepository.find({
-      where: { doctor: { id: doctorId }, dayOfWeek, isActive: true },
-      order: { startTime: 'ASC' },
-    });
-
+    const slots = await this.availabilityModel
+      .find({ doctorId: new Types.ObjectId(doctorId), dayOfWeek, isActive: true })
+      .sort({ startTime: 1 })
+      .lean();
     return this.wrap(slots);
   }
 
-  async updateAvailability(
-    doctorId: string,
-    slotId: string,
-    dto: UpdateAvailabilityDto,
-  ) {
-    const slot = await this.availabilityRepository.findOne({
-      where: { id: slotId, doctor: { id: doctorId } },
+  async updateAvailability(doctorId: string, slotId: string, dto: UpdateAvailabilityDto) {
+    if (!Types.ObjectId.isValid(slotId)) throw new NotFoundException(`Slot ${slotId} not found`);
+    const slot = await this.availabilityModel.findOne({
+      _id: new Types.ObjectId(slotId),
+      doctorId: new Types.ObjectId(doctorId),
     });
-    if (!slot) {
-      throw new NotFoundException(`Availability slot ${slotId} not found`);
-    }
+    if (!slot) throw new NotFoundException(`Availability slot ${slotId} not found`);
 
-    // If times or day changed, check for overlaps
     const newDay = dto.dayOfWeek || slot.dayOfWeek;
     const newStart = dto.startTime || slot.startTime;
     const newEnd = dto.endTime || slot.endTime;
-
     if (dto.dayOfWeek || dto.startTime || dto.endTime) {
       await this.checkOverlap(doctorId, newDay, newStart, newEnd, slotId);
     }
 
     Object.assign(slot, dto);
-    const saved = await this.availabilityRepository.save(slot);
-    return this.wrap(saved, 'Availability slot updated.');
+    await slot.save();
+    return this.wrap(slot, 'Availability slot updated.');
   }
 
   async toggleAvailability(doctorId: string, slotId: string) {
-    const slot = await this.availabilityRepository.findOne({
-      where: { id: slotId, doctor: { id: doctorId } },
+    if (!Types.ObjectId.isValid(slotId)) throw new NotFoundException(`Slot ${slotId} not found`);
+    const slot = await this.availabilityModel.findOne({
+      _id: new Types.ObjectId(slotId),
+      doctorId: new Types.ObjectId(doctorId),
     });
-    if (!slot) {
-      throw new NotFoundException(`Availability slot ${slotId} not found`);
-    }
-
+    if (!slot) throw new NotFoundException(`Availability slot ${slotId} not found`);
     slot.isActive = !slot.isActive;
-    const saved = await this.availabilityRepository.save(slot);
-    return this.wrap(
-      saved,
-      `Slot ${saved.isActive ? 'activated' : 'deactivated'}.`,
-    );
+    await slot.save();
+    return this.wrap(slot, `Slot ${slot.isActive ? 'activated' : 'deactivated'}.`);
   }
 
   async removeAvailability(doctorId: string, slotId: string): Promise<void> {
-    const slot = await this.availabilityRepository.findOne({
-      where: { id: slotId, doctor: { id: doctorId } },
+    if (!Types.ObjectId.isValid(slotId)) throw new NotFoundException(`Slot ${slotId} not found`);
+    const result = await this.availabilityModel.findOneAndDelete({
+      _id: new Types.ObjectId(slotId),
+      doctorId: new Types.ObjectId(doctorId),
     });
-    if (!slot) {
-      throw new NotFoundException(`Availability slot ${slotId} not found`);
-    }
-    await this.availabilityRepository.remove(slot);
+    if (!result) throw new NotFoundException(`Availability slot ${slotId} not found`);
   }
 
-  async clearDayAvailability(
-    doctorId: string,
-    dayOfWeek: string,
-  ): Promise<void> {
+  async clearDayAvailability(doctorId: string, dayOfWeek: string): Promise<void> {
     await this.findOne(doctorId);
-    await this.availabilityRepository.delete({
-      doctor: { id: doctorId },
-      dayOfWeek,
-    });
+    await this.availabilityModel.deleteMany({ doctorId: new Types.ObjectId(doctorId), dayOfWeek });
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────
 
-  private groupByDay(slots: Availability[]) {
-    const dayOrder = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
-
-    const grouped: Record<string, Availability[]> = {};
-
+  private groupByDay(slots: any[]) {
+    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const grouped: Record<string, any[]> = {};
     for (const day of dayOrder) {
       const daySlots = slots.filter((s) => s.dayOfWeek === day);
-      if (daySlots.length > 0) {
-        grouped[day] = daySlots;
-      }
+      if (daySlots.length > 0) grouped[day] = daySlots;
     }
-
     return grouped;
   }
 }
