@@ -16,29 +16,29 @@ const DAYS = [
 ] as const;
 
 const CONSULTATION_TYPES = [
-  { value: "both", label: "Both" },
-  { value: "in-person", label: "In-Person" },
-  { value: "telemedicine", label: "Telemedicine" },
+  { value: "both", label: "Hybrid", icon: "🏥📹" },
+  { value: "in-person", label: "In-Person", icon: "🏥" },
+  { value: "telemedicine", label: "Virtual", icon: "📹" },
 ];
 
 const DAY_COLORS: Record<string, string> = {
-  Monday: "from-blue-500 to-blue-600",
-  Tuesday: "from-violet-500 to-purple-600",
-  Wednesday: "from-emerald-500 to-green-600",
-  Thursday: "from-amber-500 to-orange-500",
-  Friday: "from-rose-500 to-pink-600",
-  Saturday: "from-cyan-500 to-teal-600",
-  Sunday: "from-gray-400 to-gray-500",
+  Monday: "from-blue-100 to-indigo-50 border-blue-200 text-blue-900",
+  Tuesday: "from-violet-100 to-purple-50 border-violet-200 text-violet-900",
+  Wednesday: "from-emerald-100 to-teal-50 border-emerald-200 text-emerald-900",
+  Thursday: "from-amber-100 to-orange-50 border-amber-200 text-amber-900",
+  Friday: "from-rose-100 to-pink-50 border-rose-200 text-rose-900",
+  Saturday: "from-fuchsia-100 to-fuchsia-50 border-fuchsia-200 text-fuchsia-900",
+  Sunday: "from-slate-100 to-gray-50 border-slate-200 text-slate-900",
 };
 
-const DAY_BG: Record<string, string> = {
-  Monday: "bg-blue-50 border-blue-200",
-  Tuesday: "bg-violet-50 border-violet-200",
-  Wednesday: "bg-emerald-50 border-emerald-200",
-  Thursday: "bg-amber-50 border-amber-200",
-  Friday: "bg-rose-50 border-rose-200",
-  Saturday: "bg-cyan-50 border-cyan-200",
-  Sunday: "bg-gray-50 border-gray-200",
+const DAY_HEADER_COLORS: Record<string, string> = {
+  Monday: "bg-blue-600",
+  Tuesday: "bg-violet-600",
+  Wednesday: "bg-emerald-600",
+  Thursday: "bg-amber-500",
+  Friday: "bg-rose-500",
+  Saturday: "bg-fuchsia-600",
+  Sunday: "bg-slate-600",
 };
 
 interface Slot {
@@ -54,7 +54,6 @@ interface Slot {
 type ModalMode = "add" | "edit";
 
 export default function AvailabilityPage() {
-  // TODO: Replace with actual doctor ID from Auth0 JWT once auth is wired up
   const doctorId = "69d71304d77fd0bbf5ec13eb";
 
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -85,9 +84,7 @@ export default function AvailabilityPage() {
   const fetchSlots = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `${API_URL}/doctors/${doctorId}/availability`
-      );
+      const res = await fetch(`${API_URL}/doctors/${doctorId}/availability`);
       const data = await res.json();
       if (data.success) {
         setSlots(data.data.slots || []);
@@ -129,36 +126,25 @@ export default function AvailabilityPage() {
     try {
       let res: Response;
       if (modalMode === "add") {
-        res = await fetch(
-          `${API_URL}/doctors/${doctorId}/availability`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(editSlot),
-          }
-        );
+        res = await fetch(`${API_URL}/doctors/${doctorId}/availability`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editSlot),
+        });
       } else {
-        res = await fetch(
-          `${API_URL}/doctors/${doctorId}/availability/${editSlot.id}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(editSlot),
-          }
-        );
+        res = await fetch(`${API_URL}/doctors/${doctorId}/availability/${editSlot.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editSlot),
+        });
       }
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(
-          data?.message || data?.error?.message || "Operation failed"
-        );
+        throw new Error(data?.message || data?.error?.message || "Operation failed");
       }
 
-      showMessage(
-        "success",
-        modalMode === "add" ? "Slot added successfully!" : "Slot updated!"
-      );
+      showMessage("success", modalMode === "add" ? "Slot added seamlessly ✨" : "Slot updated! 🚀");
       setShowModal(false);
       await fetchSlots();
     } catch (err: any) {
@@ -169,17 +155,16 @@ export default function AvailabilityPage() {
   };
 
   const handleDelete = async (slotId: string) => {
-    if (!confirm("Delete this availability slot?")) return;
+    if (!confirm("Are you sure you want to permanently delete this slot?")) return;
 
     setLoading(true);
     try {
-      const res = await fetch(
-        `${API_URL}/doctors/${doctorId}/availability/${slotId}`,
-        { method: "DELETE" }
-      );
+      const res = await fetch(`${API_URL}/doctors/${doctorId}/availability/${slotId}`, {
+        method: "DELETE",
+      });
       if (!res.ok && res.status !== 204) throw new Error("Delete failed");
 
-      showMessage("success", "Slot deleted.");
+      showMessage("success", "Time slot removed. 🧹");
       setSlots((prev) => prev.filter((s) => s.id !== slotId));
     } catch {
       showMessage("error", "Failed to delete slot.");
@@ -190,364 +175,362 @@ export default function AvailabilityPage() {
 
   const handleToggle = async (slot: Slot) => {
     try {
-      const res = await fetch(
-        `${API_URL}/doctors/${doctorId}/availability/${slot.id}/toggle`,
-        { method: "PATCH" }
-      );
+      const res = await fetch(`${API_URL}/doctors/${doctorId}/availability/${slot.id}/toggle`, {
+        method: "PATCH",
+      });
       const data = await res.json();
       if (!res.ok) throw new Error("Toggle failed");
 
       setSlots((prev) =>
-        prev.map((s) =>
-          s.id === slot.id
-            ? { ...s, isActive: data.data.isActive }
-            : s
-        )
+        prev.map((s) => (s.id === slot.id ? { ...s, isActive: data.data.isActive } : s))
       );
-      showMessage(
-        "success",
-        `Slot ${data.data.isActive ? "activated" : "deactivated"}.`
-      );
+      showMessage("success", `Slot successfully ${data.data.isActive ? "activated" : "paused"}. 💫`);
     } catch {
       showMessage("error", "Failed to toggle slot.");
     }
   };
 
-  // Group slots by day
   const grouped: Record<string, Slot[]> = {};
   for (const day of DAYS) {
     grouped[day] = slots.filter((s) => s.dayOfWeek === day);
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Availability Schedule
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Manage your weekly consultation hours. Patients will see active
-            slots when booking.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {!fetched && (
-            <button
-              onClick={fetchSlots}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {loading ? "Loading..." : "Load Schedule"}
-            </button>
-          )}
-          <button
-            onClick={() => openAddModal()}
-            className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-lg shadow-blue-200 transition-all"
-          >
-            + Add Slot
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 p-6 relative overflow-hidden font-sans">
+      {/* Dynamic Background Blurs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-400/20 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-400/20 blur-[150px] pointer-events-none" />
 
-      {/* Message toast */}
-      {message && (
-        <div
-          className={`p-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
-            message.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-              : "bg-red-50 text-red-800 border border-red-200"
-          }`}
-        >
-          <span>{message.type === "success" ? "✓" : "✕"}</span>
-          {message.text}
-        </div>
-      )}
-
-      {/* Week grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {DAYS.map((day) => (
-          <div
-            key={day}
-            className={`rounded-xl border overflow-hidden ${DAY_BG[day]}`}
-          >
-            {/* Day header */}
-            <div
-              className={`px-4 py-3 bg-gradient-to-r ${DAY_COLORS[day]} flex items-center justify-between`}
-            >
-              <h3 className="font-semibold text-white text-sm">{day}</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-white/70">
-                  {grouped[day].length} slot
-                  {grouped[day].length !== 1 ? "s" : ""}
-                </span>
-                <button
-                  onClick={() => openAddModal(day)}
-                  className="w-6 h-6 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-md text-xs transition-colors"
-                  title={`Add slot for ${day}`}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {/* Slots */}
-            <div className="p-3 space-y-2 min-h-[80px]">
-              {grouped[day].length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-4 italic">
-                  No slots set
-                </p>
-              ) : (
-                grouped[day].map((slot) => (
-                  <div
-                    key={slot.id}
-                    className={`relative group p-3 rounded-lg bg-white border shadow-sm transition-all hover:shadow-md ${
-                      slot.isActive
-                        ? "border-gray-200"
-                        : "border-gray-200 opacity-50"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-gray-800">
-                          {slot.startTime} – {slot.endTime}
-                        </span>
-                        {!slot.isActive && (
-                          <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-medium">
-                            Inactive
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleToggle(slot)}
-                          className={`w-6 h-6 flex items-center justify-center rounded text-xs transition-colors ${
-                            slot.isActive
-                              ? "hover:bg-amber-50 text-amber-600"
-                              : "hover:bg-emerald-50 text-emerald-600"
-                          }`}
-                          title={
-                            slot.isActive ? "Deactivate" : "Activate"
-                          }
-                        >
-                          {slot.isActive ? "⏸" : "▶"}
-                        </button>
-                        <button
-                          onClick={() => openEditModal(slot)}
-                          className="w-6 h-6 flex items-center justify-center hover:bg-blue-50 text-blue-600 rounded text-xs transition-colors"
-                          title="Edit"
-                        >
-                          ✎
-                        </button>
-                        <button
-                          onClick={() => slot.id && handleDelete(slot.id)}
-                          className="w-6 h-6 flex items-center justify-center hover:bg-red-50 text-red-500 rounded text-xs transition-colors"
-                          title="Delete"
-                        >
-                          🗑
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        {slot.consultationType === "in-person"
-                          ? "🏥"
-                          : slot.consultationType === "telemedicine"
-                          ? "📹"
-                          : "🏥📹"}{" "}
-                        {slot.consultationType === "both"
-                          ? "In-Person & Video"
-                          : slot.consultationType === "in-person"
-                          ? "In-Person"
-                          : "Telemedicine"}
-                      </span>
-                      {slot.maxPatients > 1 && (
-                        <span>👥 {slot.maxPatients} patients</span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+      <div className="max-w-7xl mx-auto space-y-10 relative z-10">
+        {/* Header */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white border border-slate-200/60 p-8 rounded-[2rem] shadow-sm transition-all hover:shadow-md">
+          <div>
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">
+              Master Schedule
+            </h1>
+            <p className="text-slate-500 mt-2 font-medium tracking-wide">
+              Architect your weekly capacity. Patients adapt to this pulse.
+            </p>
           </div>
-        ))}
-      </div>
+          <div className="flex gap-4">
+            {!fetched && (
+              <button
+                onClick={fetchSlots}
+                disabled={loading}
+                className="group relative px-6 py-3 font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl transition-all overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500" />
+                <span className="relative flex items-center gap-2">
+                  {loading ? "Syncing..." : "⚡ Sync Schedule"}
+                </span>
+              </button>
+            )}
+            <button
+              onClick={() => openAddModal()}
+              className="px-6 py-3 font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-2xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all active:translate-y-0"
+            >
+              + Ignite New Slot
+            </button>
+          </div>
+        </header>
 
-      {/* ── Modal ── */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-teal-600 to-emerald-600">
-              <h2 className="text-lg font-semibold text-white">
-                {modalMode === "add"
-                  ? "Add Availability Slot"
-                  : "Edit Availability Slot"}
-              </h2>
-            </div>
-            <div className="p-6 space-y-4">
-              {/* Day */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Day of Week
-                </label>
-                <select
-                  value={editSlot.dayOfWeek}
-                  onChange={(e) =>
-                    setEditSlot((s) => ({
-                      ...s,
-                      dayOfWeek: e.target.value,
-                    }))
-                  }
-                  disabled={modalMode === "edit"}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 text-sm disabled:bg-gray-100"
-                >
-                  {DAYS.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {/* Message Toast (Floating) */}
+        {message && (
+          <div
+            className={`fixed bottom-10 inset-x-0 mx-auto w-max px-6 py-3 rounded-2xl shadow-xl backdrop-blur-3xl border z-50 flex items-center gap-3 animate-[slideUp_0.3s_cubic-bezier(0.16,1,0.3,1)] ${
+              message.type === "success"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : "bg-rose-50 border-rose-200 text-rose-800"
+            }`}
+          >
+            <span className="text-xl">{message.type === "success" ? "✨" : "💥"}</span>
+            <span className="font-medium tracking-wide">{message.text}</span>
+          </div>
+        )}
 
-              {/* Times */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Start Time
-                  </label>
-                  <input
-                    type="time"
-                    value={editSlot.startTime}
-                    onChange={(e) =>
-                      setEditSlot((s) => ({
-                        ...s,
-                        startTime: e.target.value,
-                      }))
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    End Time
-                  </label>
-                  <input
-                    type="time"
-                    value={editSlot.endTime}
-                    onChange={(e) =>
-                      setEditSlot((s) => ({
-                        ...s,
-                        endTime: e.target.value,
-                      }))
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 text-sm"
-                  />
+        {/* Week Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {DAYS.map((day) => (
+            <div
+              key={day}
+              className={`group flex flex-col bg-gradient-to-b ${DAY_COLORS[day]} border rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300`}
+            >
+              {/* Day Header */}
+              <div
+                className={`px-5 py-4 ${DAY_HEADER_COLORS[day]} flex items-center justify-between shadow-sm`}
+              >
+                <h3 className="font-bold text-white tracking-widest uppercase text-sm drop-shadow-sm">
+                  {day}
+                </h3>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold bg-black/10 text-white px-2.5 py-1 rounded-lg backdrop-blur-sm">
+                    {grouped[day].length} {grouped[day].length === 1 ? "Slot" : "Slots"}
+                  </span>
+                  <button
+                    onClick={() => openAddModal(day)}
+                    className="w-7 h-7 flex items-center justify-center bg-white/20 hover:bg-white text-white hover:text-slate-900 rounded-xl text-lg transition-all hover:scale-110 active:scale-95 shadow-sm"
+                    title={`Add slot to ${day}`}
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
-              {/* Consultation Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Consultation Type
-                </label>
-                <div className="flex gap-2">
-                  {CONSULTATION_TYPES.map((ct) => (
-                    <button
-                      key={ct.value}
-                      type="button"
-                      onClick={() =>
-                        setEditSlot((s) => ({
-                          ...s,
-                          consultationType: ct.value,
-                        }))
-                      }
-                      className={`flex-1 py-2 px-3 text-xs font-medium rounded-lg border transition-all ${
-                        editSlot.consultationType === ct.value
-                          ? "bg-teal-50 border-teal-300 text-teal-700"
-                          : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+              {/* Slots Container */}
+              <div className="p-4 space-y-3 flex-1 flex flex-col">
+                {grouped[day].length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center py-8 text-slate-400 text-center">
+                    <div className="w-12 h-12 mb-3 rounded-2xl bg-white/50 flex items-center justify-center border border-slate-200 shadow-sm text-lg">
+                      💤
+                    </div>
+                    <p className="text-sm font-medium">Silent Period</p>
+                  </div>
+                ) : (
+                  grouped[day].map((slot) => (
+                    <div
+                      key={slot.id}
+                      className={`relative overflow-hidden p-4 rounded-2xl border transition-all duration-300 group/slot shadow-sm ${
+                        slot.isActive
+                          ? "bg-white border-white hover:border-slate-300 hover:shadow-xl hover:-translate-y-1"
+                          : "bg-white/50 border-transparent opacity-70 hover:opacity-100 grayscale-[0.3]"
                       }`}
                     >
-                      {ct.value === "in-person"
-                        ? "🏥 "
-                        : ct.value === "telemedicine"
-                        ? "📹 "
-                        : "🏥📹 "}
-                      {ct.label}
-                    </button>
-                  ))}
+                      {/* Interactive Blob */}
+                      {slot.isActive && (
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-slate-100 to-transparent rounded-full blur-xl pointer-events-none group-hover/slot:opacity-100 opacity-0 transition-opacity" />
+                      )}
+
+                      <div className="flex items-start justify-between relative z-10">
+                        <div>
+                          <p className="text-[17px] font-bold tracking-tight text-slate-800">
+                            {slot.startTime} <span className="text-slate-400 mx-1">→</span> {slot.endTime}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2.5">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-slate-100 border border-slate-200 rounded-lg text-slate-600 shadow-sm">
+                              {CONSULTATION_TYPES.find((c) => c.value === slot.consultationType)?.icon}{" "}
+                              {CONSULTATION_TYPES.find((c) => c.value === slot.consultationType)?.label}
+                            </span>
+                            {slot.maxPatients > 1 && (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-lg shadow-sm">
+                                👥 {slot.maxPatients} Cap
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions Matrix */}
+                        <div className="flex flex-col gap-1.5 opacity-0 group-hover/slot:opacity-100 transition-all translate-x-2 group-hover/slot:translate-x-0">
+                          <button
+                            onClick={() => handleToggle(slot)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 hover:scale-110 transition-all ${
+                              slot.isActive
+                                ? "hover:bg-amber-100 hover:border-amber-300 hover:text-amber-700 text-slate-400"
+                                : "hover:bg-emerald-100 hover:border-emerald-300 hover:text-emerald-700 text-slate-400"
+                            }`}
+                            title={slot.isActive ? "Pause Slot" : "Revive Slot"}
+                          >
+                            {slot.isActive ? "⏸" : "▶"}
+                          </button>
+                          <button
+                            onClick={() => openEditModal(slot)}
+                            className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 hover:bg-blue-100 hover:border-blue-300 hover:text-blue-700 text-slate-400 hover:scale-110 transition-all"
+                            title="Refine Slot"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            onClick={() => slot.id && handleDelete(slot.id)}
+                            className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 hover:bg-rose-100 hover:border-rose-300 hover:text-rose-700 text-slate-400 hover:scale-110 transition-all"
+                            title="Annihilate Slot"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+
+                      {!slot.isActive && (
+                        <div className="absolute inset-0 flex items-center justify-center backdrop-blur-[1px] bg-slate-100/40 pointer-events-none rounded-2xl">
+                          <span className="px-3 py-1 bg-white text-slate-500 text-[10px] font-extrabold uppercase tracking-[0.2em] rounded-full border border-slate-300 shadow-sm">
+                            Dormant
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Cinematic Modal */}
+        {showModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-slate-900/30 backdrop-blur-md transition-opacity animate-[fadeIn_0.3s_ease-out]"
+              onClick={() => setShowModal(false)}
+            />
+
+            <div className="relative bg-white border border-slate-200 rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] w-full max-w-lg overflow-hidden animate-[scaleUp_0.4s_cubic-bezier(0.16,1,0.3,1)]">
+              {/* Modal Glow */}
+              <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+              
+              <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">
+                  {modalMode === "add" ? "Sculpt New Slot" : "Refine Slot Metrics"}
+                </h2>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-300 hover:text-slate-800 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-8 space-y-7">
+                {/* Day selector */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest pl-1">
+                    Target Day
+                  </label>
+                  <select
+                    value={editSlot.dayOfWeek}
+                    onChange={(e) => setEditSlot((s) => ({ ...s, dayOfWeek: e.target.value }))}
+                    disabled={modalMode === "edit"}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all appearance-none disabled:opacity-50 disabled:bg-slate-100 shadow-sm"
+                  >
+                    {DAYS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Horizon Times */}
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest pl-1">
+                      Commencement
+                    </label>
+                    <input
+                      type="time"
+                      value={editSlot.startTime}
+                      onChange={(e) => setEditSlot((s) => ({ ...s, startTime: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all shadow-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest pl-1">
+                      Conclusion
+                    </label>
+                    <input
+                      type="time"
+                      value={editSlot.endTime}
+                      onChange={(e) => setEditSlot((s) => ({ ...s, endTime: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all shadow-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Type & Cap */}
+                <div className="grid grid-cols-5 gap-5">
+                  <div className="col-span-3 space-y-2">
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest pl-1">
+                      Modality
+                    </label>
+                    <div className="flex bg-slate-100 p-1.5 rounded-2xl shadow-inner">
+                      {CONSULTATION_TYPES.map((ct) => (
+                        <button
+                          key={ct.value}
+                          type="button"
+                          onClick={() => setEditSlot((s) => ({ ...s, consultationType: ct.value }))}
+                          className={`flex-1 py-2 text-[11px] font-bold tracking-wide rounded-xl transition-all duration-300 ${
+                            editSlot.consultationType === ct.value
+                              ? "bg-white text-blue-700 shadow-md border border-slate-200"
+                              : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                          }`}
+                        >
+                          {ct.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest pl-1">
+                      Patient Cap
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={editSlot.maxPatients}
+                      onChange={(e) =>
+                        setEditSlot((s) => ({ ...s, maxPatients: parseInt(e.target.value) || 1 }))
+                      }
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all shadow-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Status Toggle */}
+                <div className="p-5 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
+                  <div>
+                    <p className="font-bold text-slate-800 text-[15px]">Slot Activity</p>
+                    <p className="text-sm text-slate-500 mt-0.5 font-medium">Will patients see this slot?</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditSlot((s) => ({ ...s, isActive: !s.isActive }))}
+                    className={`relative w-14 h-8 rounded-full transition-colors duration-300 shadow-inner ${
+                      editSlot.isActive ? "bg-emerald-500" : "bg-slate-200"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform duration-300 shadow-md ${
+                        editSlot.isActive ? "translate-x-6" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
 
-              {/* Max Patients */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Max Patients per Slot
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={editSlot.maxPatients}
-                  onChange={(e) =>
-                    setEditSlot((s) => ({
-                      ...s,
-                      maxPatients: parseInt(e.target.value) || 1,
-                    }))
-                  }
-                  className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 text-sm"
-                />
-              </div>
-
-              {/* Active toggle */}
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-700">
-                  Slot is active for booking
-                </span>
+              {/* Action Buttons */}
+              <div className="px-8 py-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-b-[2rem]">
                 <button
-                  type="button"
-                  onClick={() =>
-                    setEditSlot((s) => ({
-                      ...s,
-                      isActive: !s.isActive,
-                    }))
-                  }
-                  className={`relative w-11 h-6 rounded-full transition-colors ${
-                    editSlot.isActive ? "bg-teal-500" : "bg-gray-300"
-                  }`}
+                  onClick={() => setShowModal(false)}
+                  className="px-6 py-3.5 text-sm font-bold tracking-wide text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-xl transition-all"
                 >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                      editSlot.isActive ? "translate-x-5" : ""
-                    }`}
-                  />
+                  Discard
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={loading}
+                  className="px-8 py-3.5 text-sm font-bold tracking-wide text-white bg-slate-900 border border-slate-800 rounded-xl transition-all shadow-lg shadow-black/10 hover:shadow-black/20 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0"
+                >
+                  {loading ? "Materializing..." : modalMode === "add" ? "Forge Entry" : "Commit Mutation"}
                 </button>
               </div>
             </div>
-
-            {/* Modal footer */}
-            <div className="px-6 py-4 bg-gray-50 flex justify-end gap-2 border-t border-gray-100">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={loading}
-                className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-teal-600 to-emerald-600 rounded-lg hover:from-teal-700 hover:to-emerald-700 disabled:opacity-50 transition-all"
-              >
-                {loading
-                  ? "Saving..."
-                  : modalMode === "add"
-                  ? "Add Slot"
-                  : "Save Changes"}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      <style jsx global>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleUp {
+          from { opacity: 0; transform: scale(0.95) translateY(10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
