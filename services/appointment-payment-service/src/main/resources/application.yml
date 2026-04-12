@@ -34,7 +34,6 @@ payhere:
 
 services:
   doctor-service-url: ${DOCTOR_SERVICE_URL:http://localhost:3002/api/v1}
-  auth-service-url: ${AUTH_SERVICE_URL:http://localhost:3003/api/v1}
 
 springdoc:
   api-docs:

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
+import { auth0 } from '@/lib/auth0';
 
-export default function Home() {
-  // Automatically connect and forward traffic to our new premium Doctor Dashboard!
-  redirect('/dashboard');
+export default async function Home() {
+  const session = await auth0.getSession();
+  redirect(session ? '/dashboard' : '/auth/login');
 }

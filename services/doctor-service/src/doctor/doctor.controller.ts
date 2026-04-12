@@ -10,6 +10,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,6 +25,8 @@ import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { CreateAvailabilityDto } from './dto/create-availability.dto';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
 
 @ApiTags('doctors')
 @Controller('doctors')
@@ -59,6 +62,7 @@ export class DoctorController {
   }
 
   @Patch(':id/verify')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '(Admin) Verify a doctor registration' })
   @ApiResponse({ status: 200, description: 'Doctor verified successfully.' })
@@ -69,14 +73,15 @@ export class DoctorController {
   }
 
   @Get('me')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Get authenticated doctor profile (placeholder — uses ID for now)',
-  })
+  @ApiOperation({ summary: 'Get authenticated doctor profile' })
   @ApiResponse({ status: 200, description: 'Profile found.' })
-  getMe() {
-    // TODO: Extract doctor ID from JWT claims once Auth guard is wired
-    return { message: 'Wire Auth0 JWT guard to resolve the current doctor.' };
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  getMe(@CurrentUser() user: Record<string, unknown>) {
+    // Auth0 sub is the unique identifier for the user (e.g. "auth0|abc123")
+    const auth0Sub = user['sub'] as string;
+    return this.doctorService.findByAuth0Id(auth0Sub);
   }
 
   @Get(':id')
@@ -88,6 +93,7 @@ export class DoctorController {
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a doctor profile' })
   update(@Param('id') id: string, @Body() updateDoctorDto: UpdateDoctorDto) {
@@ -96,6 +102,7 @@ export class DoctorController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a doctor' })
   remove(@Param('id') id: string) {
@@ -105,6 +112,7 @@ export class DoctorController {
   // ─── Availability ─────────────────────────────────────────────────
 
   @Post(':doctorId/availability')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Add a single availability slot' })
   @ApiResponse({ status: 201, description: 'Slot added.' })
@@ -120,6 +128,7 @@ export class DoctorController {
   }
 
   @Post(':doctorId/availability/bulk')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Add multiple availability slots at once' })
   @ApiResponse({
@@ -165,6 +174,7 @@ export class DoctorController {
   }
 
   @Put(':doctorId/availability/:slotId')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update an availability slot' })
   @ApiResponse({
@@ -180,6 +190,7 @@ export class DoctorController {
   }
 
   @Patch(':doctorId/availability/:slotId/toggle')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Toggle a slot active/inactive' })
   toggleAvailability(
@@ -191,6 +202,7 @@ export class DoctorController {
 
   @Delete(':doctorId/availability/:slotId')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete an availability slot' })
   removeAvailability(
@@ -202,6 +214,7 @@ export class DoctorController {
 
   @Delete(':doctorId/availability/day/:day')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Clear all availability for a specific day' })
   @ApiParam({
