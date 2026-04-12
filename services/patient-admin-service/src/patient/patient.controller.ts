@@ -11,12 +11,14 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFile,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { PatientService } from './patient.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @ApiTags('patients')
 @Controller('patients')
@@ -32,6 +34,8 @@ export class PatientController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all patients (Admin only typically)' })
   findAll() {
     return this.patientService.findAll();
@@ -46,12 +50,16 @@ export class PatientController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a patient profile (partial)' })
   update(@Param('id') id: string, @Body() updatePatientDto: UpdatePatientDto) {
     return this.patientService.update(id, updatePatientDto);
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a patient profile (full)' })
   @ApiResponse({ status: 200, description: 'Profile updated.' })
   @ApiResponse({ status: 404, description: 'Patient not found.' })
@@ -62,12 +70,16 @@ export class PatientController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a patient' })
   remove(@Param('id') id: string) {
     return this.patientService.remove(id);
   }
 
   @Post(':id/reports')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload a medical report for a patient' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -106,6 +118,8 @@ export class PatientController {
 
   @Delete(':id/reports/:reportId')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a medical report' })
   deleteReport(@Param('id') id: string, @Param('reportId') reportId: string) {
     return this.patientService.deleteReport(id, reportId);
