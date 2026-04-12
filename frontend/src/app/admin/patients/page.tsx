@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+// Add reference to use simple client fetch for now, or just use normal fetch with token that we get from an endpoint.
+// Wait, apiFetch as written is a server-side utility because it calls auth0.getSession.
+// Let's create an API route proxy for client-side fetching OR modify page to be a server component or just fetch the token.
+// Actually, `admin/patients/page.tsx` is `"use client";`. `apiFetch` won't work directly here.
+// Let's implement a quick API route `/api/token` to expose the token to the client.
 
 interface Patient {
   id: string;
@@ -21,8 +26,19 @@ export default function AdminPatientList() {
   useEffect(() => {
     async function fetchPatients() {
       try {
-        const response = await fetch("http://localhost:3001/api/v1/admins/platform/patients");
-        if (!response.ok) throw new Error("Failed to fetch patients.");
+        const tokenRes = await fetch("/api/auth/token");
+        if (!tokenRes.ok) throw new Error("Could not authenticate");
+        const { accessToken } = await tokenRes.json();
+
+        const response = await fetch("http://localhost:3005/api/v1/admins/platform/patients", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+        if (!response.ok) {
+          if (response.status === 403) throw new Error("Forbidden: Admin access required.");
+          throw new Error("Failed to fetch patients.");
+        }
         const data = await response.json();
         setPatients(data);
       } catch (err: any) {

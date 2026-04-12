@@ -1,17 +1,37 @@
 "use client";
 import Link from 'next/link';
+import { useUser } from '@auth0/nextjs-auth0/client';
+import { getUserRole } from '@/lib/roles';
 
 export default function Sidebar() {
-  const menuItems = [
-    { name: 'Dashboard', path: '/', icon: '📊' },
-    { name: 'Patients', path: '/patients', icon: '👤' },
-    { name: 'Doctors', path: '/doctors', icon: '🩺' },
-    { name: 'Appointments', path: '/appointments', icon: '📅' },
-    { name: 'Prescriptions', path: '/prescriptions', icon: '💊' },
-    { name: 'Availability', path: '/availability', icon: '🗓️' },
-    { name: 'Telemedicine', path: '/telemedicine', icon: '📹' },
-    { name: 'Admin', path: '/admin', icon: '⚙️' },
-  ];
+  const { user, isLoading } = useUser();
+  
+  if (isLoading || !user) return null; // Or a loading skeleton
+  
+  const role = getUserRole(user);
+
+  let menuItems = [];
+  
+  if (role === 'admin') {
+    menuItems = [
+      { name: 'Admin Dashboard', path: '/admin', icon: '⚙️' },
+      { name: 'All Patients', path: '/admin/patients', icon: '👤' },
+    ];
+  } else if (role === 'doctor') {
+    menuItems = [
+      { name: 'Dashboard', path: '/dashboard', icon: '📊' },
+      { name: 'Appointments', path: '/appointments', icon: '📅' },
+      { name: 'Prescriptions', path: '/prescriptions', icon: '💊' },
+      { name: 'Availability', path: '/availability', icon: '🗓️' },
+      { name: 'Telemedicine', path: '/telemedicine', icon: '📹' },
+    ];
+  } else {
+    // Patient
+    menuItems = [
+      { name: 'My Profile', path: `/profile`, icon: '👤' },
+      { name: 'Book Appointment', path: '/appointments', icon: '📅' },
+    ];
+  }
 
   return (
     <aside className="fixed top-0 left-0 z-40 w-64 h-screen pt-20 transition-transform -translate-x-full bg-white border-r border-gray-200 sm:translate-x-0 dark:bg-gray-800 dark:border-gray-700" aria-label="Sidebar">

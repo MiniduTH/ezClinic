@@ -75,6 +75,14 @@ export class PatientService {
     return patient;
   }
 
+  async findByAuth0Id(auth0Id: string): Promise<Patient> {
+    const patient = await this.patientRepository.findOne({ where: { auth0Id } });
+    if (!patient) {
+      throw new NotFoundException(`Patient with Auth0 ID not found`);
+    }
+    return patient;
+  }
+
   async update(id: string, updatePatientDto: UpdatePatientDto): Promise<Patient> {
     const patient = await this.findOne(id);
     

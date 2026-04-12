@@ -18,9 +18,7 @@ interface Patient {
 }
 
 export default function PatientProfilePage() {
-  const params = useParams();
   const router = useRouter();
-  const id = params?.id as string;
   
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +45,6 @@ export default function PatientProfilePage() {
   const [reports, setReports] = useState<Report[]>([]);
 
   useEffect(() => {
-    if (!id) return;
     async function fetchData() {
       try {
         const tokenRes = await fetch("/api/auth/token");
@@ -56,17 +53,14 @@ export default function PatientProfilePage() {
 
         const headers = { Authorization: `Bearer ${accessToken}` };
 
-        const [patientRes, reportsRes] = await Promise.all([
-          fetch(`http://localhost:3005/api/v1/patients/${id}`, { headers }),
-          fetch(`http://localhost:3005/api/v1/patients/${id}/reports`, { headers })
-        ]);
-
+        // Fetch patient by /me
+        const patientRes = await fetch(`http://localhost:3005/api/v1/patients/me`, { headers });
         if (!patientRes.ok) {
           if (patientRes.status === 404) throw new Error("Patient not found");
           if (patientRes.status === 403) throw new Error("Forbidden access");
           throw new Error("Failed to fetch patient data.");
         }
-        
+
         const patientData = await patientRes.json();
         setPatient(patientData);
         setFormData({
@@ -74,6 +68,7 @@ export default function PatientProfilePage() {
             dob: patientData.dob ? patientData.dob.split('T')[0] : ""
         });
 
+        const reportsRes = await fetch(`http://localhost:3005/api/v1/patients/${patientData.id}/reports`, { headers });
         if (reportsRes.ok) {
           const reportsData = await reportsRes.json();
           setReports(reportsData);
@@ -85,7 +80,7 @@ export default function PatientProfilePage() {
       }
     }
     fetchData();
-  }, [id]);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -103,7 +98,7 @@ export default function PatientProfilePage() {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
 
-      const response = await fetch(`http://localhost:3005/api/v1/patients/${id}`, {
+      const response = await fetch(`http://localhost:3005/api/v1/patients/${patient!.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -136,7 +131,7 @@ export default function PatientProfilePage() {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
 
-      const response = await fetch(`http://localhost:3005/api/v1/patients/${id}/reports`, {
+      const response = await fetch(`http://localhost:3005/api/v1/patients/${patient!.id}/reports`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`
@@ -165,7 +160,7 @@ export default function PatientProfilePage() {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
 
-      const response = await fetch(`http://localhost:3005/api/v1/patients/${id}/reports/${reportId}`, {
+      const response = await fetch(`http://localhost:3005/api/v1/patients/${patient!.id}/reports/${reportId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${accessToken}`
