@@ -35,12 +35,12 @@ export class MedicationDto {
 export class CreatePrescriptionDto {
   @ApiProperty({ description: 'Appointment this prescription belongs to' })
   @IsNotEmpty()
-  @IsUUID()
+  @IsString()
   appointmentId: string;
 
   @ApiProperty({ description: 'Patient receiving the prescription' })
   @IsNotEmpty()
-  @IsUUID()
+  @IsString()
   patientId: string;
 
   @ApiPropertyOptional({
