@@ -1,4 +1,4 @@
-import { auth0 } from '@/lib/auth0';
+import { getSessionWithRoles } from '@/lib/auth0';
 import { redirect } from 'next/navigation';
 import { getUserRole } from '@/lib/roles';
 
@@ -7,12 +7,12 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth0.getSession();
+  const session = await getSessionWithRoles();
   if (!session) {
     redirect('/auth/login');
   }
 
-  const role = getUserRole(session.user);
+  const role = getUserRole(session);
   if (role !== 'admin') {
     redirect('/');
   }

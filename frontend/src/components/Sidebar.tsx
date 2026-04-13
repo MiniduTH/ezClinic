@@ -29,7 +29,7 @@ export default function Sidebar() {
     // Patient
     menuItems = [
       { name: 'My Profile', path: `/profile`, icon: '👤' },
-      { name: 'Book Appointment', path: '/appointments', icon: '📅' },
+      { name: 'My Appointments', path: '/appointments', icon: '📅' },
     ];
   }
 
