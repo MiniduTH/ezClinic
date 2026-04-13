@@ -28,8 +28,7 @@ export default function Sidebar() {
       { name: 'Appointments', path: '/appointments', icon: '📅' },
       { name: 'Prescriptions', path: '/prescriptions', icon: '💊' },
       { name: 'Availability', path: '/availability', icon: '🗓️' },
-      { name: 'Telemedicine', path: '/telemedicine', icon: '📹' },
-      { name: 'My Profile', path: '/profile', icon: '👤' },
+      { name: 'Telemedicine', path: '/telemedicine', icon: '📹' }
     ];
   } else {
     // Patient
