@@ -13,11 +13,16 @@ import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { CreateAvailabilityDto } from './dto/create-availability.dto';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
 
+import { AppointmentIntegrationService } from './integration/appointment.integration.service';
+import { PatientIntegrationService } from './integration/patient.integration.service';
+
 @Injectable()
 export class DoctorService {
   constructor(
     @InjectModel(Doctor.name) private readonly doctorModel: Model<DoctorDocument>,
     @InjectModel(Availability.name) private readonly availabilityModel: Model<AvailabilityDocument>,
+    private readonly appointmentIntegration: AppointmentIntegrationService,
+    private readonly patientIntegration: PatientIntegrationService,
   ) {}
 
   // ─── Helper ───────────────────────────────────────────────────────
@@ -221,6 +226,28 @@ export class DoctorService {
   async clearDayAvailability(doctorId: string, dayOfWeek: string): Promise<void> {
     await this.findOne(doctorId);
     await this.availabilityModel.deleteMany({ doctorId: new Types.ObjectId(doctorId), dayOfWeek });
+  }
+
+  // ─── External Integrations ─────────────────────────────────────────
+  
+  async getDoctorAppointments(doctorId: string) {
+    await this.findOne(doctorId); // verify exists
+    const response = await this.appointmentIntegration.getAppointmentsByDoctor(doctorId);
+    return response; // returning the raw response from integration
+  }
+
+  async updateAppointmentStatus(appointmentId: string, status: string) {
+    // Basic business rule from prompt: Only allow PENDING -> ACCEPTED/REJECTED
+    // We could fetch the current status first, but let's delegate to the integration
+    return this.appointmentIntegration.updateAppointmentStatus(appointmentId, status);
+  }
+
+  async getPatientDetails(patientId: string) {
+    return this.patientIntegration.getPatientById(patientId);
+  }
+
+  async getPatientReports(patientId: string) {
+    return this.patientIntegration.getPatientReports(patientId);
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────

@@ -235,4 +235,41 @@ export class DoctorController {
   ) {
     return this.doctorService.clearDayAvailability(doctorId, day);
   }
+
+  // ─── External Integrations ─────────────────────────────────────────
+
+  @Get(':id/appointments')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Fetch appointments for a doctor from Appointment Service' })
+  getAppointments(@Param('id') id: string) {
+    return this.doctorService.getDoctorAppointments(id);
+  }
+
+  @Patch('/appointments/:appointmentId/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update appointment status via Appointment Service' })
+  updateStatus(
+    @Param('appointmentId') appointmentId: string,
+    @Body('status') status: string,
+  ) {
+    return this.doctorService.updateAppointmentStatus(appointmentId, status);
+  }
+
+  @Get('/patients/:patientId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Fetch patient details from Patient Service' })
+  getPatient(@Param('patientId') patientId: string) {
+    return this.doctorService.getPatientDetails(patientId);
+  }
+
+  @Get('/patients/:patientId/reports')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Fetch patient reports from Patient Service' })
+  getReports(@Param('patientId') patientId: string) {
+    return this.doctorService.getPatientReports(patientId);
+  }
 }
