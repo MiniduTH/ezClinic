@@ -4,16 +4,19 @@ import {
   Post,
   Body,
   Patch,
+  Put,
   Param,
   Delete,
+  Query,
   HttpCode,
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -68,16 +71,21 @@ export class AdminController {
 
   @Get('platform/stats')
   @Roles('admin')
-  @ApiOperation({ summary: 'Get platform statistics for admin dashboard' })
+  @ApiOperation({ summary: 'Get extended platform statistics for admin dashboard' })
   getDashboardStats() {
     return this.adminService.getDashboardStats();
   }
 
   @Get('platform/patients')
   @Roles('admin')
-  @ApiOperation({ summary: 'Get all patients with their details (User Management)' })
-  getAllPatients() {
-    return this.adminService.getAllPatients();
+  @ApiOperation({ summary: 'Get all patients with optional search and status filter' })
+  @ApiQuery({ name: 'search', required: false, description: 'Search by name or email' })
+  @ApiQuery({ name: 'status', required: false, enum: ['active', 'inactive', 'suspended'] })
+  getAllPatients(
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.adminService.getAllPatients(search, status);
   }
 
   @Get('platform/patients/:id')
@@ -85,6 +93,17 @@ export class AdminController {
   @ApiOperation({ summary: 'Get a single patient with full details' })
   getPatientById(@Param('id') id: string) {
     return this.adminService.getPatientById(id);
+  }
+
+  @Put('platform/patients/:id/status')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Activate, deactivate, or suspend a patient account' })
+  @ApiResponse({ status: 200, description: 'Status updated.' })
+  updatePatientStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserStatusDto,
+  ) {
+    return this.adminService.updatePatientStatus(id, dto);
   }
 
   @Delete('platform/patients/:id')
@@ -95,3 +114,4 @@ export class AdminController {
     return this.adminService.deletePatient(id);
   }
 }
+

@@ -50,4 +50,19 @@ export class CreatePatientDto {
   @IsOptional()
   @IsString()
   avatarUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Blood type (e.g. A+, O-)' })
+  @IsOptional()
+  @IsString()
+  bloodType?: string;
+
+  @ApiPropertyOptional({ description: 'Known allergies (free text)' })
+  @IsOptional()
+  @IsString()
+  allergies?: string;
+
+  @ApiPropertyOptional({ description: 'Emergency contact details (name, phone)' })
+  @IsOptional()
+  @IsString()
+  emergencyContact?: string;
 }

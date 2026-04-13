@@ -3,9 +3,12 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
 import { MedicalReport } from './medical-report.entity';
+
+export type PatientStatus = 'active' | 'inactive' | 'suspended';
 
 @Entity('patients')
 export class Patient {
@@ -36,8 +39,25 @@ export class Patient {
   @Column({ name: 'avatar_url', nullable: true })
   avatarUrl: string;
 
+  // Medical profile fields
+  @Column({ name: 'blood_type', nullable: true })
+  bloodType: string;
+
+  @Column({ type: 'text', nullable: true })
+  allergies: string;
+
+  @Column({ name: 'emergency_contact', type: 'text', nullable: true })
+  emergencyContact: string;
+
+  // Account status: active | inactive | suspended
+  @Column({ default: 'active' })
+  status: PatientStatus;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 
   @OneToMany(() => MedicalReport, (report) => report.patient, {
     cascade: true,
