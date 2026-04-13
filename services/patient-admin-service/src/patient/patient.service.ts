@@ -86,15 +86,18 @@ export class PatientService {
   async update(id: string, updatePatientDto: UpdatePatientDto): Promise<Patient> {
     const patient = await this.findOne(id);
     
-    let dobDate = patient.dob;
-    if (updatePatientDto.dob) {
-      dobDate = new Date(updatePatientDto.dob);
+    let dobDate: any = patient.dob;
+    if (updatePatientDto.dob !== undefined) {
+      dobDate = updatePatientDto.dob === null ? null : new Date(updatePatientDto.dob);
     }
 
     Object.assign(patient, {
       ...updatePatientDto,
-      dob: dobDate,
     });
+    
+    if (updatePatientDto.dob !== undefined) {
+       patient.dob = dobDate;
+    }
 
     return await this.patientRepository.save(patient);
   }

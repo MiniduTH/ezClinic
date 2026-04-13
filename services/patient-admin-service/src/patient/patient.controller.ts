@@ -33,7 +33,10 @@ export class PatientController {
   @ApiOperation({ summary: 'Register a new patient' })
   @ApiResponse({ status: 201, description: 'Patient successfully registered.' })
   @ApiResponse({ status: 409, description: 'Email already exists.' })
-  create(@Body() createPatientDto: CreatePatientDto) {
+  create(@Body() createPatientDto: CreatePatientDto, @Req() req: any) {
+    if (req.user && req.user.sub) {
+      createPatientDto.auth0Id = req.user.sub;
+    }
     return this.patientService.create(createPatientDto);
   }
 

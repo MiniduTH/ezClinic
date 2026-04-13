@@ -35,7 +35,7 @@ export default function Navbar() {
                 </div>
               </>
             ) : !isLoading ? (
-              <a href="/auth/login" className="text-sm px-3 py-1.5 rounded-md bg-teal-500 text-white hover:bg-teal-600 transition-colors">
+              <a href="/auth/login?returnTo=/" className="text-sm px-3 py-1.5 rounded-md bg-teal-500 text-white hover:bg-teal-600 transition-colors">
                 Login
               </a>
             ) : null}
