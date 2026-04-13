@@ -256,7 +256,9 @@ function PatientProfile() {
     if (!validate(formData)) return;
     setSaving(true);
     try {
-      const payload: Record<string, unknown> = { ...formData };
+      // Strip server-managed / read-only fields that the DTO does not accept
+      const { id: _id, status: _status, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = formData as any;
+      const payload: Record<string, unknown> = { ...rest };
       // Coerce empty strings to null for optional fields
       (["dob", "phone", "gender", "address", "bloodType", "allergies", "emergencyContact"] as const).forEach((k) => {
         if (payload[k] === "") payload[k] = null;
