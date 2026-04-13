@@ -7,6 +7,7 @@ import {
   Put,
   Param,
   Delete,
+  Query,
   HttpCode,
   HttpStatus,
   UseInterceptors,
@@ -15,10 +16,11 @@ import {
   Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
-import { PatientService } from './patient.service';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { PatientService, ReportFilter } from './patient.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
+import { UploadReportDto } from './dto/upload-report.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -43,7 +45,7 @@ export class PatientController {
   @Get()
   @ApiBearerAuth()
   @Roles('admin')
-  @ApiOperation({ summary: 'Get all patients (Admin only typically)' })
+  @ApiOperation({ summary: 'Get all patients (Admin only)' })
   findAll() {
     return this.patientService.findAll();
   }
@@ -56,11 +58,36 @@ export class PatientController {
     return this.patientService.findByAuth0Id(req.user.sub);
   }
 
+  @Put('me')
+  @ApiBearerAuth()
+  @Roles('patient')
+  @ApiOperation({ summary: 'Update current patient profile' })
+  @ApiResponse({ status: 200, description: 'Profile updated.' })
+  updateMe(@Req() req: any, @Body() updatePatientDto: UpdatePatientDto) {
+    return this.patientService.updateMe(req.user.sub, updatePatientDto);
+  }
+
+  @Post('me/avatar')
+  @ApiBearerAuth()
+  @Roles('patient')
+  @ApiOperation({ summary: 'Upload profile avatar (JPEG/PNG, max 2 MB)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+      required: ['file'],
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  uploadAvatar(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
+    return this.patientService.uploadAvatar(req.user.sub, file);
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @Roles('patient', 'doctor', 'admin')
   @ApiOperation({ summary: 'Get a specific patient profile' })
-  @ApiResponse({ status: 200, description: 'Profile found.' })
   @ApiResponse({ status: 404, description: 'Patient not found.' })
   findOne(@Param('id') id: string) {
     return this.patientService.findOne(id);
@@ -77,11 +104,8 @@ export class PatientController {
   @Put(':id')
   @ApiBearerAuth()
   @Roles('patient', 'admin')
-  @ApiOperation({ summary: 'Update a patient profile (full)' })
-  @ApiResponse({ status: 200, description: 'Profile updated.' })
-  @ApiResponse({ status: 404, description: 'Patient not found.' })
+  @ApiOperation({ summary: 'Update a patient profile (full replace)' })
   putUpdate(@Param('id') id: string, @Body() updatePatientDto: UpdatePatientDto) {
-    // Reusing the update service method since UpdatePatientDto covers fields
     return this.patientService.update(id, updatePatientDto);
   }
 
@@ -94,20 +118,22 @@ export class PatientController {
     return this.patientService.remove(id);
   }
 
+  // ─── Medical Reports ─────────────────────────────────────────────
+
   @Post(':id/reports')
   @ApiBearerAuth()
   @Roles('patient', 'admin')
-  @ApiOperation({ summary: 'Upload a medical report for a patient' })
+  @ApiOperation({ summary: 'Upload a medical report for a patient (PDF/JPEG/PNG, max 10 MB)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
         title: { type: 'string' },
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
+        reportType: { type: 'string', enum: ['lab', 'imaging', 'prescription', 'other'] },
+        description: { type: 'string' },
+        reportDate: { type: 'string', format: 'date' },
+        file: { type: 'string', format: 'binary' },
       },
       required: ['title', 'file'],
     },
@@ -115,18 +141,37 @@ export class PatientController {
   @UseInterceptors(FileInterceptor('file'))
   uploadReport(
     @Param('id') id: string,
-    @Body('title') title: string,
+    @Body() dto: UploadReportDto,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.patientService.uploadReport(id, title, file);
+    return this.patientService.uploadReport(id, dto, file);
   }
 
   @Get(':id/reports')
   @ApiBearerAuth()
   @Roles('patient', 'doctor', 'admin')
-  @ApiOperation({ summary: 'Get all medical reports for a patient' })
-  getReports(@Param('id') id: string) {
-    return this.patientService.getReports(id);
+  @ApiOperation({ summary: 'Get medical reports for a patient (paginated, filterable)' })
+  @ApiQuery({ name: 'reportType', required: false, enum: ['lab', 'imaging', 'prescription', 'other'] })
+  @ApiQuery({ name: 'dateFrom', required: false, description: 'ISO date string (inclusive)' })
+  @ApiQuery({ name: 'dateTo', required: false, description: 'ISO date string (inclusive)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  getReports(
+    @Param('id') id: string,
+    @Query('reportType') reportType?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const filter: ReportFilter = {
+      reportType: reportType as any,
+      dateFrom,
+      dateTo,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? Math.min(parseInt(limit, 10), 100) : 20,
+    };
+    return this.patientService.getReports(id, filter);
   }
 
   @Get(':id/reports/:reportId')
@@ -141,8 +186,10 @@ export class PatientController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @Roles('patient', 'admin')
-  @ApiOperation({ summary: 'Delete a medical report' })
+  @ApiOperation({ summary: 'Soft-delete a medical report' })
   deleteReport(@Param('id') id: string, @Param('reportId') reportId: string) {
     return this.patientService.deleteReport(id, reportId);
   }
 }
+
+

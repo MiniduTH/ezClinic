@@ -2,12 +2,14 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { Admin } from './entities/admin.entity';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { Patient } from '../patient/entities/patient.entity';
 
 @Injectable()
@@ -60,13 +62,31 @@ export class AdminService {
   // ─── Platform Operations: User Management ─────────────────────
 
   /**
-   * Get all patients (user management for admin dashboard)
+   * Get all patients (user management for admin dashboard).
+   * Supports optional free-text search on name or email.
    */
-  async getAllPatients(): Promise<Patient[]> {
-    return await this.patientRepository.find({
-      relations: ['medicalReports'],
-      order: { createdAt: 'DESC' },
-    });
+  async getAllPatients(search?: string, status?: string): Promise<Patient[]> {
+    const where: any[] = [];
+
+    if (search) {
+      where.push(
+        { name: ILike(`%${search}%`) },
+        { email: ILike(`%${search}%`) },
+      );
+    }
+
+    const query = this.patientRepository.createQueryBuilder('p')
+      .leftJoinAndSelect('p.medicalReports', 'r', 'r.is_deleted = false')
+      .orderBy('p.created_at', 'DESC');
+
+    if (search) {
+      query.where('p.name ILIKE :search OR p.email ILIKE :search', { search: `%${search}%` });
+    }
+    if (status) {
+      query.andWhere('p.status = :status', { status });
+    }
+
+    return await query.getMany();
   }
 
   /**
@@ -81,6 +101,18 @@ export class AdminService {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
     return patient;
+  }
+
+  /**
+   * Update a patient's account status (active | inactive | suspended).
+   */
+  async updatePatientStatus(patientId: string, dto: UpdateUserStatusDto): Promise<Patient> {
+    const patient = await this.patientRepository.findOne({ where: { id: patientId } });
+    if (!patient) {
+      throw new NotFoundException(`Patient with ID ${patientId} not found`);
+    }
+    patient.status = dto.status;
+    return await this.patientRepository.save(patient);
   }
 
   /**
@@ -99,15 +131,28 @@ export class AdminService {
   // ─── Platform Operations: Dashboard Stats ─────────────────────
 
   /**
-   * Get platform statistics for the admin dashboard
+   * Extended platform statistics for the admin dashboard.
    */
   async getDashboardStats(): Promise<{
     totalPatients: number;
+    activePatients: number;
+    suspendedPatients: number;
     totalAdmins: number;
+    newPatientsThisWeek: number;
     recentPatients: Patient[];
   }> {
     const totalPatients = await this.patientRepository.count();
+    const activePatients = await this.patientRepository.count({ where: { status: 'active' } });
+    const suspendedPatients = await this.patientRepository.count({ where: { status: 'suspended' } });
     const totalAdmins = await this.adminRepository.count();
+
+    // Count patients registered in the last 7 days
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const newPatientsThisWeek = await this.patientRepository
+      .createQueryBuilder('p')
+      .where('p.created_at >= :weekAgo', { weekAgo })
+      .getCount();
 
     const recentPatients = await this.patientRepository.find({
       order: { createdAt: 'DESC' },
@@ -116,7 +161,10 @@ export class AdminService {
 
     return {
       totalPatients,
+      activePatients,
+      suspendedPatients,
       totalAdmins,
+      newPatientsThisWeek,
       recentPatients,
     };
   }
