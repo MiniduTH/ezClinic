@@ -25,6 +25,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: Record<string, unknown>): Record<string, unknown> {
+    // The roles will pass-through in the payload under 'https://ezclinic.com/roles'
+    // Ensure the payload has the roles array as is.
     return payload;
   }
 }

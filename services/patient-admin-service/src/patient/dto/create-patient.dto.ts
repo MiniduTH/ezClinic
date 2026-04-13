@@ -38,7 +38,7 @@ export class CreatePatientDto {
 
   @ApiPropertyOptional({ description: 'Gender of the patient' })
   @IsOptional()
-  @IsIn(['Male', 'Female', 'Other'])
+  @IsIn(['male', 'female', 'other'])
   gender?: string;
 
   @ApiPropertyOptional({ description: 'Residential address' })

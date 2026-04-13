@@ -50,13 +50,20 @@ export default function PatientProfilePage() {
     if (!id) return;
     async function fetchData() {
       try {
+        const tokenRes = await fetch("/api/auth/token");
+        if (!tokenRes.ok) throw new Error("Could not authenticate");
+        const { accessToken } = await tokenRes.json();
+
+        const headers = { Authorization: `Bearer ${accessToken}` };
+
         const [patientRes, reportsRes] = await Promise.all([
-          fetch(`http://localhost:3001/api/v1/patients/${id}`),
-          fetch(`http://localhost:3001/api/v1/patients/${id}/reports`)
+          fetch(`http://localhost:3005/api/v1/patients/${id}`, { headers }),
+          fetch(`http://localhost:3005/api/v1/patients/${id}/reports`, { headers })
         ]);
 
         if (!patientRes.ok) {
           if (patientRes.status === 404) throw new Error("Patient not found");
+          if (patientRes.status === 403) throw new Error("Forbidden access");
           throw new Error("Failed to fetch patient data.");
         }
         
@@ -93,10 +100,14 @@ export default function PatientProfilePage() {
       const payload = { ...formData };
       if (payload.dob === "") delete payload.dob;
       
-      const response = await fetch(`http://localhost:3001/api/v1/patients/${id}`, {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+
+      const response = await fetch(`http://localhost:3005/api/v1/patients/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`
         },
         body: JSON.stringify(payload),
       });
@@ -122,8 +133,14 @@ export default function PatientProfilePage() {
       data.append("title", reportTitle);
       data.append("file", reportFile);
 
-      const response = await fetch(`http://localhost:3001/api/v1/patients/${id}/reports`, {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+
+      const response = await fetch(`http://localhost:3005/api/v1/patients/${id}/reports`, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
         body: data,
       });
 
@@ -145,8 +162,14 @@ export default function PatientProfilePage() {
     if (!confirm("Are you sure you want to delete this report?")) return;
     
     try {
-      const response = await fetch(`http://localhost:3001/api/v1/patients/${id}/reports/${reportId}`, {
+      const tokenRes = await fetch("/api/auth/token");
+      const { accessToken } = await tokenRes.json();
+
+      const response = await fetch(`http://localhost:3005/api/v1/patients/${id}/reports/${reportId}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
       });
       
       if (!response.ok) throw new Error("Failed to delete report.");
