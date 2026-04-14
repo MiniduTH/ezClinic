@@ -6,6 +6,8 @@ import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
+import { IntegrationModule } from './doctor/integration/integration.module';
+
 @Module({
   imports: [
     // Load .env file globally
@@ -20,6 +22,7 @@ import { AppService } from './app.service';
       }),
     }),
 
+    IntegrationModule,
     AuthModule,
     DoctorModule,
   ],

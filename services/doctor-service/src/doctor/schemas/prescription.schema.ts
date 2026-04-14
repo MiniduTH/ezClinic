@@ -21,7 +21,7 @@ export class Prescription {
   @Prop()
   patientName: string;
 
-  @Prop({ required: true })
+  @Prop()
   appointmentId: string;
 
   @Prop()

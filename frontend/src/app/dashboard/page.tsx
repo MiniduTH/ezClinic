@@ -10,19 +10,20 @@ export default function DoctorDashboard() {
   const [loading, setLoading] = useState(true);
   
   // Point this to Kaveen's deployed Appointment Service (Docker Container) Network Address
-  const APPOINTMENT_API_URL = process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:8080/api/v1";
+  const DOCTOR_API_URL = process.env.NEXT_PUBLIC_DOCTOR_API || "http://localhost:3002/api/v1";
   const doctorId = "69d71304d77fd0bbf5ec13eb";
 
   useEffect(() => {
-    // Attempt to fetch live data from Kaveen's Appointment Tracker Backend!
+    // We now fetch via the Doctor Service Bridge (Clean Architecture)
     const fetchAppointments = async () => {
       try {
-        const res = await fetch(`${APPOINTMENT_API_URL}/appointments/doctor/${doctorId}`);
-        if (!res.ok) throw new Error("Failed to fetch");
-        const data = await res.json();
+        const res = await fetch(`${DOCTOR_API_URL}/doctors/${doctorId}/appointments`);
+        if (!res.ok) throw new Error("Failed to fetch via Doctor Service Bridge");
+        const json = await res.json();
         
-        // Map Kaveen's schema to our dashboard's generic display format
-        // Modify these fields if Kaveen named his JSON properties differently!
+        // Doctor Service returns { success: true, data: [...] }
+        const data = json.data || [];
+        
         const liveAppointments = Array.isArray(data) ? data.map((apt: any) => ({
           id: apt.id || apt._id || "N/A",
           patientId: apt.patientId || "Unknown",
@@ -37,8 +38,7 @@ export default function DoctorDashboard() {
         
         setAppointments(liveAppointments);
       } catch (err) {
-        console.error("Could not fetch from Kaveen's Appointment Service:", err);
-        // Fallback for UI testing if his docker stops
+        console.error("Connection Error (Doctor Service Bridge):", err);
         setAppointments([]);
       } finally {
         setLoading(false);
@@ -48,27 +48,63 @@ export default function DoctorDashboard() {
     fetchAppointments();
   }, []);
 
-  const handleAccept = (id: string) => {
-    // This will eventually plug into Kaveen's PUT /appointments/{id}/accept
-    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: "Accepted" } : a));
-    alert(`Appointment ${id} Accepted!`);
+  const handleAccept = async (id: string) => {
+    try {
+      const res = await fetch(`${DOCTOR_API_URL}/appointments/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Accepted' })
+      });
+      if (!res.ok) throw new Error("Failed to update status");
+
+      setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: "Accepted" } : a));
+      alert(`Appointment ${id} Accepted via Bridge!`);
+    } catch (err) {
+      alert("Error updating appointment status via Doctor Service.");
+    }
   };
 
-  const handleReject = (id: string) => {
-    // This will eventually plug into Kaveen's PUT /appointments/{id}/reject
-    if (confirm("Are you sure you want to reject this appointment?")) {
+  const handleReject = async (id: string) => {
+    if (!confirm("Are you sure you want to reject this appointment?")) return;
+
+    try {
+      const res = await fetch(`${DOCTOR_API_URL}/appointments/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Rejected' })
+      });
+      if (!res.ok) throw new Error("Failed to update status");
+
       setAppointments(prev => prev.filter(a => a.id !== id));
+      alert(`Appointment ${id} Rejected via Bridge!`);
+    } catch (err) {
+      alert("Error rejecting appointment via Doctor Service.");
     }
   };
 
   const joinVideoCall = (roomId: string) => {
-    // This routes to Saniru's Telemedicine service UI or triggers his Agora/Twilio integration
     alert(`Launching Secure Video Room for ${roomId}... \n(Waiting for Saniru's Telemedicine Service Integration)`);
   };
 
-  const viewReports = (patientId: string) => {
-    // This triggers Minidu's Patient Service report fetcher
-    alert(`Fetching Medical Records from Patient Service for Patient ID: ${patientId}... \n(Waiting for Minidu's Patient Service Integration)`);
+  const viewReports = async (patientId: string) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${DOCTOR_API_URL}/patients/${patientId}/reports`);
+      if (!res.ok) throw new Error("Failed to fetch reports");
+      const json = await res.json();
+      
+      const reports = json.data || [];
+      if (reports.length === 0) {
+        alert("No medical reports found for this patient in the Patient Service.");
+      } else {
+        alert(`Successfully connected to Minidu's Patient Service!\nFound ${reports.length} reports for Patient ${patientId}.`);
+        console.log("Reports from Patient Service:", reports);
+      }
+    } catch (err) {
+      alert("Patient Service Connection Failed. Ensure Patient Admin Service is running on port 3005.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

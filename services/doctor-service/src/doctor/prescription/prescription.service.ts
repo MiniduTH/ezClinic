@@ -8,11 +8,14 @@ import { Model, Types } from 'mongoose';
 import { Prescription, PrescriptionDocument } from '../schemas/prescription.schema';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 
+import { PatientIntegrationService } from '../integration/patient.integration.service';
+
 @Injectable()
 export class PrescriptionService {
   constructor(
     @InjectModel(Prescription.name)
     private readonly prescriptionModel: Model<PrescriptionDocument>,
+    private readonly patientIntegration: PatientIntegrationService,
   ) { }
 
   private wrap(data: any, message?: string) {
@@ -28,6 +31,17 @@ export class PrescriptionService {
       throw new BadRequestException('A prescription must include at least one medication.');
     }
 
+    // Soft-validate patient via integration — non-blocking.
+    // The patient service uses UUID primary keys; if the ID format doesn't match
+    // or the service is temporarily unavailable, we still allow the prescription
+    // since the doctor has already confirmed the patient identity via appointment.
+    try {
+      await this.patientIntegration.getPatientById(dto.patientId);
+    } catch {
+      // Patient service unavailable or patient not found by this ID format — proceed anyway.
+      // The patientId is stored as a plain string reference, not a FK constraint.
+    }
+
     let followUpDate: Date | undefined;
     if (dto.followUpDate) {
       followUpDate = new Date(dto.followUpDate);
@@ -40,7 +54,7 @@ export class PrescriptionService {
       doctorId: new Types.ObjectId(doctorId),
       patientId: dto.patientId,
       patientName: dto.patientName,
-      appointmentId: dto.appointmentId,
+      ...(dto.appointmentId && { appointmentId: dto.appointmentId }),
       diagnosis: dto.diagnosis,
       medications: dto.medications,
       notes: dto.notes,
