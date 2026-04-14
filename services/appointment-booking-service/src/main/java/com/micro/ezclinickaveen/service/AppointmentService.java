@@ -129,7 +129,19 @@ public class AppointmentService {
 
         appointment.setAppointmentDate(requestDTO.getNewAppointmentDate());
         appointment.setSlotId(requestDTO.getNewSlotId());
-        
+        return mapToDTO(appointmentRepository.save(appointment));
+    }
+
+    public List<AppointmentResponseDTO> getAppointmentsByDoctor(UUID doctorId) {
+        return appointmentRepository.findByDoctorId(doctorId).stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public AppointmentResponseDTO updateStatus(UUID id, String status) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id " + id));
+        appointment.setStatus(status);
         return mapToDTO(appointmentRepository.save(appointment));
     }
 
@@ -140,9 +152,9 @@ public class AppointmentService {
             return webClientBuilder.build()
                     .get()
                     .uri(uriBuilder -> uriBuilder
-                            .path(doctorServiceUrl + "/search")
+                            .path(doctorServiceUrl)
                             .queryParam("specialization", specialty)
-                            .queryParam("hospital", hospital)
+                            .queryParam("search", hospital)
                             .build())
                     .retrieve()
                     .bodyToFlux(DoctorResponseDTO.class)

@@ -12,10 +12,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/appointments")
+@RequestMapping({"/api/appointments", "/api/v1/appointments"})
 @RequiredArgsConstructor
 public class AppointmentController {
 
@@ -53,5 +54,17 @@ public class AppointmentController {
             @RequestParam(required = false) String specialty,
             @RequestParam(required = false) String hospital) {
         return ResponseEntity.ok(appointmentService.searchDoctors(specialty, hospital));
+    }
+
+    @GetMapping("/doctor/{doctorId}")
+    public ResponseEntity<List<AppointmentResponseDTO>> getDoctorAppointments(@PathVariable UUID doctorId) {
+        return ResponseEntity.ok(appointmentService.getAppointmentsByDoctor(doctorId));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<AppointmentResponseDTO> updateStatus(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> requestData) {
+        return ResponseEntity.ok(appointmentService.updateStatus(id, requestData.get("status")));
     }
 }

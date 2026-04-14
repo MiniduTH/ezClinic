@@ -1,4 +1,11 @@
 HELP.md
+DEPLOYMENT-CHECKLIST.md
+DOCKER-SETUP-SUMMARY.md
+QUICKSTART.md
+README-DOCKER.md
+.env
+src/main/resources/application.properties
+
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
