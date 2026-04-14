@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { getUserRole } from "@/lib/roles";
 import Link from "next/link";
+import NotificationBanner from "@/components/notifications/NotificationBanner";
 
 const APPOINTMENT_API =
   process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:8080/api/v1";
@@ -197,6 +198,11 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
                     Reason: {apt.reason}
                   </p>
                 )}
+                {apt.type.toLowerCase() === "telemedicine" && (
+                  <div className="mt-4">
+                    <NotificationBanner appointmentId={apt.id} />
+                  </div>
+                )}
               </div>
               {apt.status === "PENDING" && (
                 <div className="flex gap-2 shrink-0">
@@ -216,10 +222,10 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
               )}
               {apt.status === "CONFIRMED" && (
                 <Link
-                  href="/telemedicine"
+                  href={`/telemedicine/${apt.id}`}
                   className="shrink-0 px-3 py-1.5 text-sm rounded-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors"
                 >
-                  📹 Join Call
+                  📹 Start Session
                 </Link>
               )}
             </div>
@@ -587,14 +593,19 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                     {apt.reason}
                   </p>
                 )}
+                {apt.type.toLowerCase() === "telemedicine" && (
+                  <div className="mt-4">
+                    <NotificationBanner appointmentId={apt.id} />
+                  </div>
+                )}
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex gap-2 shrink-0 items-end">
                 {apt.status === "CONFIRMED" && apt.type === "telemedicine" && (
                   <Link
-                    href="/telemedicine"
+                    href={`/telemedicine/${apt.id}`}
                     className="px-3 py-1.5 text-sm rounded-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors"
                   >
-                    📹 Join
+                    📹 Join Virtual Meeting
                   </Link>
                 )}
                 {(apt.status === "PENDING" || apt.status === "CONFIRMED") && (
