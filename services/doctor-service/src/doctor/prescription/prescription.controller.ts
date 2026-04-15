@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -24,7 +17,10 @@ export class PrescriptionController {
 
   @Post('doctors/:doctorId/prescriptions')
   @ApiOperation({ summary: 'Issue a digital prescription' })
-  @ApiResponse({ status: 201, description: 'Prescription issued successfully.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Prescription issued successfully.',
+  })
   @ApiResponse({ status: 400, description: 'Validation error.' })
   create(
     @Param('doctorId') doctorId: string,
@@ -60,7 +56,10 @@ export class PrescriptionController {
   @Get('appointments/:appointmentId/prescription')
   @ApiOperation({ summary: 'Get prescription for a specific appointment' })
   @ApiResponse({ status: 200, description: 'Prescription found.' })
-  @ApiResponse({ status: 404, description: 'No prescription for this appointment.' })
+  @ApiResponse({
+    status: 404,
+    description: 'No prescription for this appointment.',
+  })
   findByAppointment(@Param('appointmentId') appointmentId: string) {
     return this.prescriptionService.findByAppointment(appointmentId);
   }

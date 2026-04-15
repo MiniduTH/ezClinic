@@ -27,4 +27,4 @@ import { IntegrationModule } from './doctor/integration/integration.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

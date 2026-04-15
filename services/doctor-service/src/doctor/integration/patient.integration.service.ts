@@ -8,7 +8,10 @@ export class PatientIntegrationService {
   private readonly axiosInstance: AxiosInstance;
 
   constructor(private configService: ConfigService) {
-    const baseUrl = this.configService.get<string>('PATIENT_SERVICE_URL', 'http://localhost:3005');
+    const baseUrl = this.configService.get<string>(
+      'PATIENT_SERVICE_URL',
+      'http://localhost:3005',
+    );
     this.axiosInstance = axios.create({
       baseURL: `${baseUrl}/api/v1`,
       timeout: 5000,
@@ -29,7 +32,9 @@ export class PatientIntegrationService {
   async getPatientReports(patientId: string) {
     try {
       this.logger.log(`Fetching medical reports for patient: ${patientId}`);
-      const response = await this.axiosInstance.get(`/patients/${patientId}/reports`);
+      const response = await this.axiosInstance.get(
+        `/patients/${patientId}/reports`,
+      );
       return response.data;
     } catch (error) {
       this.logger.error(`Failed to fetch patient reports: ${error.message}`);

@@ -10,10 +10,10 @@ export default async function Home() {
 
   const role = getUserRole(session);
   if (role === 'admin') {
-    redirect('/dashboard/admin');
+    redirect('/admin');
   } else if (role === 'doctor') {
-    redirect('/dashboard/doctor');
+    redirect('/dashboard');
   } else {
-    redirect('/dashboard/patient');
+    redirect('/profile');
   }
 }

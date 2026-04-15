@@ -3,8 +3,14 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { DoctorService } from './doctor.service';
 import { DoctorController } from './doctor.controller';
 import { Doctor, DoctorSchema } from './schemas/doctor.schema';
-import { Availability, AvailabilitySchema } from './schemas/availability.schema';
-import { Prescription, PrescriptionSchema } from './schemas/prescription.schema';
+import {
+  Availability,
+  AvailabilitySchema,
+} from './schemas/availability.schema';
+import {
+  Prescription,
+  PrescriptionSchema,
+} from './schemas/prescription.schema';
 import { PrescriptionModule } from './prescription/prescription.module';
 
 @Module({

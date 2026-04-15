@@ -27,6 +27,29 @@ async function bootstrap() {
       return;
     }
 
+    const path = req.path || req.originalUrl.split('?')[0];
+    const isDocs = path.startsWith('/api/docs');
+
+    let isPublicDoctorRoute = false;
+    if (req.method === 'GET' && path.startsWith('/api/v1/doctors')) {
+      const subPath = path.replace('/api/v1/doctors', '');
+      if (
+        subPath === '' ||
+        subPath === '/' ||
+        (subPath.startsWith('/') &&
+          !subPath.startsWith('/me') &&
+          !subPath.includes('/appointments') &&
+          !subPath.startsWith('/patients'))
+      ) {
+        isPublicDoctorRoute = true;
+      }
+    }
+
+    if (isDocs || isPublicDoctorRoute) {
+      next();
+      return;
+    }
+
     const authorization = req.headers.authorization;
     if (!authorization || !authorization.startsWith('Bearer ')) {
       res.status(401).json({ message: 'Missing Authorization bearer token' });
@@ -53,7 +76,7 @@ async function bootstrap() {
 
     const sub = typeof payload.sub === 'string' ? payload.sub : 'unknown';
     req.user = payload;
-    // eslint-disable-next-line no-console
+
     console.log(`[Auth] subject=${sub} path=${req.originalUrl}`);
 
     next();

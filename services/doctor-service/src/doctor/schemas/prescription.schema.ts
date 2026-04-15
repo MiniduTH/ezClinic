@@ -27,7 +27,12 @@ export class Prescription {
   @Prop()
   diagnosis: string;
 
-  @Prop({ type: [{ name: String, dosage: String, frequency: String, duration: String }], required: true })
+  @Prop({
+    type: [
+      { name: String, dosage: String, frequency: String, duration: String },
+    ],
+    required: true,
+  })
   medications: Medication[];
 
   @Prop()

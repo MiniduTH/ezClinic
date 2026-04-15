@@ -36,7 +36,10 @@ export class DoctorController {
   @Post('register')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Register a new doctor (idempotent on Auth0 sub)' })
-  @ApiResponse({ status: 201, description: 'Doctor registered successfully. Awaiting admin verification.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Doctor registered successfully. Awaiting admin verification.',
+  })
   @ApiResponse({ status: 409, description: 'Doctor already registered.' })
   register(
     @Body() createDoctorDto: CreateDoctorDto,
@@ -73,7 +76,10 @@ export class DoctorController {
   @Patch(':id/verify')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify or reject a doctor registration' })
-  @ApiResponse({ status: 200, description: 'Doctor verification status updated.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Doctor verification status updated.',
+  })
   @ApiResponse({ status: 404, description: 'Doctor not found.' })
   verifyDoctor(
     @Param('id') id: string,
@@ -125,9 +131,7 @@ export class DoctorController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a doctor' })
-  async remove(
-    @Param('id') id: string,
-  ) {
+  async remove(@Param('id') id: string) {
     return this.doctorService.remove(id);
   }
 
@@ -137,7 +141,10 @@ export class DoctorController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Add a single availability slot' })
   @ApiResponse({ status: 201, description: 'Slot added.' })
-  @ApiResponse({ status: 409, description: 'Slot overlaps with an existing slot.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Slot overlaps with an existing slot.',
+  })
   addAvailability(
     @Param('doctorId') doctorId: string,
     @Body() dto: CreateAvailabilityDto,
@@ -149,7 +156,10 @@ export class DoctorController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Add multiple availability slots at once' })
   @ApiResponse({ status: 201, description: 'All slots added successfully.' })
-  @ApiResponse({ status: 409, description: 'One or more slots overlap — no slots saved.' })
+  @ApiResponse({
+    status: 409,
+    description: 'One or more slots overlap — no slots saved.',
+  })
   addBulkAvailability(
     @Param('doctorId') doctorId: string,
     @Body() dtos: CreateAvailabilityDto[],
@@ -165,7 +175,18 @@ export class DoctorController {
 
   @Get(':doctorId/availability/:day')
   @ApiOperation({ summary: 'Get availability for a specific day' })
-  @ApiParam({ name: 'day', enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] })
+  @ApiParam({
+    name: 'day',
+    enum: [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ],
+  })
   getAvailabilityByDay(
     @Param('doctorId') doctorId: string,
     @Param('day') day: string,
@@ -176,7 +197,10 @@ export class DoctorController {
   @Put(':doctorId/availability/:slotId')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update an availability slot' })
-  @ApiResponse({ status: 409, description: 'Updated slot overlaps with an existing slot.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Updated slot overlaps with an existing slot.',
+  })
   updateAvailability(
     @Param('doctorId') doctorId: string,
     @Param('slotId') slotId: string,
@@ -210,7 +234,18 @@ export class DoctorController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Clear all availability for a specific day' })
-  @ApiParam({ name: 'day', enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] })
+  @ApiParam({
+    name: 'day',
+    enum: [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ],
+  })
   clearDayAvailability(
     @Param('doctorId') doctorId: string,
     @Param('day') day: string,
@@ -222,14 +257,18 @@ export class DoctorController {
 
   @Get(':id/appointments')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Fetch appointments for a doctor from Appointment Service' })
+  @ApiOperation({
+    summary: 'Fetch appointments for a doctor from Appointment Service',
+  })
   getAppointments(@Param('id') id: string) {
     return this.doctorService.getDoctorAppointments(id);
   }
 
   @Patch('/appointments/:appointmentId/status')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update appointment status via Appointment Service' })
+  @ApiOperation({
+    summary: 'Update appointment status via Appointment Service',
+  })
   updateStatus(
     @Param('appointmentId') appointmentId: string,
     @Body('status') status: string,
