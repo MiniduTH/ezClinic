@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -43,14 +45,16 @@ public class AppointmentService {
         }
 
         // Pre-Flight Check 1: Strict Past Date Validation
-        if (requestDTO.getAppointmentDate().before(new Date())) {
+        if (requestDTO.getAppointmentDate().isBefore(LocalDate.now())) {
             throw new IllegalArgumentException("Appointment date cannot be explicitly in the past");
         }
+
+        Date appointmentDate = toDate(requestDTO.getAppointmentDate());
 
         // Pre-Flight Check 2: Conflict Prevention (Slot double-booking)
         boolean isConflict = appointmentRepository.existsByDoctorIdAndAppointmentDateAndSlotIdAndStatusIn(
                 requestDTO.getDoctorId(),
-                requestDTO.getAppointmentDate(),
+                appointmentDate,
                 requestDTO.getSlotId(),
                 Arrays.asList("PENDING", "CONFIRMED")
         );
@@ -64,7 +68,7 @@ public class AppointmentService {
                 .patientId(requestDTO.getPatientId())
                 .doctorId(requestDTO.getDoctorId())
                 .slotId(requestDTO.getSlotId())
-                .appointmentDate(requestDTO.getAppointmentDate())
+                .appointmentDate(appointmentDate)
                 .type(requestDTO.getType())
                 .status("PENDING") // initial status before payment
                 .build();
@@ -112,13 +116,15 @@ public class AppointmentService {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id " + id));
 
-        if (requestDTO.getNewAppointmentDate().before(new Date())) {
+        if (requestDTO.getNewAppointmentDate().isBefore(LocalDate.now())) {
             throw new IllegalArgumentException("Cannot reschedule to a past date");
         }
 
+        Date newAppointmentDate = toDate(requestDTO.getNewAppointmentDate());
+
         boolean isConflict = appointmentRepository.existsByDoctorIdAndAppointmentDateAndSlotIdAndStatusIn(
                 appointment.getDoctorId(),
-                requestDTO.getNewAppointmentDate(),
+                newAppointmentDate,
                 requestDTO.getNewSlotId(),
                 Arrays.asList("PENDING", "CONFIRMED")
         );
@@ -127,7 +133,7 @@ public class AppointmentService {
             throw new IllegalStateException("The selected new time slot is already reserved.");
         }
 
-        appointment.setAppointmentDate(requestDTO.getNewAppointmentDate());
+        appointment.setAppointmentDate(newAppointmentDate);
         appointment.setSlotId(requestDTO.getNewSlotId());
         return mapToDTO(appointmentRepository.save(appointment));
     }
@@ -182,5 +188,9 @@ public class AppointmentService {
                 .amountPaid(appointment.getPayment() != null ? appointment.getPayment().getAmount() : null)
                 .createdAt(appointment.getCreatedAt())
                 .build();
+    }
+
+    private Date toDate(LocalDate localDate) {
+        return Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
     }
 }
