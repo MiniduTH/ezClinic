@@ -7,7 +7,7 @@ import Link from "next/link";
 import NotificationBanner from "@/components/notifications/NotificationBanner";
 
 const APPOINTMENT_API =
-  process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:8080/api/v1";
+  process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:3004/api/v1";
 const PATIENT_API =
   process.env.NEXT_PUBLIC_PATIENT_API || "http://localhost:3005/api/v1";
 const DOCTOR_API =

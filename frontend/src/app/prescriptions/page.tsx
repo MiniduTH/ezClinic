@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 const DOCTOR_API = process.env.NEXT_PUBLIC_DOCTOR_SERVICE_URL || process.env.NEXT_PUBLIC_DOCTOR_API || "http://localhost:3002/api/v1";
-const APPOINTMENT_API = process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:8080/api/v1";
+const APPOINTMENT_API = process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:3004/api/v1";
 const PATIENT_API = process.env.NEXT_PUBLIC_PATIENT_SERVICE_URL || process.env.NEXT_PUBLIC_PATIENT_API || "http://localhost:3005/api/v1";
 
 interface Medication { name: string; dosage: string; frequency: string; duration: string; }

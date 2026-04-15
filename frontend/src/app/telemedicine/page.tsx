@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Video, Calendar, User, Clock, CheckCircle, Activity } from "lucide-react";
 
 const APPOINTMENT_API =
-  process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:8080/api/v1";
+  process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:3004/api/v1";
 
 interface TelemedicineAppointment {
   id: string;

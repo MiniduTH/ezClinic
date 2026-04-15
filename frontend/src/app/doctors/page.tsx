@@ -7,7 +7,7 @@ import { Search, Stethoscope, Star, Calendar, ChevronLeft, ChevronRight, X } fro
 const DOCTOR_API =
   process.env.NEXT_PUBLIC_DOCTOR_API || "http://localhost:3002/api/v1";
 const APPOINTMENT_API =
-  process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:8080/api/v1";
+  process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:3004/api/v1";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
