@@ -9,9 +9,9 @@ import java.util.UUID;
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 public class AppointmentResponse {
     private UUID id;
-    private UUID patientId;
-    private UUID doctorId;
-    private UUID slotId;
+    private String patientId;
+    private String doctorId;
+    private String slotId;
     private LocalDate appointmentDate;
     private String startTime;
     private String endTime;

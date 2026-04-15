@@ -29,7 +29,7 @@ public class NotificationController {
 
     @GetMapping("/user/{userId}")
     @Operation(summary = "Get user notifications", description = "List all notifications for a specific user")
-    public ResponseEntity<List<NotificationResponse>> getUserNotifications(@PathVariable UUID userId) {
+    public ResponseEntity<List<NotificationResponse>> getUserNotifications(@PathVariable String userId) {
         return ResponseEntity.ok(notificationService.getUserNotifications(userId));
     }
 

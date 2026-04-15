@@ -48,7 +48,7 @@ describe('AdminController', () => {
       
       mockAdminService.create.mockResolvedValue(expectedResult);
 
-      const result = await controller.create(createDto);
+      const result = await controller.create(createDto, { user: { sub: 'auth0|test' } } as any);
       expect(result).toEqual(expectedResult);
       expect(mockAdminService.create).toHaveBeenCalledWith(createDto);
     });

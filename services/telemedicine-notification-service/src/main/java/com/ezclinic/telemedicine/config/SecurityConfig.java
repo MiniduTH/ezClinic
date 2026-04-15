@@ -16,19 +16,19 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Open endpoints for documentation
+                        // Public: API docs and health check
                         .requestMatchers(
                             "/api-docs/**",
                             "/swagger-ui/**",
                             "/swagger-ui.html",
                             "/swagger-resources/**",
                             "/webjars/**",
-                            "/v3/api-docs/**"
+                            "/v3/api-docs/**",
+                            "/health"
                         ).permitAll()
-                        // Require authentication for all other endpoints
-                        .anyRequest().permitAll()
+                        // All other endpoints require a valid Auth0 JWT
+                        .anyRequest().authenticated()
                 )
-                // Configure JWT OAuth2 Resource Server
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));
         return http.build();
     }

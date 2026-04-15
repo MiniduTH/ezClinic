@@ -15,9 +15,9 @@ public class Appointment {
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "patient_id", nullable = false) private UUID patientId;
-    @Column(name = "doctor_id", nullable = false) private UUID doctorId;
-    @Column(name = "slot_id") private UUID slotId;
+    @Column(name = "patient_id", nullable = false) private String patientId;
+    @Column(name = "doctor_id", nullable = false) private String doctorId;
+    @Column(name = "slot_id") private String slotId;
     @Column(name = "appointment_date", nullable = false) private LocalDate appointmentDate;
     @Column(name = "start_time") private String startTime;
     @Column(name = "end_time") private String endTime;

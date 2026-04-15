@@ -17,8 +17,8 @@ import java.util.UUID;
 public class AppointmentEvent implements Serializable {
     private String eventType;
     private UUID appointmentId;
-    private UUID patientId;
-    private UUID doctorId;
+    private String patientId;
+    private String doctorId;
     private LocalDate appointmentDate;
     private String startTime;
     private String endTime;

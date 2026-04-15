@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
 export type PrescriptionDocument = HydratedDocument<Prescription>;
 
@@ -12,8 +12,8 @@ class Medication {
 
 @Schema({ timestamps: { createdAt: 'issuedAt' } })
 export class Prescription {
-  @Prop({ type: Types.ObjectId, ref: 'Doctor', required: true })
-  doctorId: Types.ObjectId;
+  @Prop({ type: String, ref: 'Doctor', required: true })
+  doctorId: string;
 
   @Prop({ required: true })
   patientId: string;

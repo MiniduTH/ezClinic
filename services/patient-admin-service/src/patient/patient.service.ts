@@ -61,29 +61,30 @@ export class PatientService {
     }
   }
 
-  async create(createPatientDto: CreatePatientDto): Promise<Patient> {
-    // Check if a patient with the given email already exists
-    const existingPatient = await this.patientRepository.findOne({
+  async create(auth0Sub: string, createPatientDto: CreatePatientDto): Promise<Patient> {
+    // Idempotent on sub: if this Auth0 user already registered, return existing profile
+    const existing = await this.patientRepository.findOne({ where: { id: auth0Sub } });
+    if (existing) return existing;
+
+    // Guard against email collision from a different account
+    const emailConflict = await this.patientRepository.findOne({
       where: { email: createPatientDto.email },
     });
-
-    if (existingPatient) {
-      throw new ConflictException('Patient with this email already exists');
+    if (emailConflict) {
+      throw new ConflictException('Email is already associated with another account');
     }
 
-    // Process DOB string to Date object if provided
     let dobDate: Date | undefined = undefined;
     if (createPatientDto.dob) {
       dobDate = new Date(createPatientDto.dob);
     }
 
-    // Create the new patient
     const newPatient = this.patientRepository.create({
       ...createPatientDto,
+      id: auth0Sub,
       dob: dobDate,
     });
 
-    // Save and return the new patient record
     return await this.patientRepository.save(newPatient);
   }
 
@@ -100,9 +101,9 @@ export class PatientService {
   }
 
   async findByAuth0Id(auth0Id: string): Promise<Patient> {
-    const patient = await this.patientRepository.findOne({ where: { auth0Id } });
+    const patient = await this.patientRepository.findOne({ where: { id: auth0Id } });
     if (!patient) {
-      throw new NotFoundException(`Patient with Auth0 ID not found`);
+      throw new NotFoundException(`Patient not found`);
     }
     return patient;
   }
@@ -282,5 +283,21 @@ export class PatientService {
 
     report.isDeleted = true;
     await this.reportRepository.save(report);
+  }
+
+  /**
+   * Upload a medical report using the Auth0 sub of the authenticated patient.
+   */
+  async uploadReportByAuth0Id(auth0Id: string, dto: UploadReportDto, file: Express.Multer.File): Promise<MedicalReport> {
+    const patient = await this.findByAuth0Id(auth0Id);
+    return this.uploadReport(patient.id, dto, file);
+  }
+
+  /**
+   * List reports for the authenticated patient using their Auth0 sub.
+   */
+  async getReportsByAuth0Id(auth0Id: string, filter: ReportFilter = {}): Promise<PaginatedReports> {
+    const patient = await this.findByAuth0Id(auth0Id);
+    return this.getReports(patient.id, filter);
   }
 }

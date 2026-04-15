@@ -36,10 +36,8 @@ export class PatientController {
   @ApiResponse({ status: 201, description: 'Patient successfully registered.' })
   @ApiResponse({ status: 409, description: 'Email already exists.' })
   create(@Body() createPatientDto: CreatePatientDto, @Req() req: any) {
-    if (req.user && req.user.sub) {
-      createPatientDto.auth0Id = req.user.sub;
-    }
-    return this.patientService.create(createPatientDto);
+    const sub: string = req.user?.sub;
+    return this.patientService.create(sub, createPatientDto);
   }
 
   @Get()
@@ -61,9 +59,18 @@ export class PatientController {
   @Put('me')
   @ApiBearerAuth()
   @Roles('patient')
-  @ApiOperation({ summary: 'Update current patient profile' })
+  @ApiOperation({ summary: 'Update current patient profile (full replace)' })
   @ApiResponse({ status: 200, description: 'Profile updated.' })
   updateMe(@Req() req: any, @Body() updatePatientDto: UpdatePatientDto) {
+    return this.patientService.updateMe(req.user.sub, updatePatientDto);
+  }
+
+  @Patch('me')
+  @ApiBearerAuth()
+  @Roles('patient')
+  @ApiOperation({ summary: 'Partially update current patient profile' })
+  @ApiResponse({ status: 200, description: 'Profile updated.' })
+  patchMe(@Req() req: any, @Body() updatePatientDto: UpdatePatientDto) {
     return this.patientService.updateMe(req.user.sub, updatePatientDto);
   }
 
@@ -119,6 +126,60 @@ export class PatientController {
   }
 
   // ─── Medical Reports ─────────────────────────────────────────────
+
+  @Post('me/reports')
+  @ApiBearerAuth()
+  @Roles('patient')
+  @ApiOperation({ summary: 'Upload a medical report for the authenticated patient (PDF/JPEG/PNG, max 10 MB)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        reportType: { type: 'string', enum: ['lab', 'imaging', 'prescription', 'other'] },
+        description: { type: 'string' },
+        reportDate: { type: 'string', format: 'date' },
+        file: { type: 'string', format: 'binary' },
+      },
+      required: ['title', 'file'],
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  uploadMyReport(
+    @Req() req: any,
+    @Body() dto: UploadReportDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.patientService.uploadReportByAuth0Id(req.user.sub, dto, file);
+  }
+
+  @Get('me/reports')
+  @ApiBearerAuth()
+  @Roles('patient')
+  @ApiOperation({ summary: 'Get medical reports for the authenticated patient' })
+  @ApiQuery({ name: 'reportType', required: false, enum: ['lab', 'imaging', 'prescription', 'other'] })
+  @ApiQuery({ name: 'dateFrom', required: false })
+  @ApiQuery({ name: 'dateTo', required: false })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  getMyReports(
+    @Req() req: any,
+    @Query('reportType') reportType?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const filter: ReportFilter = {
+      reportType: reportType as any,
+      dateFrom,
+      dateTo,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? Math.min(parseInt(limit, 10), 100) : 20,
+    };
+    return this.patientService.getReportsByAuth0Id(req.user.sub, filter);
+  }
 
   @Post(':id/reports')
   @ApiBearerAuth()

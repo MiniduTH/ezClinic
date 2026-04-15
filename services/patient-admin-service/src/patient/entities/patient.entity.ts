@@ -1,6 +1,6 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
@@ -12,11 +12,9 @@ export type PatientStatus = 'active' | 'inactive' | 'suspended';
 
 @Entity('patients')
 export class Patient {
-  @PrimaryGeneratedColumn('uuid')
+  /** Auth0 sub — e.g. "auth0|69dbd034853a0d3ffe6c8ff1" */
+  @PrimaryColumn({ name: 'id' })
   id: string;
-
-  @Column({ name: 'auth0_id', unique: true, nullable: true })
-  auth0Id: string;
 
   @Column()
   name: string;

@@ -2,10 +2,11 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
-  BadRequestException,
+  BadGatewayException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Admin } from './entities/admin.entity';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
@@ -19,6 +20,7 @@ export class AdminService {
     private readonly adminRepository: Repository<Admin>,
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
+    private readonly configService: ConfigService,
   ) {}
 
   // ─── Admin CRUD ───────────────────────────────────────────────
@@ -65,19 +67,12 @@ export class AdminService {
    * Get all patients (user management for admin dashboard).
    * Supports optional free-text search on name or email.
    */
-  async getAllPatients(search?: string, status?: string): Promise<Patient[]> {
-    const where: any[] = [];
-
-    if (search) {
-      where.push(
-        { name: ILike(`%${search}%`) },
-        { email: ILike(`%${search}%`) },
-      );
-    }
-
+  async getAllPatients(search?: string, status?: string, page = 1, limit = 20): Promise<{ data: Patient[]; total: number; page: number; limit: number }> {
     const query = this.patientRepository.createQueryBuilder('p')
       .leftJoinAndSelect('p.medicalReports', 'r', 'r.is_deleted = false')
-      .orderBy('p.created_at', 'DESC');
+      .orderBy('p.created_at', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
 
     if (search) {
       query.where('p.name ILIKE :search OR p.email ILIKE :search', { search: `%${search}%` });
@@ -86,7 +81,8 @@ export class AdminService {
       query.andWhere('p.status = :status', { status });
     }
 
-    return await query.getMany();
+    const [data, total] = await query.getManyAndCount();
+    return { data, total, page, limit };
   }
 
   /**
@@ -167,5 +163,44 @@ export class AdminService {
       newPatientsThisWeek,
       recentPatients,
     };
+  }
+
+  // ─── Doctor Verification (proxy to doctor-service) ─────────────
+
+  private get doctorServiceUrl(): string {
+    return this.configService.get<string>('DOCTOR_SERVICE_URL') || 'http://localhost:3002/api/v1';
+  }
+
+  async getPendingDoctors(authorizationHeader: string): Promise<unknown> {
+    const url = `${this.doctorServiceUrl}/doctors?isVerified=false`;
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: authorizationHeader },
+      });
+      if (!res.ok) throw new BadGatewayException('doctor-service returned ' + res.status);
+      return res.json();
+    } catch (err) {
+      if (err instanceof BadGatewayException) throw err;
+      throw new BadGatewayException('Could not reach doctor-service');
+    }
+  }
+
+  async verifyDoctor(doctorId: string, action: 'approve' | 'reject', authorizationHeader: string, reason?: string): Promise<unknown> {
+    const url = `${this.doctorServiceUrl}/doctors/${doctorId}/verify`;
+    try {
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          Authorization: authorizationHeader,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action, reason }),
+      });
+      if (!res.ok) throw new BadGatewayException('doctor-service returned ' + res.status);
+      return res.json();
+    } catch (err) {
+      if (err instanceof BadGatewayException) throw err;
+      throw new BadGatewayException('Could not reach doctor-service');
+    }
   }
 }

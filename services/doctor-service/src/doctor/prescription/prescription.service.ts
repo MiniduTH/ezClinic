@@ -23,10 +23,6 @@ export class PrescriptionService {
   }
 
   async create(doctorId: string, dto: CreatePrescriptionDto) {
-    if (!Types.ObjectId.isValid(doctorId)) {
-      throw new BadRequestException('Invalid doctor ID format. Must be a 24-character hex string.');
-    }
-
     if (!dto.medications || dto.medications.length === 0) {
       throw new BadRequestException('A prescription must include at least one medication.');
     }
@@ -51,7 +47,7 @@ export class PrescriptionService {
     }
 
     const prescription = await this.prescriptionModel.create({
-      doctorId: new Types.ObjectId(doctorId),
+      doctorId,
       patientId: dto.patientId,
       patientName: dto.patientName,
       ...(dto.appointmentId && { appointmentId: dto.appointmentId }),
@@ -66,7 +62,7 @@ export class PrescriptionService {
   }
 
   async findByDoctor(doctorId: string, page = 1, limit = 10) {
-    const filter = { doctorId: new Types.ObjectId(doctorId) };
+    const filter = { doctorId };
     const [data, totalItems] = await Promise.all([
       this.prescriptionModel.find(filter).sort({ issuedAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
       this.prescriptionModel.countDocuments(filter),

@@ -23,8 +23,6 @@ public class AppointmentController {
     private final AppointmentService appointmentService;
     private final DoctorServiceClient doctorServiceClient;
 
-
-
     @GetMapping("/doctors")
     @Operation(summary = "Search doctors by specialization (proxies doctor-service)")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> searchDoctors(
@@ -45,16 +43,25 @@ public class AppointmentController {
     @Operation(summary = "Book a new appointment")
     public ResponseEntity<ApiResponse<AppointmentResponse>> create(
             @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreateAppointmentRequest request) {
-        UUID patientId = UUID.fromString(jwt.getClaimAsString("patientId"));
+        String patientId = jwt.getSubject();
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Appointment booked", appointmentService.createAppointment(patientId, request)));
     }
 
-    @GetMapping
+    @GetMapping("/my")
     @Operation(summary = "List my appointments (patient)")
     public ResponseEntity<ApiResponse<Page<AppointmentResponse>>> getMyAppointments(
             @AuthenticationPrincipal Jwt jwt, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
-        UUID patientId = UUID.fromString(jwt.getClaimAsString("patientId"));
+        String patientId = jwt.getSubject();
+        return ResponseEntity.ok(ApiResponse.success("Appointments retrieved",
+                appointmentService.getPatientAppointments(patientId, page, size)));
+    }
+
+    @GetMapping
+    @Operation(summary = "List my appointments (patient) — alias for /my")
+    public ResponseEntity<ApiResponse<Page<AppointmentResponse>>> getAppointments(
+            @AuthenticationPrincipal Jwt jwt, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        String patientId = jwt.getSubject();
         return ResponseEntity.ok(ApiResponse.success("Appointments retrieved",
                 appointmentService.getPatientAppointments(patientId, page, size)));
     }
@@ -63,7 +70,7 @@ public class AppointmentController {
     @Operation(summary = "List appointments (doctor view)")
     public ResponseEntity<ApiResponse<Page<AppointmentResponse>>> getDoctorAppointments(
             @AuthenticationPrincipal Jwt jwt, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
-        UUID doctorId = UUID.fromString(jwt.getClaimAsString("doctorId"));
+        String doctorId = jwt.getSubject();
         return ResponseEntity.ok(ApiResponse.success("Appointments retrieved",
                 appointmentService.getDoctorAppointments(doctorId, page, size)));
     }
@@ -78,7 +85,7 @@ public class AppointmentController {
     @Operation(summary = "Modify appointment (patient)")
     public ResponseEntity<ApiResponse<AppointmentResponse>> update(
             @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt, @RequestBody UpdateAppointmentRequest request) {
-        UUID patientId = UUID.fromString(jwt.getClaimAsString("patientId"));
+        String patientId = jwt.getSubject();
         return ResponseEntity.ok(ApiResponse.success("Appointment updated",
                 appointmentService.updateAppointment(id, patientId, request)));
     }
@@ -87,14 +94,23 @@ public class AppointmentController {
     @Operation(summary = "Cancel appointment")
     public ResponseEntity<ApiResponse<AppointmentResponse>> cancel(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(ApiResponse.success("Appointment cancelled",
-                appointmentService.cancelAppointment(id, UUID.fromString(jwt.getSubject()))));
+                appointmentService.cancelAppointment(id, jwt.getSubject())));
+    }
+
+    @PatchMapping("/{id}/reschedule")
+    @Operation(summary = "Reschedule appointment")
+    public ResponseEntity<ApiResponse<AppointmentResponse>> reschedule(
+            @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt, @RequestBody UpdateAppointmentRequest request) {
+        String patientId = jwt.getSubject();
+        return ResponseEntity.ok(ApiResponse.success("Appointment rescheduled",
+                appointmentService.updateAppointment(id, patientId, request)));
     }
 
     @PatchMapping("/{id}/status")
     @Operation(summary = "Update appointment status (doctor — CONFIRMED/COMPLETED)")
     public ResponseEntity<ApiResponse<AppointmentResponse>> updateStatus(
             @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt, @RequestParam String status) {
-        UUID doctorId = UUID.fromString(jwt.getClaimAsString("doctorId"));
+        String doctorId = jwt.getSubject();
         return ResponseEntity.ok(ApiResponse.success("Status updated to " + status,
                 appointmentService.updateStatus(id, status, doctorId)));
     }

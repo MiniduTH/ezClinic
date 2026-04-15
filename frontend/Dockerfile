@@ -1,7 +1,7 @@
 # ─── Build stage ─────────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 COPY package*.json ./
 RUN npm ci
@@ -10,23 +10,24 @@ COPY . .
 RUN npm run build
 
 # ─── Production stage ─────────────────────────────────────────────────────────
-FROM node:20-alpine
+FROM node:20-alpine AS runner
 
 ENV NODE_ENV=production
-WORKDIR /usr/src/app
+WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN addgroup -S appgroup && adduser -S nextjs -G appgroup
 
-COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:appgroup /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:appgroup /app/.next/static ./.next/static
 
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
+USER nextjs
 
-EXPOSE 3002
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:3002/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+  CMD wget -qO- http://localhost:3000 || exit 1
 
-CMD ["node", "dist/main"]
-
+CMD ["node", "server.js"]

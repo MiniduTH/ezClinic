@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { Patient } from './patient/entities/patient.entity';
 import { MedicalReport } from './patient/entities/medical-report.entity';
 import { Admin } from './admin/entities/admin.entity';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { Admin } from './admin/entities/admin.entity';
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
         entities: [Patient, MedicalReport, Admin],
-        synchronize: config.get<string>('NODE_ENV') !== 'production', // Auto-migrate in dev only
+        synchronize: config.get<string>('NODE_ENV') !== 'production',
         ssl: config.get<string>('NODE_ENV') === 'production'
           ? { rejectUnauthorized: false }
           : false,
@@ -33,5 +34,6 @@ import { Admin } from './admin/entities/admin.entity';
     AdminModule,
     AuthModule,
   ],
+  controllers: [AppController],
 })
 export class AppModule {}

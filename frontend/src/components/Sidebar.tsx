@@ -34,9 +34,11 @@ export default function Sidebar() {
     // Patient
     menuItems = [
       { name: 'My Profile', path: '/profile', icon: '👤' },
-      { name: 'Symptom Checker', path: '/symptom-checker', icon: '🩺' },
-      { name: 'Medical Reports', path: '/reports', icon: '📄' },
+      { name: 'Find Doctors', path: '/doctors', icon: '🔍' },
       { name: 'Appointments', path: '/appointments', icon: '📅' },
+      { name: 'Medical Reports', path: '/reports', icon: '📄' },
+      { name: 'Prescriptions', path: '/prescriptions', icon: '💊' },
+      { name: 'Symptom Checker', path: '/symptom-checker', icon: '🩺' },
     ];
   }
 

@@ -4,19 +4,19 @@ import com.ezclinic.telemedicine.enums.NotificationType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
-import java.util.UUID;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class SendNotificationRequest {
 
-    @NotNull(message = "User ID is required")
-    private UUID userId;
+    @NotBlank(message = "User ID is required")
+    private String userId;
 
     @NotBlank(message = "Recipient email is required")
     @Email(message = "Invalid email format")

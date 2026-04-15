@@ -34,17 +34,25 @@ export class DoctorService {
   // ─── Doctor Profile ────────────────────────────────────────────────
 
   async create(dto: CreateDoctorDto) {
-    const existing = await this.doctorModel.findOne({ email: dto.email.toLowerCase() });
-    if (existing) throw new ConflictException('Doctor with this email already exists');
+    // Idempotent on Auth0 sub: return existing profile if already registered
+    if (dto.auth0Id) {
+      const existing = await this.doctorModel.findById(dto.auth0Id).lean();
+      if (existing) return this.wrap(existing, 'Doctor already registered.');
+    }
 
-    const doctor = await this.doctorModel.create(dto);
+    // Guard against email collision from a different account
+    const emailConflict = await this.doctorModel.findOne({ email: dto.email.toLowerCase() });
+    if (emailConflict) throw new ConflictException('Email is already associated with another account');
+
+    const doctor = await this.doctorModel.create({ ...dto, _id: dto.auth0Id });
     return this.wrap(doctor, 'Doctor registered successfully. Awaiting admin verification.');
   }
 
-  async findAll(query: { page?: number; limit?: number; specialization?: string; search?: string }) {
+  async findAll(query: { page?: number; limit?: number; specialization?: string; search?: string; isVerified?: boolean }) {
     const page = query.page || 1;
     const limit = query.limit || 10;
-    const filter: any = { isVerified: true };
+    // Default to verified=true for public listing; admin can pass isVerified=false to see pending
+    const filter: any = { isVerified: query.isVerified !== undefined ? query.isVerified : true };
 
     if (query.specialization) {
       filter.specialization = { $regex: query.specialization, $options: 'i' };
@@ -61,14 +69,14 @@ export class DoctorService {
       this.doctorModel.countDocuments(filter),
     ]);
 
-    // Attach availability counts
-    const ids = data.map((d) => (d as any)._id);
+    // Attach availability for each doctor
+    const ids = data.map((d) => (d as any)._id as string);
     const avail = await this.availabilityModel.find({ doctorId: { $in: ids } }).lean();
 
     const enriched = data.map((doc) => ({
       ...doc,
-      id: (doc as any)._id.toString(),
-      availability: avail.filter((a) => a.doctorId.toString() === (doc as any)._id.toString()),
+      id: (doc as any)._id as string,
+      availability: avail.filter((a) => a.doctorId === (doc as any)._id),
     }));
 
     return {
@@ -79,42 +87,35 @@ export class DoctorService {
   }
 
   async findOne(id: string) {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundException(`Doctor ${id} not found`);
     const doctor = await this.doctorModel.findById(id).lean();
     if (!doctor) throw new NotFoundException(`Doctor with ID ${id} not found`);
-    const availability = await this.availabilityModel.find({ doctorId: new Types.ObjectId(id) }).lean();
-    return this.wrap({ ...doctor, id: (doctor as any)._id.toString(), availability });
+    const availability = await this.availabilityModel.find({ doctorId: id }).lean();
+    return this.wrap({ ...doctor, id: (doctor as any)._id as string, availability });
   }
 
   async findByAuth0Id(auth0Id: string) {
-    const doctor = await this.doctorModel.findOne({ auth0Id }).lean();
-    if (!doctor) throw new NotFoundException('Doctor not found');
-    const availability = await this.availabilityModel.find({ doctorId: (doctor as any)._id }).lean();
-    return this.wrap({ ...doctor, id: (doctor as any)._id.toString(), availability });
+    // Since _id IS the auth0 sub, this is just a findById
+    return this.findOne(auth0Id);
   }
 
-  async verify(id: string) {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundException(`Doctor ${id} not found`);
+  async verify(id: string, approve = true) {
     const doctor = await this.doctorModel.findById(id);
     if (!doctor) throw new NotFoundException(`Doctor with ID ${id} not found`);
-    if (doctor.isVerified) throw new BadRequestException('Doctor is already verified');
-    doctor.isVerified = true;
+    doctor.isVerified = approve;
     await doctor.save();
-    return this.wrap(doctor, 'Doctor verified successfully.');
+    return this.wrap(doctor, approve ? 'Doctor approved successfully.' : 'Doctor rejected.');
   }
 
   async update(id: string, dto: UpdateDoctorDto) {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundException(`Doctor ${id} not found`);
     const doctor = await this.doctorModel.findByIdAndUpdate(id, dto, { new: true });
     if (!doctor) throw new NotFoundException(`Doctor with ID ${id} not found`);
     return this.wrap(doctor, 'Doctor profile updated successfully.');
   }
 
   async remove(id: string): Promise<void> {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundException(`Doctor ${id} not found`);
     const result = await this.doctorModel.findByIdAndDelete(id);
     if (!result) throw new NotFoundException(`Doctor with ID ${id} not found`);
-    await this.availabilityModel.deleteMany({ doctorId: new Types.ObjectId(id) });
+    await this.availabilityModel.deleteMany({ doctorId: id });
   }
 
   // ─── Availability ─────────────────────────────────────────────────
@@ -129,7 +130,7 @@ export class DoctorService {
     if (startTime >= endTime) throw new BadRequestException('Start time must be before end time.');
 
     const filter: any = {
-      doctorId: new Types.ObjectId(doctorId),
+      doctorId,
       dayOfWeek,
       startTime: { $lt: endTime },
       endTime: { $gt: startTime },
@@ -148,7 +149,7 @@ export class DoctorService {
   async addAvailability(doctorId: string, dto: CreateAvailabilityDto) {
     await this.findOne(doctorId); // verify doctor exists
     await this.checkOverlap(doctorId, dto.dayOfWeek, dto.startTime, dto.endTime);
-    const slot = await this.availabilityModel.create({ ...dto, doctorId: new Types.ObjectId(doctorId) });
+    const slot = await this.availabilityModel.create({ ...dto, doctorId });
     return this.wrap(slot, 'Availability slot added.');
   }
 
@@ -158,7 +159,7 @@ export class DoctorService {
       await this.checkOverlap(doctorId, dto.dayOfWeek, dto.startTime, dto.endTime);
     }
     const slots = await this.availabilityModel.insertMany(
-      dtos.map((dto) => ({ ...dto, doctorId: new Types.ObjectId(doctorId) })),
+      dtos.map((dto) => ({ ...dto, doctorId })),
     );
     return this.wrap(slots, `${slots.length} availability slots added.`);
   }
@@ -166,7 +167,7 @@ export class DoctorService {
   async getAvailability(doctorId: string) {
     await this.findOne(doctorId);
     const slots = await this.availabilityModel
-      .find({ doctorId: new Types.ObjectId(doctorId) })
+      .find({ doctorId })
       .sort({ dayOfWeek: 1, startTime: 1 })
       .lean();
     const grouped = this.groupByDay(slots as any[]);
@@ -176,7 +177,7 @@ export class DoctorService {
   async getAvailabilityByDay(doctorId: string, dayOfWeek: string) {
     await this.findOne(doctorId);
     const slots = await this.availabilityModel
-      .find({ doctorId: new Types.ObjectId(doctorId), dayOfWeek, isActive: true })
+      .find({ doctorId, dayOfWeek, isActive: true })
       .sort({ startTime: 1 })
       .lean();
     return this.wrap(slots);
@@ -186,7 +187,7 @@ export class DoctorService {
     if (!Types.ObjectId.isValid(slotId)) throw new NotFoundException(`Slot ${slotId} not found`);
     const slot = await this.availabilityModel.findOne({
       _id: new Types.ObjectId(slotId),
-      doctorId: new Types.ObjectId(doctorId),
+      doctorId,
     });
     if (!slot) throw new NotFoundException(`Availability slot ${slotId} not found`);
 
@@ -206,7 +207,7 @@ export class DoctorService {
     if (!Types.ObjectId.isValid(slotId)) throw new NotFoundException(`Slot ${slotId} not found`);
     const slot = await this.availabilityModel.findOne({
       _id: new Types.ObjectId(slotId),
-      doctorId: new Types.ObjectId(doctorId),
+      doctorId,
     });
     if (!slot) throw new NotFoundException(`Availability slot ${slotId} not found`);
     slot.isActive = !slot.isActive;
@@ -218,14 +219,14 @@ export class DoctorService {
     if (!Types.ObjectId.isValid(slotId)) throw new NotFoundException(`Slot ${slotId} not found`);
     const result = await this.availabilityModel.findOneAndDelete({
       _id: new Types.ObjectId(slotId),
-      doctorId: new Types.ObjectId(doctorId),
+      doctorId,
     });
     if (!result) throw new NotFoundException(`Availability slot ${slotId} not found`);
   }
 
   async clearDayAvailability(doctorId: string, dayOfWeek: string): Promise<void> {
     await this.findOne(doctorId);
-    await this.availabilityModel.deleteMany({ doctorId: new Types.ObjectId(doctorId), dayOfWeek });
+    await this.availabilityModel.deleteMany({ doctorId, dayOfWeek });
   }
 
   // ─── External Integrations ─────────────────────────────────────────
