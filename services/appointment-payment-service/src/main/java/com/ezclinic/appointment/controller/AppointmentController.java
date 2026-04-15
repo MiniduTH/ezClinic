@@ -10,8 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
@@ -42,8 +40,8 @@ public class AppointmentController {
     @PostMapping
     @Operation(summary = "Book a new appointment")
     public ResponseEntity<ApiResponse<AppointmentResponse>> create(
-            @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreateAppointmentRequest request) {
-        String patientId = jwt.getSubject();
+            @RequestAttribute("tokenSub") String tokenSub, @Valid @RequestBody CreateAppointmentRequest request) {
+        String patientId = tokenSub;
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Appointment booked", appointmentService.createAppointment(patientId, request)));
     }
@@ -51,8 +49,8 @@ public class AppointmentController {
     @GetMapping("/my")
     @Operation(summary = "List my appointments (patient)")
     public ResponseEntity<ApiResponse<Page<AppointmentResponse>>> getMyAppointments(
-            @AuthenticationPrincipal Jwt jwt, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
-        String patientId = jwt.getSubject();
+            @RequestAttribute("tokenSub") String tokenSub, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        String patientId = tokenSub;
         return ResponseEntity.ok(ApiResponse.success("Appointments retrieved",
                 appointmentService.getPatientAppointments(patientId, page, size)));
     }
@@ -60,8 +58,8 @@ public class AppointmentController {
     @GetMapping
     @Operation(summary = "List my appointments (patient) — alias for /my")
     public ResponseEntity<ApiResponse<Page<AppointmentResponse>>> getAppointments(
-            @AuthenticationPrincipal Jwt jwt, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
-        String patientId = jwt.getSubject();
+            @RequestAttribute("tokenSub") String tokenSub, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        String patientId = tokenSub;
         return ResponseEntity.ok(ApiResponse.success("Appointments retrieved",
                 appointmentService.getPatientAppointments(patientId, page, size)));
     }
@@ -69,8 +67,8 @@ public class AppointmentController {
     @GetMapping("/doctor")
     @Operation(summary = "List appointments (doctor view)")
     public ResponseEntity<ApiResponse<Page<AppointmentResponse>>> getDoctorAppointments(
-            @AuthenticationPrincipal Jwt jwt, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
-        String doctorId = jwt.getSubject();
+            @RequestAttribute("tokenSub") String tokenSub, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        String doctorId = tokenSub;
         return ResponseEntity.ok(ApiResponse.success("Appointments retrieved",
                 appointmentService.getDoctorAppointments(doctorId, page, size)));
     }
@@ -84,24 +82,24 @@ public class AppointmentController {
     @PutMapping("/{id}")
     @Operation(summary = "Modify appointment (patient)")
     public ResponseEntity<ApiResponse<AppointmentResponse>> update(
-            @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt, @RequestBody UpdateAppointmentRequest request) {
-        String patientId = jwt.getSubject();
+            @PathVariable UUID id, @RequestAttribute("tokenSub") String tokenSub, @RequestBody UpdateAppointmentRequest request) {
+        String patientId = tokenSub;
         return ResponseEntity.ok(ApiResponse.success("Appointment updated",
                 appointmentService.updateAppointment(id, patientId, request)));
     }
 
     @PatchMapping("/{id}/cancel")
     @Operation(summary = "Cancel appointment")
-    public ResponseEntity<ApiResponse<AppointmentResponse>> cancel(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<ApiResponse<AppointmentResponse>> cancel(@PathVariable UUID id, @RequestAttribute("tokenSub") String tokenSub) {
         return ResponseEntity.ok(ApiResponse.success("Appointment cancelled",
-                appointmentService.cancelAppointment(id, jwt.getSubject())));
+                appointmentService.cancelAppointment(id, tokenSub)));
     }
 
     @PatchMapping("/{id}/reschedule")
     @Operation(summary = "Reschedule appointment")
     public ResponseEntity<ApiResponse<AppointmentResponse>> reschedule(
-            @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt, @RequestBody UpdateAppointmentRequest request) {
-        String patientId = jwt.getSubject();
+            @PathVariable UUID id, @RequestAttribute("tokenSub") String tokenSub, @RequestBody UpdateAppointmentRequest request) {
+        String patientId = tokenSub;
         return ResponseEntity.ok(ApiResponse.success("Appointment rescheduled",
                 appointmentService.updateAppointment(id, patientId, request)));
     }
@@ -109,8 +107,8 @@ public class AppointmentController {
     @PatchMapping("/{id}/status")
     @Operation(summary = "Update appointment status (doctor — CONFIRMED/COMPLETED)")
     public ResponseEntity<ApiResponse<AppointmentResponse>> updateStatus(
-            @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt, @RequestParam String status) {
-        String doctorId = jwt.getSubject();
+            @PathVariable UUID id, @RequestAttribute("tokenSub") String tokenSub, @RequestParam String status) {
+        String doctorId = tokenSub;
         return ResponseEntity.ok(ApiResponse.success("Status updated to " + status,
                 appointmentService.updateStatus(id, status, doctorId)));
     }

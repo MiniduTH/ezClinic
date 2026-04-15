@@ -10,8 +10,6 @@ import {
   Query,
   HttpCode,
   HttpStatus,
-  UseGuards,
-  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -26,9 +24,6 @@ import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { CreateAvailabilityDto } from './dto/create-availability.dto';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 
 @ApiTags('doctors')
@@ -39,7 +34,6 @@ export class DoctorController {
   // ─── Doctor Profile ────────────────────────────────────────────────
 
   @Post('register')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Register a new doctor (idempotent on Auth0 sub)' })
   @ApiResponse({ status: 201, description: 'Doctor registered successfully. Awaiting admin verification.' })
@@ -77,12 +71,9 @@ export class DoctorController {
   }
 
   @Patch(':id/verify')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '(Admin only) Verify or reject a doctor registration' })
+  @ApiOperation({ summary: 'Verify or reject a doctor registration' })
   @ApiResponse({ status: 200, description: 'Doctor verification status updated.' })
-  @ApiResponse({ status: 403, description: 'Forbidden — admin role required.' })
   @ApiResponse({ status: 404, description: 'Doctor not found.' })
   verifyDoctor(
     @Param('id') id: string,
@@ -93,7 +84,6 @@ export class DoctorController {
   }
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get authenticated doctor profile' })
   @ApiResponse({ status: 200, description: 'Profile found.' })
@@ -104,7 +94,6 @@ export class DoctorController {
   }
 
   @Get('me/availability')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Get authenticated doctor's availability slots" })
   getMyAvailability(@CurrentUser() user: Record<string, unknown>) {
@@ -121,22 +110,12 @@ export class DoctorController {
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update a doctor profile (must be own profile or admin)' })
+  @ApiOperation({ summary: 'Update a doctor profile' })
   async update(
     @Param('id') id: string,
     @Body() updateDoctorDto: UpdateDoctorDto,
-    @CurrentUser() user: Record<string, unknown>,
   ) {
-    const auth0Sub = user['sub'] as string;
-    const roles: string[] = (user['https://ezclinic.com/roles'] as string[]) ?? [];
-    if (!roles.includes('admin')) {
-      // The doctor's DB _id is the auth0 sub, so ownership check is straightforward
-      if (id !== auth0Sub) {
-        throw new ForbiddenException('You can only update your own profile');
-      }
-    }
     // Prevent auth0Id override via body
     delete updateDoctorDto['auth0Id'];
     return this.doctorService.update(id, updateDoctorDto);
@@ -144,27 +123,17 @@ export class DoctorController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete a doctor (must be own profile or admin)' })
+  @ApiOperation({ summary: 'Delete a doctor' })
   async remove(
     @Param('id') id: string,
-    @CurrentUser() user: Record<string, unknown>,
   ) {
-    const auth0Sub = user['sub'] as string;
-    const roles: string[] = (user['https://ezclinic.com/roles'] as string[]) ?? [];
-    if (!roles.includes('admin')) {
-      if (id !== auth0Sub) {
-        throw new ForbiddenException('You can only delete your own profile');
-      }
-    }
     return this.doctorService.remove(id);
   }
 
   // ─── Availability ─────────────────────────────────────────────────
 
   @Post(':doctorId/availability')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Add a single availability slot' })
   @ApiResponse({ status: 201, description: 'Slot added.' })
@@ -177,7 +146,6 @@ export class DoctorController {
   }
 
   @Post(':doctorId/availability/bulk')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Add multiple availability slots at once' })
   @ApiResponse({ status: 201, description: 'All slots added successfully.' })
@@ -206,7 +174,6 @@ export class DoctorController {
   }
 
   @Put(':doctorId/availability/:slotId')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update an availability slot' })
   @ApiResponse({ status: 409, description: 'Updated slot overlaps with an existing slot.' })
@@ -219,7 +186,6 @@ export class DoctorController {
   }
 
   @Patch(':doctorId/availability/:slotId/toggle')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Toggle a slot active/inactive' })
   toggleAvailability(
@@ -231,7 +197,6 @@ export class DoctorController {
 
   @Delete(':doctorId/availability/:slotId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete an availability slot' })
   removeAvailability(
@@ -243,7 +208,6 @@ export class DoctorController {
 
   @Delete(':doctorId/availability/day/:day')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Clear all availability for a specific day' })
   @ApiParam({ name: 'day', enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] })
@@ -257,7 +221,6 @@ export class DoctorController {
   // ─── External Integrations ─────────────────────────────────────────
 
   @Get(':id/appointments')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fetch appointments for a doctor from Appointment Service' })
   getAppointments(@Param('id') id: string) {
@@ -265,7 +228,6 @@ export class DoctorController {
   }
 
   @Patch('/appointments/:appointmentId/status')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update appointment status via Appointment Service' })
   updateStatus(
@@ -276,7 +238,6 @@ export class DoctorController {
   }
 
   @Get('/patients/:patientId')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fetch patient details from Patient Service' })
   getPatient(@Param('patientId') patientId: string) {
@@ -284,7 +245,6 @@ export class DoctorController {
   }
 
   @Get('/patients/:patientId/reports')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fetch patient reports from Patient Service' })
   getReports(@Param('patientId') patientId: string) {

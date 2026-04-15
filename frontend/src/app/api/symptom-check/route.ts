@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
 import { auth0 } from '@/lib/auth0';
 
+function resolveTelemedicineBaseUrl(): string {
+  const rawBaseUrl =
+    process.env.TELEMEDICINE_SERVICE_URL ||
+    process.env.NEXT_PUBLIC_TELEMEDICINE_API ||
+    'http://localhost:8090';
+  const normalized = rawBaseUrl.replace(/\/+$/, '');
+  return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
+}
+
 export async function POST(request: Request) {
   try {
     const session = await auth0.getSession();
@@ -18,9 +27,9 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    const backendUrl = process.env.TELEMEDICINE_SERVICE_URL || 'http://localhost:8090';
+    const backendUrl = resolveTelemedicineBaseUrl();
     
-    const response = await fetch(`${backendUrl}/api/symptom-check`, {
+    const response = await fetch(`${backendUrl}/symptom-checks`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
