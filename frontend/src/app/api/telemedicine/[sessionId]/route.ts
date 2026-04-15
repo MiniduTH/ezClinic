@@ -10,6 +10,15 @@ function resolveTelemedicineBaseUrl(): string {
   return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
 }
 
+async function safeReadJson(response: Response, context: string) {
+  try {
+    return await response.json();
+  } catch (error) {
+    console.warn(`Telemedicine proxy: non-JSON ${context} response`, error);
+    return { error: `${context} response was not valid JSON` };
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ sessionId: string }> }
@@ -47,12 +56,12 @@ export async function GET(
     });
 
     if (sessionResponse.ok) {
-      const data = await sessionResponse.json();
+      const data = await safeReadJson(sessionResponse, 'session lookup');
       return NextResponse.json(data, { status: 200 });
     }
 
     if (sessionResponse.status !== 404) {
-      const data = await sessionResponse.json().catch(() => ({}));
+      const data = await safeReadJson(sessionResponse, 'session lookup');
       return NextResponse.json(data, { status: sessionResponse.status });
     }
 
@@ -61,7 +70,7 @@ export async function GET(
       headers,
     });
 
-    const data = await appointmentResponse.json().catch(() => ({}));
+    const data = await safeReadJson(appointmentResponse, 'appointment lookup');
     if (!appointmentResponse.ok) {
       return NextResponse.json(data, { status: appointmentResponse.status });
     }
