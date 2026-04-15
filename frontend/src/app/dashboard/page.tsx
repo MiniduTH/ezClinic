@@ -2,43 +2,51 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useUser } from "@auth0/nextjs-auth0/client";
 
 export default function DoctorDashboard() {
-  const doctorName = "Dr. Perera";
+  const { user } = useUser();
 
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Point this to Kaveen's deployed Appointment Service (Docker Container) Network Address
-  const DOCTOR_API_URL = process.env.NEXT_PUBLIC_DOCTOR_API || "http://localhost:3002/api/v1";
-  const doctorId = "69d71304d77fd0bbf5ec13eb";
+
+  const APPOINTMENT_API =
+    process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:8080/api/v1";
+  const DOCTOR_API_URL =
+    process.env.NEXT_PUBLIC_DOCTOR_API || "http://localhost:3002/api/v1";
+
+  const doctorName = (user as any)?.name || "Doctor";
 
   useEffect(() => {
-    // We now fetch via the Doctor Service Bridge (Clean Architecture)
     const fetchAppointments = async () => {
       try {
-        const res = await fetch(`${DOCTOR_API_URL}/doctors/${doctorId}/appointments`);
-        if (!res.ok) throw new Error("Failed to fetch via Doctor Service Bridge");
+        const tokenRes = await fetch("/api/auth/token");
+        if (!tokenRes.ok) throw new Error("Not authenticated");
+        const { accessToken } = await tokenRes.json();
+
+        const res = await fetch(`${APPOINTMENT_API}/appointments/doctor`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!res.ok) throw new Error("Failed to fetch appointments");
         const json = await res.json();
-        
-        // Doctor Service returns { success: true, data: [...] }
-        const data = json.data || [];
-        
-        const liveAppointments = Array.isArray(data) ? data.map((apt: any) => ({
-          id: apt.id || apt._id || "N/A",
-          patientId: apt.patientId || "Unknown",
-          patientName: apt.patientName || "Unknown Patient",
-          time: apt.time || apt.appointmentTime || "TBD",
-          date: apt.date || apt.appointmentDate || "TBD",
-          type: apt.type || apt.consultationType || "Virtual",
-          status: apt.status || "Pending",
-          issues: apt.issues || apt.reason || "No reason provided",
-          hasReports: apt.hasReports || true
-        })) : [];
-        
+
+        const data = json.data?.content || json.data || [];
+        const liveAppointments = Array.isArray(data)
+          ? data.map((apt: any) => ({
+              id: apt.id || apt._id || "N/A",
+              patientId: apt.patientId || "Unknown",
+              patientName: apt.patientName || apt.patientId || "Patient",
+              time: apt.startTime || apt.time || "TBD",
+              date: apt.appointmentDate || apt.date || "TBD",
+              type: apt.type || "IN_PERSON",
+              status: apt.status || "PENDING",
+              notes: apt.notes || "",
+            }))
+          : [];
+
         setAppointments(liveAppointments);
       } catch (err) {
-        console.error("Connection Error (Doctor Service Bridge):", err);
+        console.error("Dashboard fetch error:", err);
         setAppointments([]);
       } finally {
         setLoading(false);
@@ -46,65 +54,59 @@ export default function DoctorDashboard() {
     };
 
     fetchAppointments();
-  }, []);
+  }, [APPOINTMENT_API]);
 
-  const handleAccept = async (id: string) => {
+  const updateStatus = async (id: string, status: string) => {
     try {
-      const res = await fetch(`${DOCTOR_API_URL}/appointments/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'Accepted' })
-      });
-      if (!res.ok) throw new Error("Failed to update status");
+      const tokenRes = await fetch("/api/auth/token");
+      if (!tokenRes.ok) return;
+      const { accessToken } = await tokenRes.json();
 
-      setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: "Accepted" } : a));
-      alert(`Appointment ${id} Accepted via Bridge!`);
-    } catch (err) {
-      alert("Error updating appointment status via Doctor Service.");
+      const res = await fetch(
+        `${APPOINTMENT_API}/appointments/${id}/status?status=${status}`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      if (!res.ok) throw new Error("Failed");
+      setAppointments((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status } : a))
+      );
+    } catch {
+      alert("Failed to update appointment status.");
     }
   };
 
-  const handleReject = async (id: string) => {
-    if (!confirm("Are you sure you want to reject this appointment?")) return;
-
+  const joinVideoCall = async (appointmentId: string) => {
     try {
-      const res = await fetch(`${DOCTOR_API_URL}/appointments/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'Rejected' })
-      });
-      if (!res.ok) throw new Error("Failed to update status");
-
-      setAppointments(prev => prev.filter(a => a.id !== id));
-      alert(`Appointment ${id} Rejected via Bridge!`);
-    } catch (err) {
-      alert("Error rejecting appointment via Doctor Service.");
-    }
-  };
-
-  const joinVideoCall = (roomId: string) => {
-    alert(`Launching Secure Video Room for ${roomId}... \n(Waiting for Saniru's Telemedicine Service Integration)`);
-  };
-
-  const viewReports = async (patientId: string) => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${DOCTOR_API_URL}/patients/${patientId}/reports`);
-      if (!res.ok) throw new Error("Failed to fetch reports");
-      const json = await res.json();
-      
-      const reports = json.data || [];
-      if (reports.length === 0) {
-        alert("No medical reports found for this patient in the Patient Service.");
+      const tokenRes = await fetch("/api/auth/token");
+      if (!tokenRes.ok) return;
+      const { accessToken } = await tokenRes.json();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_TELEMEDICINE_API || "http://localhost:8090/api/v1"}/sessions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ appointmentId }),
+        }
+      );
+      if (res.ok) {
+        const session = await res.json();
+        window.open(session.jitsiUrl || session.data?.jitsiUrl, "_blank");
       } else {
-        alert(`Successfully connected to Minidu's Patient Service!\nFound ${reports.length} reports for Patient ${patientId}.`);
-        console.log("Reports from Patient Service:", reports);
+        alert("Could not create session. Try again.");
       }
-    } catch (err) {
-      alert("Patient Service Connection Failed. Ensure Patient Admin Service is running on port 3005.");
-    } finally {
-      setLoading(false);
+    } catch {
+      alert("Telemedicine service unavailable.");
     }
+  };
+
+  const viewReports = (patientId: string) => {
+    alert(`Patient ID: ${patientId}\nFetching from Patient Service…`);
   };
 
   return (
@@ -187,24 +189,22 @@ export default function DoctorDashboard() {
                 <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                   {apt.status === "Pending" ? (
                     <>
-                      <button onClick={() => handleReject(apt.id)} className="px-5 py-2 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-xl transition-colors">
+                      <button onClick={() => updateStatus(apt.id, "CANCELLED")} className="px-5 py-2 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-xl transition-colors">
                         Decline
                       </button>
-                      <button onClick={() => handleAccept(apt.id)} className="px-5 py-2 text-xs font-bold text-white bg-emerald-500 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 rounded-xl transition-all">
+                      <button onClick={() => updateStatus(apt.id, "CONFIRMED")} className="px-5 py-2 text-xs font-bold text-white bg-emerald-500 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 rounded-xl transition-all">
                         Accept Booking
                       </button>
                     </>
                   ) : (
                     <>
-                      {apt.hasReports && (
-                        <button onClick={() => viewReports(apt.patientId)} className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors flex items-center gap-1.5">
-                          📄 Read Reports
-                        </button>
-                      )}
+                      <button onClick={() => viewReports(apt.patientId)} className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl transition-colors flex items-center gap-1.5">
+                        📄 Reports
+                      </button>
 
-                      {apt.type === "Virtual" && (
-                        <button onClick={() => joinVideoCall(apt.id)} className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 hover:-translate-y-0.5 rounded-xl transition-all flex items-center gap-1.5">
-                          📹 Start Telemedicine
+                      {apt.type === "VIRTUAL" && (
+                        <button onClick={() => joinVideoCall(apt.id)} className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 rounded-xl transition-all flex items-center gap-1.5">
+                          📹 Start Session
                         </button>
                       )}
 

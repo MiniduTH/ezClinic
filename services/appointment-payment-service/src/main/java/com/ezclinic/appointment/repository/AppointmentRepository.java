@@ -11,8 +11,8 @@ import java.util.UUID;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, UUID> {
-    Page<Appointment> findByPatientId(UUID patientId, Pageable pageable);
-    Page<Appointment> findByDoctorId(UUID doctorId, Pageable pageable);
-    List<Appointment> findByDoctorIdAndStatus(UUID doctorId, AppointmentStatus status);
-    boolean existsByDoctorIdAndSlotId(UUID doctorId, UUID slotId);
+    Page<Appointment> findByPatientId(String patientId, Pageable pageable);
+    Page<Appointment> findByDoctorId(String doctorId, Pageable pageable);
+    List<Appointment> findByDoctorIdAndStatus(String doctorId, AppointmentStatus status);
+    boolean existsByDoctorIdAndSlotId(String doctorId, String slotId);
 }

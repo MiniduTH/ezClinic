@@ -4,12 +4,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Data
 public class CreateAppointmentRequest {
-    @NotNull(message = "Doctor ID is required") private UUID doctorId;
-    private UUID slotId;
+    @NotBlank(message = "Doctor ID is required") private String doctorId;
+    private String slotId;
     @NotNull(message = "Appointment date is required") private LocalDate appointmentDate;
     private String startTime;
     private String endTime;

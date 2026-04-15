@@ -21,7 +21,7 @@ public class AppointmentService {
     private final EventPublisher eventPublisher;
 
     @Transactional
-    public AppointmentResponse createAppointment(UUID patientId, CreateAppointmentRequest request) {
+    public AppointmentResponse createAppointment(String patientId, CreateAppointmentRequest request) {
         if (request.getSlotId() != null &&
                 appointmentRepository.existsByDoctorIdAndSlotId(request.getDoctorId(), request.getSlotId())) {
             throw new IllegalArgumentException("This time slot is already booked");
@@ -37,12 +37,12 @@ public class AppointmentService {
         return AppointmentResponse.fromEntity(saved);
     }
 
-    public Page<AppointmentResponse> getPatientAppointments(UUID patientId, int page, int size) {
+    public Page<AppointmentResponse> getPatientAppointments(String patientId, int page, int size) {
         return appointmentRepository.findByPatientId(patientId,
                 PageRequest.of(page, size, Sort.by("createdAt").descending())).map(AppointmentResponse::fromEntity);
     }
 
-    public Page<AppointmentResponse> getDoctorAppointments(UUID doctorId, int page, int size) {
+    public Page<AppointmentResponse> getDoctorAppointments(String doctorId, int page, int size) {
         return appointmentRepository.findByDoctorId(doctorId,
                 PageRequest.of(page, size, Sort.by("createdAt").descending())).map(AppointmentResponse::fromEntity);
     }
@@ -53,7 +53,7 @@ public class AppointmentService {
     }
 
     @Transactional
-    public AppointmentResponse updateAppointment(UUID id, UUID patientId, UpdateAppointmentRequest request) {
+    public AppointmentResponse updateAppointment(UUID id, String patientId, UpdateAppointmentRequest request) {
         Appointment a = appointmentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found: " + id));
         if (!a.getPatientId().equals(patientId)) throw new SecurityException("You can only modify your own appointments");
@@ -69,9 +69,13 @@ public class AppointmentService {
     }
 
     @Transactional
-    public AppointmentResponse cancelAppointment(UUID id, UUID userId) {
+    public AppointmentResponse cancelAppointment(UUID id, String userId) {
         Appointment a = appointmentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found: " + id));
+        // Ownership check: only the patient or the assigned doctor may cancel
+        if (!a.getPatientId().equals(userId) && !a.getDoctorId().equals(userId)) {
+            throw new SecurityException("Only the patient or assigned doctor can cancel this appointment");
+        }
         if (a.getStatus() == AppointmentStatus.COMPLETED || a.getStatus() == AppointmentStatus.CANCELLED)
             throw new IllegalStateException("Appointment is already " + a.getStatus());
         a.setStatus(AppointmentStatus.CANCELLED);
@@ -81,7 +85,7 @@ public class AppointmentService {
     }
 
     @Transactional
-    public AppointmentResponse updateStatus(UUID id, String status, UUID doctorId) {
+    public AppointmentResponse updateStatus(UUID id, String status, String doctorId) {
         Appointment a = appointmentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment not found: " + id));
         if (!a.getDoctorId().equals(doctorId)) throw new SecurityException("Only the assigned doctor can update status");

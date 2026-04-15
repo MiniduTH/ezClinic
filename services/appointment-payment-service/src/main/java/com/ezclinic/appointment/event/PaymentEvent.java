@@ -18,7 +18,7 @@ public class PaymentEvent implements Serializable {
     private String eventType;
     private UUID paymentId;
     private UUID appointmentId;
-    private UUID patientId;
+    private String patientId;
     private BigDecimal amount;
     private String status;
     private String transactionId;

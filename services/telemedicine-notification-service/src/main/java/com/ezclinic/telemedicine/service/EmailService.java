@@ -31,11 +31,11 @@ public class EmailService {
         final MailtrapClient client = MailtrapClientFactory.createMailtrapClient(config);
 
         final MailtrapMail mail = MailtrapMail.builder()
-                .from(new Address(SENDER_EMAIL, "Notification From ezClinic :)"))
+                .from(new Address(SENDER_EMAIL, "ezClinic Notifications"))
                 .to(List.of(new Address(recipientEmail)))
                 .subject(subject)
-                .text(content)
-                .category("Integration Test")
+                .html(content)
+                .category("Transactional")
                 .build();
 
         try {

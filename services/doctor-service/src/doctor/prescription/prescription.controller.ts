@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,23 +16,24 @@ import {
 } from '@nestjs/swagger';
 import { PrescriptionService } from './prescription.service';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { RolesGuard } from '../../auth/roles.guard';
+import { Roles } from '../../auth/roles.decorator';
 
 @ApiTags('prescriptions')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 @Controller()
 export class PrescriptionController {
   constructor(private readonly prescriptionService: PrescriptionService) {}
 
   @Post('doctors/:doctorId/prescriptions')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Issue a digital prescription' })
-  @ApiResponse({
-    status: 201,
-    description: 'Prescription issued successfully.',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Validation error (no medications or invalid follow-up date).',
-  })
+  @UseGuards(RolesGuard)
+  @Roles('doctor')
+  @ApiOperation({ summary: 'Issue a digital prescription (doctor role required)' })
+  @ApiResponse({ status: 201, description: 'Prescription issued successfully.' })
+  @ApiResponse({ status: 400, description: 'Validation error.' })
+  @ApiResponse({ status: 403, description: 'Forbidden — doctor role required.' })
   create(
     @Param('doctorId') doctorId: string,
     @Body() dto: CreatePrescriptionDto,
@@ -40,7 +42,6 @@ export class PrescriptionController {
   }
 
   @Get('doctors/:doctorId/prescriptions')
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'List prescriptions issued by a doctor' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -53,7 +54,6 @@ export class PrescriptionController {
   }
 
   @Get('patients/:patientId/prescriptions')
-  @ApiBearerAuth()
   @ApiOperation({ summary: "View a patient's prescriptions" })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -66,7 +66,6 @@ export class PrescriptionController {
   }
 
   @Get('appointments/:appointmentId/prescription')
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get prescription for a specific appointment' })
   @ApiResponse({ status: 200, description: 'Prescription found.' })
   @ApiResponse({ status: 404, description: 'No prescription for this appointment.' })
@@ -75,7 +74,6 @@ export class PrescriptionController {
   }
 
   @Get('prescriptions/:id')
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get a specific prescription with summary' })
   @ApiResponse({ status: 200, description: 'Prescription found.' })
   @ApiResponse({ status: 404, description: 'Prescription not found.' })

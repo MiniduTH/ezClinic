@@ -13,7 +13,7 @@ import java.util.UUID;
 public class NotificationResponse {
 
     private UUID id;
-    private UUID userId;
+    private String userId;
     private String recipientEmail;
     private NotificationType type;
     private String subject;

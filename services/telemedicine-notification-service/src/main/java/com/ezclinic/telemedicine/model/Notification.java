@@ -19,7 +19,7 @@ public class Notification {
     private UUID id;
 
     @Column(name = "user_id", nullable = false)
-    private UUID userId;
+    private String userId;
     
     @Column(name = "recipient_email")
     private String recipientEmail;

@@ -1,12 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
 export type AvailabilityDocument = HydratedDocument<Availability>;
 
 @Schema()
 export class Availability {
-  @Prop({ type: Types.ObjectId, ref: 'Doctor', required: true })
-  doctorId: Types.ObjectId;
+  @Prop({ type: String, ref: 'Doctor', required: true })
+  doctorId: string;
 
   @Prop({ required: true })
   dayOfWeek: string;
@@ -28,3 +28,7 @@ export class Availability {
 }
 
 export const AvailabilitySchema = SchemaFactory.createForClass(Availability);
+
+// Prevent double-booking: a doctor cannot have two overlapping slot definitions
+// on the same day starting at the same time.
+AvailabilitySchema.index({ doctorId: 1, dayOfWeek: 1, startTime: 1 }, { unique: true });
