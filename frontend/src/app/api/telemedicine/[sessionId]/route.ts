@@ -35,19 +35,35 @@ export async function GET(
     }
 
     const backendUrl = resolveTelemedicineBaseUrl();
-    
-    const response = await fetch(`${backendUrl}/sessions/${sessionId}`, {
+
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
+
+    const sessionResponse = await fetch(`${backendUrl}/sessions/${sessionId}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
     });
 
-    const data = await response.json();
+    if (sessionResponse.ok) {
+      const data = await sessionResponse.json();
+      return NextResponse.json(data, { status: 200 });
+    }
 
-    if (!response.ok) {
-        return NextResponse.json(data, { status: response.status });
+    if (sessionResponse.status !== 404) {
+      const data = await sessionResponse.json().catch(() => ({}));
+      return NextResponse.json(data, { status: sessionResponse.status });
+    }
+
+    const appointmentResponse = await fetch(`${backendUrl}/sessions/appointment/${sessionId}`, {
+      method: 'GET',
+      headers,
+    });
+
+    const data = await appointmentResponse.json().catch(() => ({}));
+    if (!appointmentResponse.ok) {
+      return NextResponse.json(data, { status: appointmentResponse.status });
     }
 
     return NextResponse.json(data, { status: 200 });
