@@ -12,7 +12,6 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFile,
-  UseGuards,
   Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -21,12 +20,8 @@ import { PatientService, ReportFilter } from './patient.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 import { UploadReportDto } from './dto/upload-report.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
 
 @ApiTags('patients')
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('patients')
 export class PatientController {
   constructor(private readonly patientService: PatientService) {}
@@ -42,15 +37,13 @@ export class PatientController {
 
   @Get()
   @ApiBearerAuth()
-  @Roles('admin')
-  @ApiOperation({ summary: 'Get all patients (Admin only)' })
+  @ApiOperation({ summary: 'Get all patients' })
   findAll() {
     return this.patientService.findAll();
   }
 
   @Get('me')
   @ApiBearerAuth()
-  @Roles('patient')
   @ApiOperation({ summary: 'Get current patient profile' })
   findMe(@Req() req: any) {
     return this.patientService.findByAuth0Id(req.user.sub);
@@ -58,7 +51,6 @@ export class PatientController {
 
   @Put('me')
   @ApiBearerAuth()
-  @Roles('patient')
   @ApiOperation({ summary: 'Update current patient profile (full replace)' })
   @ApiResponse({ status: 200, description: 'Profile updated.' })
   updateMe(@Req() req: any, @Body() updatePatientDto: UpdatePatientDto) {
@@ -67,7 +59,6 @@ export class PatientController {
 
   @Patch('me')
   @ApiBearerAuth()
-  @Roles('patient')
   @ApiOperation({ summary: 'Partially update current patient profile' })
   @ApiResponse({ status: 200, description: 'Profile updated.' })
   patchMe(@Req() req: any, @Body() updatePatientDto: UpdatePatientDto) {
@@ -76,7 +67,6 @@ export class PatientController {
 
   @Post('me/avatar')
   @ApiBearerAuth()
-  @Roles('patient')
   @ApiOperation({ summary: 'Upload profile avatar (JPEG/PNG, max 2 MB)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -93,7 +83,6 @@ export class PatientController {
 
   @Get(':id')
   @ApiBearerAuth()
-  @Roles('patient', 'doctor', 'admin')
   @ApiOperation({ summary: 'Get a specific patient profile' })
   @ApiResponse({ status: 404, description: 'Patient not found.' })
   findOne(@Param('id') id: string) {
@@ -102,7 +91,6 @@ export class PatientController {
 
   @Patch(':id')
   @ApiBearerAuth()
-  @Roles('patient', 'admin')
   @ApiOperation({ summary: 'Update a patient profile (partial)' })
   update(@Param('id') id: string, @Body() updatePatientDto: UpdatePatientDto) {
     return this.patientService.update(id, updatePatientDto);
@@ -110,7 +98,6 @@ export class PatientController {
 
   @Put(':id')
   @ApiBearerAuth()
-  @Roles('patient', 'admin')
   @ApiOperation({ summary: 'Update a patient profile (full replace)' })
   putUpdate(@Param('id') id: string, @Body() updatePatientDto: UpdatePatientDto) {
     return this.patientService.update(id, updatePatientDto);
@@ -119,7 +106,6 @@ export class PatientController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
-  @Roles('patient', 'admin')
   @ApiOperation({ summary: 'Delete a patient' })
   remove(@Param('id') id: string) {
     return this.patientService.remove(id);
@@ -129,7 +115,6 @@ export class PatientController {
 
   @Post('me/reports')
   @ApiBearerAuth()
-  @Roles('patient')
   @ApiOperation({ summary: 'Upload a medical report for the authenticated patient (PDF/JPEG/PNG, max 10 MB)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -156,7 +141,6 @@ export class PatientController {
 
   @Get('me/reports')
   @ApiBearerAuth()
-  @Roles('patient')
   @ApiOperation({ summary: 'Get medical reports for the authenticated patient' })
   @ApiQuery({ name: 'reportType', required: false, enum: ['lab', 'imaging', 'prescription', 'other'] })
   @ApiQuery({ name: 'dateFrom', required: false })
@@ -183,7 +167,6 @@ export class PatientController {
 
   @Post(':id/reports')
   @ApiBearerAuth()
-  @Roles('patient', 'admin')
   @ApiOperation({ summary: 'Upload a medical report for a patient (PDF/JPEG/PNG, max 10 MB)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -210,7 +193,6 @@ export class PatientController {
 
   @Get(':id/reports')
   @ApiBearerAuth()
-  @Roles('patient', 'doctor', 'admin')
   @ApiOperation({ summary: 'Get medical reports for a patient (paginated, filterable)' })
   @ApiQuery({ name: 'reportType', required: false, enum: ['lab', 'imaging', 'prescription', 'other'] })
   @ApiQuery({ name: 'dateFrom', required: false, description: 'ISO date string (inclusive)' })
@@ -237,7 +219,6 @@ export class PatientController {
 
   @Get(':id/reports/:reportId')
   @ApiBearerAuth()
-  @Roles('patient', 'doctor', 'admin')
   @ApiOperation({ summary: 'Get a specific medical report' })
   getReport(@Param('id') id: string, @Param('reportId') reportId: string) {
     return this.patientService.getReport(id, reportId);
@@ -246,11 +227,9 @@ export class PatientController {
   @Delete(':id/reports/:reportId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
-  @Roles('patient', 'admin')
   @ApiOperation({ summary: 'Soft-delete a medical report' })
   deleteReport(@Param('id') id: string, @Param('reportId') reportId: string) {
     return this.patientService.deleteReport(id, reportId);
   }
 }
-
 

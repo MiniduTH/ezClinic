@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
 import { auth0 } from '@/lib/auth0';
 
+function resolveTelemedicineBaseUrl(): string {
+  const rawBaseUrl =
+    process.env.TELEMEDICINE_SERVICE_URL ||
+    process.env.NEXT_PUBLIC_TELEMEDICINE_API ||
+    'http://localhost:8090';
+  const normalized = rawBaseUrl.replace(/\/+$/, '');
+  return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ sessionId: string }> }
@@ -25,9 +34,9 @@ export async function GET(
       return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
     }
 
-    const backendUrl = process.env.TELEMEDICINE_SERVICE_URL || 'http://localhost:8090';
+    const backendUrl = resolveTelemedicineBaseUrl();
     
-    const response = await fetch(`${backendUrl}/api/telemedicine/sessions/${sessionId}`, {
+    const response = await fetch(`${backendUrl}/sessions/${sessionId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

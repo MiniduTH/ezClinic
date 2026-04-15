@@ -25,14 +25,6 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
-  # ── Security / Auth0 ──
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: https://${AUTH0_DOMAIN:dev-6x78k6ttww4d1cif.us.auth0.com}/
-          audiences: ${AUTH0_AUDIENCE:https://api.ezclinic.com}
-
 payhere:
   merchant-id: ${PAYHERE_MERCHANT_ID:}
   merchant-secret: ${PAYHERE_MERCHANT_SECRET:}

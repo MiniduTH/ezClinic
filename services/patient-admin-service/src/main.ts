@@ -3,8 +3,61 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const payload = token.split('.')[1];
+  if (!payload) return null;
+
+  const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+
+  try {
+    const decoded = Buffer.from(padded, 'base64').toString('utf8');
+    return JSON.parse(decoded) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+      next();
+      return;
+    }
+
+    const authorization = req.headers.authorization;
+    if (!authorization || !authorization.startsWith('Bearer ')) {
+      res.status(401).json({ message: 'Missing Authorization bearer token' });
+      return;
+    }
+
+    const token = authorization.slice('Bearer '.length).trim();
+    if (!token) {
+      res.status(401).json({ message: 'Missing Authorization bearer token' });
+      return;
+    }
+
+    const payload = decodeJwtPayload(token);
+    if (!payload) {
+      res.status(401).json({ message: 'Invalid token payload' });
+      return;
+    }
+
+    const exp = payload.exp;
+    if (typeof exp === 'number' && Date.now() >= exp * 1000) {
+      res.status(401).json({ message: 'Token has expired' });
+      return;
+    }
+
+    const sub = typeof payload.sub === 'string' ? payload.sub : 'unknown';
+    req.user = payload;
+    // eslint-disable-next-line no-console
+    console.log(`[Auth] subject=${sub} path=${req.originalUrl}`);
+
+    next();
+  });
 
   // Global prefix
   app.setGlobalPrefix('api/v1');

@@ -9,7 +9,6 @@ import {
   Query,
   HttpCode,
   HttpStatus,
-  UseGuards,
   Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
@@ -17,13 +16,8 @@ import { AdminService } from './admin.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
 
 @ApiTags('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin')
 @ApiBearerAuth()
 @Controller('admin')
 export class AdminController {
@@ -32,9 +26,8 @@ export class AdminController {
   // ─── Admin Profile Management ──────────────────────────────────
 
   @Post('register')
-  @ApiOperation({ summary: 'Register a new admin (admin role required)' })
+  @ApiOperation({ summary: 'Register a new admin' })
   @ApiResponse({ status: 201, description: 'Admin successfully registered.' })
-  @ApiResponse({ status: 403, description: 'Forbidden — admin role required.' })
   @ApiResponse({ status: 409, description: 'Email already exists.' })
   create(@Body() createAdminDto: CreateAdminDto, @Req() req: any) {
     if (req.user?.sub) {
@@ -87,7 +80,6 @@ export class AdminController {
   }
 
   @Delete('patients/:id')
-  @Roles('admin')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a patient account' })
   deletePatient(@Param('id') id: string) {
@@ -144,4 +136,3 @@ export class AdminController {
     return this.adminService.remove(id);
   }
 }
-

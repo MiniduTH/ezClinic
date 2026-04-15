@@ -6,7 +6,6 @@ import { Doctor, DoctorSchema } from './schemas/doctor.schema';
 import { Availability, AvailabilitySchema } from './schemas/availability.schema';
 import { Prescription, PrescriptionSchema } from './schemas/prescription.schema';
 import { PrescriptionModule } from './prescription/prescription.module';
-import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -16,7 +15,6 @@ import { AuthModule } from '../auth/auth.module';
       { name: Prescription.name, schema: PrescriptionSchema },
     ]),
     PrescriptionModule,
-    AuthModule,
   ],
   controllers: [DoctorController],
   providers: [DoctorService],
