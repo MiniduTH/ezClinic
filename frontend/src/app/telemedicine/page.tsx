@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Video, Calendar, User, Clock, CheckCircle, Activity } from "lucide-react";
 
 const APPOINTMENT_API =
-  process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:8080/api/v1";
+  process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:3004/api/v1";
 
 interface TelemedicineAppointment {
   id: string;
@@ -28,7 +28,7 @@ export default function TelemedicineDashboard() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   // Hardcoded for demo/mockup. In prod, fetch from doctor-service profile endpoint
-  const doctorId = (user as any)?.["https://ezclinic.com/doctorId"] || "69d71304d77fd0bbf5ec13eb";
+  const doctorId = (user as Record<string, unknown>)?.["https://ezclinic.com/doctorId"] as string || "69d71304d77fd0bbf5ec13eb";
 
   useEffect(() => {
     fetch("/api/auth/token")
@@ -50,21 +50,21 @@ export default function TelemedicineDashboard() {
       
       const mapped = Array.isArray(data)
         ? data
-            .filter((a: any) => (a.type || a.consultationType)?.toLowerCase() === "telemedicine")
-            .map((a: any) => ({
-              id: a.id || a._id,
-              patientId: a.patientId,
-              patientName: a.patientName || "Unknown Patient",
-              date: a.date || a.appointmentDate,
-              time: a.time || a.appointmentTime,
-              status: (a.status || "PENDING").toUpperCase(),
-              reason: a.reason || a.issues,
-              symptoms: a.symptoms || null // Mocking where the symptom context would land
+            .filter((a: Record<string, unknown>) => ((a.type || a.consultationType) as string)?.toLowerCase() === "telemedicine")
+            .map((a: Record<string, unknown>) => ({
+              id: (a.id || a._id) as string,
+              patientId: a.patientId as string,
+              patientName: (a.patientName || "Unknown Patient") as string,
+              date: (a.date || a.appointmentDate) as string,
+              time: (a.time || a.appointmentTime) as string,
+              status: ((a.status as string || "PENDING")).toUpperCase() as TelemedicineAppointment['status'],
+              reason: (a.reason || a.issues) as string,
+              symptoms: (a.symptoms || undefined) as string | undefined // Mocking where the symptom context would land
             }))
         : [];
       setAppointments(mapped);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -123,7 +123,7 @@ export default function TelemedicineDashboard() {
         <div className="lg:col-span-2 space-y-6">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Clock className="w-5 h-5 text-gray-400" />
-            Today's Virtual Queue ({activeQueue.length})
+            Today&apos;s Virtual Queue ({activeQueue.length})
           </h2>
 
           {activeQueue.length === 0 ? (

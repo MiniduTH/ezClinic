@@ -147,8 +147,8 @@ export default function AvailabilityPage() {
       showMessage("success", modalMode === "add" ? "Slot added seamlessly ✨" : "Slot updated! 🚀");
       setShowModal(false);
       await fetchSlots();
-    } catch (err: any) {
-      showMessage("error", err.message);
+    } catch (err) {
+      showMessage("error", err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
