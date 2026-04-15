@@ -32,7 +32,7 @@ export default function DoctorDashboard() {
 
         const data = json.data?.content || json.data || [];
         const liveAppointments = Array.isArray(data)
-          ? data.map((apt: any) => ({
+          ? data.map((apt: Record<string, unknown>) => ({
               id: apt.id || apt._id || "N/A",
               patientId: apt.patientId || "Unknown",
               patientName: apt.patientName || apt.patientId || "Patient",
@@ -148,7 +148,7 @@ export default function DoctorDashboard() {
           </div>
           <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Today's Virtual</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Today&apos;s Virtual</p>
               <p className="text-3xl font-extrabold text-slate-800 mt-2">{appointments.filter(a => a.type === "Virtual" && a.status === "Accepted").length}</p>
             </div>
             <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center text-xl">📹</div>
@@ -182,7 +182,7 @@ export default function DoctorDashboard() {
                         {apt.status}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-500 mt-1 font-medium">{apt.date} at {apt.time} • <span className="italic">"{apt.issues}"</span></p>
+                    <p className="text-sm text-slate-500 mt-1 font-medium">{apt.date} at {apt.time} • <span className="italic">&ldquo;{apt.issues}&rdquo;</span></p>
                   </div>
                 </div>
 

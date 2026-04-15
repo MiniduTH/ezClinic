@@ -66,7 +66,7 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
   const [filter, setFilter] = useState<string>("ALL");
 
   // In production, doctorId should come from the authenticated user's profile on doctor-service
-  const doctorId = (user as any)?.["https://ezclinic.com/doctorId"] || "69d71304d77fd0bbf5ec13eb";
+  const doctorId = (user as Record<string, unknown>)?.["https://ezclinic.com/doctorId"] as string || "69d71304d77fd0bbf5ec13eb";
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
@@ -78,21 +78,21 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
       if (!res.ok) throw new Error("Failed to load appointments");
       const data = await res.json();
       const mapped = Array.isArray(data)
-        ? data.map((a: any) => ({
-            id: a.id || a._id,
-            patientId: a.patientId,
-            patientName: a.patientName || "Unknown Patient",
-            doctorId: a.doctorId,
-            date: a.date || a.appointmentDate,
-            time: a.time || a.appointmentTime,
-            type: a.type || a.consultationType || "Virtual",
-            status: (a.status || "PENDING").toUpperCase(),
-            reason: a.reason || a.issues,
+        ? data.map((a: Record<string, unknown>) => ({
+            id: (a.id || a._id) as string,
+            patientId: a.patientId as string,
+            patientName: (a.patientName || "Unknown Patient") as string,
+            doctorId: a.doctorId as string,
+            date: (a.date || a.appointmentDate) as string,
+            time: (a.time || a.appointmentTime) as string,
+            type: (a.type || a.consultationType || "Virtual") as string,
+            status: ((a.status as string || "PENDING")).toUpperCase() as Appointment['status'],
+            reason: (a.reason || a.issues) as string | undefined,
           }))
         : [];
       setAppointments(mapped);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -276,16 +276,16 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
       if (aptsRes.ok) {
         const data = await aptsRes.json();
         const mapped = Array.isArray(data)
-          ? data.map((a: any) => ({
-              id: a.id || a._id,
-              patientId: a.patientId,
-              doctorId: a.doctorId,
-              doctorName: a.doctorName || "Unknown Doctor",
-              date: a.date || a.appointmentDate,
-              time: a.time || a.appointmentTime,
-              type: a.type || a.consultationType || "Virtual",
-              status: (a.status || "PENDING").toUpperCase(),
-              reason: a.reason,
+          ? data.map((a: Record<string, unknown>) => ({
+              id: (a.id || a._id) as string,
+              patientId: a.patientId as string,
+              doctorId: a.doctorId as string,
+              doctorName: (a.doctorName || "Unknown Doctor") as string,
+              date: (a.date || a.appointmentDate) as string,
+              time: (a.time || a.appointmentTime) as string,
+              type: (a.type || a.consultationType || "Virtual") as string,
+              status: ((a.status as string || "PENDING")).toUpperCase() as Appointment['status'],
+              reason: (a.reason) as string | undefined,
             }))
           : [];
         setAppointments(mapped);
@@ -297,8 +297,8 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
         const docsData = await docsRes.json();
         setDoctors(Array.isArray(docsData) ? docsData : docsData.data || []);
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -342,8 +342,8 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
       setBookTime("");
       setBookReason("");
       await fetchAll();
-    } catch (err: any) {
-      setBookError(err.message);
+    } catch (err) {
+      setBookError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setBooking(false);
     }

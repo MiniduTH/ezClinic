@@ -78,8 +78,8 @@ export default function PatientProfilePage() {
           const reportsData = await reportsRes.json();
           setReports(reportsData);
         }
-      } catch (err: any) {
-        setError(err.message || "An error occurred.");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred.");
       } finally {
         setLoading(false);
       }
@@ -116,8 +116,8 @@ export default function PatientProfilePage() {
       const updatedData = await response.json();
       setPatient(updatedData);
       setIsEditing(false);
-    } catch (err: any) {
-      alert(err.message || "Failed to update.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update.");
     } finally {
       setSaving(false);
     }
@@ -151,8 +151,8 @@ export default function PatientProfilePage() {
       alert("Report uploaded successfully!");
       setReportTitle("");
       setReportFile(null);
-    } catch (err: any) {
-      alert(err.message || "Failed to upload report.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to upload report.");
     } finally {
       setUploadingReport(false);
     }
@@ -174,8 +174,8 @@ export default function PatientProfilePage() {
       
       if (!response.ok) throw new Error("Failed to delete report.");
       setReports((prev) => prev.filter(r => r.id !== reportId));
-    } catch (err: any) {
-      alert(err.message || "Failed to delete report.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete report.");
     }
   };
 
