@@ -68,7 +68,10 @@ describe('AdminPlatformLegacyController', () => {
     const updatedPatient = { id: 'pat-123', status: 'suspended' };
     mockAdminService.updatePatientStatus.mockResolvedValue(updatedPatient);
 
-    const result = await controller.updatePatientStatusLegacy('pat-123', payload);
+    const result = await controller.updatePatientStatusLegacy(
+      'pat-123',
+      payload,
+    );
     expect(result).toEqual(updatedPatient);
     expect(mockAdminService.updatePatientStatus).toHaveBeenCalledWith(
       'pat-123',

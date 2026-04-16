@@ -29,10 +29,7 @@ async function bootstrap() {
 
     const path = req.path || req.originalUrl.split('?')[0];
     // Public routes: auth endpoints and docs
-    if (
-      path.startsWith('/api/v1/auth/') ||
-      path.startsWith('/api/docs')
-    ) {
+    if (path.startsWith('/api/v1/auth/') || path.startsWith('/api/docs')) {
       next();
       return;
     }
@@ -63,7 +60,7 @@ async function bootstrap() {
 
     const sub = typeof payload.sub === 'string' ? payload.sub : 'unknown';
     req.user = payload;
-    // eslint-disable-next-line no-console
+
     console.log(`[Auth] subject=${sub} path=${req.originalUrl}`);
 
     next();
@@ -92,7 +89,9 @@ async function bootstrap() {
   // Swagger API docs
   const config = new DocumentBuilder()
     .setTitle('ezClinic – Patient & Admin Service')
-    .setDescription('REST API for patient registration, profile management, medical reports, and admin operations.')
+    .setDescription(
+      'REST API for patient registration, profile management, medical reports, and admin operations.',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();

@@ -15,7 +15,15 @@ import {
   Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiConsumes,
+  ApiBody,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { PatientService, ReportFilter } from './patient.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
@@ -99,7 +107,10 @@ export class PatientController {
   @Put(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a patient profile (full replace)' })
-  putUpdate(@Param('id') id: string, @Body() updatePatientDto: UpdatePatientDto) {
+  putUpdate(
+    @Param('id') id: string,
+    @Body() updatePatientDto: UpdatePatientDto,
+  ) {
     return this.patientService.update(id, updatePatientDto);
   }
 
@@ -115,14 +126,20 @@ export class PatientController {
 
   @Post('me/reports')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Upload a medical report for the authenticated patient (PDF/JPEG/PNG, max 10 MB)' })
+  @ApiOperation({
+    summary:
+      'Upload a medical report for the authenticated patient (PDF/JPEG/PNG, max 10 MB)',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
         title: { type: 'string' },
-        reportType: { type: 'string', enum: ['lab', 'imaging', 'prescription', 'other'] },
+        reportType: {
+          type: 'string',
+          enum: ['lab', 'imaging', 'prescription', 'other'],
+        },
         description: { type: 'string' },
         reportDate: { type: 'string', format: 'date' },
         file: { type: 'string', format: 'binary' },
@@ -141,8 +158,14 @@ export class PatientController {
 
   @Get('me/reports')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get medical reports for the authenticated patient' })
-  @ApiQuery({ name: 'reportType', required: false, enum: ['lab', 'imaging', 'prescription', 'other'] })
+  @ApiOperation({
+    summary: 'Get medical reports for the authenticated patient',
+  })
+  @ApiQuery({
+    name: 'reportType',
+    required: false,
+    enum: ['lab', 'imaging', 'prescription', 'other'],
+  })
   @ApiQuery({ name: 'dateFrom', required: false })
   @ApiQuery({ name: 'dateTo', required: false })
   @ApiQuery({ name: 'page', required: false, type: Number })
@@ -167,14 +190,19 @@ export class PatientController {
 
   @Post(':id/reports')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Upload a medical report for a patient (PDF/JPEG/PNG, max 10 MB)' })
+  @ApiOperation({
+    summary: 'Upload a medical report for a patient (PDF/JPEG/PNG, max 10 MB)',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
         title: { type: 'string' },
-        reportType: { type: 'string', enum: ['lab', 'imaging', 'prescription', 'other'] },
+        reportType: {
+          type: 'string',
+          enum: ['lab', 'imaging', 'prescription', 'other'],
+        },
         description: { type: 'string' },
         reportDate: { type: 'string', format: 'date' },
         file: { type: 'string', format: 'binary' },
@@ -193,10 +221,24 @@ export class PatientController {
 
   @Get(':id/reports')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get medical reports for a patient (paginated, filterable)' })
-  @ApiQuery({ name: 'reportType', required: false, enum: ['lab', 'imaging', 'prescription', 'other'] })
-  @ApiQuery({ name: 'dateFrom', required: false, description: 'ISO date string (inclusive)' })
-  @ApiQuery({ name: 'dateTo', required: false, description: 'ISO date string (inclusive)' })
+  @ApiOperation({
+    summary: 'Get medical reports for a patient (paginated, filterable)',
+  })
+  @ApiQuery({
+    name: 'reportType',
+    required: false,
+    enum: ['lab', 'imaging', 'prescription', 'other'],
+  })
+  @ApiQuery({
+    name: 'dateFrom',
+    required: false,
+    description: 'ISO date string (inclusive)',
+  })
+  @ApiQuery({
+    name: 'dateTo',
+    required: false,
+    description: 'ISO date string (inclusive)',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   getReports(
@@ -232,4 +274,3 @@ export class PatientController {
     return this.patientService.deleteReport(id, reportId);
   }
 }
-

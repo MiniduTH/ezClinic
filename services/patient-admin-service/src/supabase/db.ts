@@ -1,4 +1,4 @@
-import postgres from 'postgres'
+import postgres from 'postgres';
 
 const connectionString = process.env.DATABASE_URL || '';
 const sql = postgres(connectionString);
