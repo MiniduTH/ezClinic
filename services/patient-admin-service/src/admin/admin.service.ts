@@ -67,23 +67,15 @@ export class AdminService {
    * Get all patients (user management for admin dashboard).
    * Supports optional free-text search on name or email.
    */
-  async getAllPatients(
-    search?: string,
-    status?: string,
-    page = 1,
-    limit = 20,
-  ): Promise<{ data: Patient[]; total: number; page: number; limit: number }> {
-    const query = this.patientRepository
-      .createQueryBuilder('p')
+  async getAllPatients(search?: string, status?: string, page = 1, limit = 20): Promise<{ data: Patient[]; total: number; page: number; limit: number }> {
+    const query = this.patientRepository.createQueryBuilder('p')
       .leftJoinAndSelect('p.medicalReports', 'r', 'r.is_deleted = false')
       .orderBy('p.created_at', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
     if (search) {
-      query.where('p.name ILIKE :search OR p.email ILIKE :search', {
-        search: `%${search}%`,
-      });
+      query.where('p.name ILIKE :search OR p.email ILIKE :search', { search: `%${search}%` });
     }
     if (status) {
       query.andWhere('p.status = :status', { status });
@@ -110,13 +102,8 @@ export class AdminService {
   /**
    * Update a patient's account status (active | inactive | suspended).
    */
-  async updatePatientStatus(
-    patientId: string,
-    dto: UpdateUserStatusDto,
-  ): Promise<Patient> {
-    const patient = await this.patientRepository.findOne({
-      where: { id: patientId },
-    });
+  async updatePatientStatus(patientId: string, dto: UpdateUserStatusDto): Promise<Patient> {
+    const patient = await this.patientRepository.findOne({ where: { id: patientId } });
     if (!patient) {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
@@ -151,12 +138,8 @@ export class AdminService {
     recentPatients: Patient[];
   }> {
     const totalPatients = await this.patientRepository.count();
-    const activePatients = await this.patientRepository.count({
-      where: { status: 'active' },
-    });
-    const suspendedPatients = await this.patientRepository.count({
-      where: { status: 'suspended' },
-    });
+    const activePatients = await this.patientRepository.count({ where: { status: 'active' } });
+    const suspendedPatients = await this.patientRepository.count({ where: { status: 'suspended' } });
     const totalAdmins = await this.adminRepository.count();
 
     // Count patients registered in the last 7 days
@@ -185,10 +168,7 @@ export class AdminService {
   // ─── Doctor Verification (proxy to doctor-service) ─────────────
 
   private get doctorServiceUrl(): string {
-    return (
-      this.configService.get<string>('DOCTOR_SERVICE_URL') ||
-      'http://localhost:3002/api/v1'
-    );
+    return this.configService.get<string>('DOCTOR_SERVICE_URL') || 'http://localhost:3002/api/v1';
   }
 
   async getPendingDoctors(authorizationHeader: string): Promise<unknown> {
@@ -197,8 +177,7 @@ export class AdminService {
       const res = await fetch(url, {
         headers: { Authorization: authorizationHeader },
       });
-      if (!res.ok)
-        throw new BadGatewayException('doctor-service returned ' + res.status);
+      if (!res.ok) throw new BadGatewayException('doctor-service returned ' + res.status);
       return res.json();
     } catch (err) {
       if (err instanceof BadGatewayException) throw err;
@@ -206,12 +185,7 @@ export class AdminService {
     }
   }
 
-  async verifyDoctor(
-    doctorId: string,
-    action: 'approve' | 'reject',
-    authorizationHeader: string,
-    reason?: string,
-  ): Promise<unknown> {
+  async verifyDoctor(doctorId: string, action: 'approve' | 'reject', authorizationHeader: string, reason?: string): Promise<unknown> {
     const url = `${this.doctorServiceUrl}/doctors/${doctorId}/verify`;
     try {
       const res = await fetch(url, {
@@ -222,8 +196,7 @@ export class AdminService {
         },
         body: JSON.stringify({ action, reason }),
       });
-      if (!res.ok)
-        throw new BadGatewayException('doctor-service returned ' + res.status);
+      if (!res.ok) throw new BadGatewayException('doctor-service returned ' + res.status);
       return res.json();
     } catch (err) {
       if (err instanceof BadGatewayException) throw err;

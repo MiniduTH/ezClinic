@@ -1,11 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsDateString,
-  IsIn,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsDateString, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export type ReportType = 'lab' | 'imaging' | 'prescription' | 'other';
 
@@ -15,10 +9,7 @@ export class UploadReportDto {
   @IsString()
   title: string;
 
-  @ApiPropertyOptional({
-    description: 'Category: lab | imaging | prescription | other',
-    default: 'other',
-  })
+  @ApiPropertyOptional({ description: 'Category: lab | imaging | prescription | other', default: 'other' })
   @IsOptional()
   @IsIn(['lab', 'imaging', 'prescription', 'other'])
   reportType?: ReportType;
@@ -28,9 +19,7 @@ export class UploadReportDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({
-    description: 'Date the report was issued (YYYY-MM-DD)',
-  })
+  @ApiPropertyOptional({ description: 'Date the report was issued (YYYY-MM-DD)' })
   @IsOptional()
   @IsDateString()
   reportDate?: string;

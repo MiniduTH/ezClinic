@@ -54,9 +54,7 @@ export class CreatePatientDto {
   @IsString()
   allergies?: string;
 
-  @ApiPropertyOptional({
-    description: 'Emergency contact details (name, phone)',
-  })
+  @ApiPropertyOptional({ description: 'Emergency contact details (name, phone)' })
   @IsOptional()
   @IsString()
   emergencyContact?: string;

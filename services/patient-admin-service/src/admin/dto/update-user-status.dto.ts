@@ -9,9 +9,7 @@ export class UpdateUserStatusDto {
   @IsIn(['active', 'inactive', 'suspended'])
   status: UserStatus;
 
-  @ApiProperty({
-    description: 'Optional admin note explaining the status change',
-  })
+  @ApiProperty({ description: 'Optional admin note explaining the status change' })
   @IsOptional()
   @IsString()
   note?: string;

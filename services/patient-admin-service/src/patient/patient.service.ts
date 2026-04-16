@@ -17,15 +17,11 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 // Allowed MIME types for medical report uploads
-const ALLOWED_REPORT_MIMES = new Set([
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-]);
+const ALLOWED_REPORT_MIMES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
 // Allowed MIME types for avatar uploads
 const ALLOWED_AVATAR_MIMES = new Set(['image/jpeg', 'image/png']);
 const MAX_REPORT_SIZE = 10 * 1024 * 1024; // 10 MB
-const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB
+const MAX_AVATAR_SIZE = 2 * 1024 * 1024;  // 2 MB
 
 export interface ReportFilter {
   reportType?: ReportType;
@@ -65,14 +61,9 @@ export class PatientService {
     }
   }
 
-  async create(
-    auth0Sub: string,
-    createPatientDto: CreatePatientDto,
-  ): Promise<Patient> {
+  async create(auth0Sub: string, createPatientDto: CreatePatientDto): Promise<Patient> {
     // Idempotent on sub: if this Auth0 user already registered, return existing profile
-    const existing = await this.patientRepository.findOne({
-      where: { id: auth0Sub },
-    });
+    const existing = await this.patientRepository.findOne({ where: { id: auth0Sub } });
     if (existing) return existing;
 
     // Guard against email collision from a different account
@@ -80,9 +71,7 @@ export class PatientService {
       where: { email: createPatientDto.email },
     });
     if (emailConflict) {
-      throw new ConflictException(
-        'Email is already associated with another account',
-      );
+      throw new ConflictException('Email is already associated with another account');
     }
 
     let dobDate: Date | undefined = undefined;
@@ -112,33 +101,27 @@ export class PatientService {
   }
 
   async findByAuth0Id(auth0Id: string): Promise<Patient> {
-    const patient = await this.patientRepository.findOne({
-      where: { id: auth0Id },
-    });
+    const patient = await this.patientRepository.findOne({ where: { id: auth0Id } });
     if (!patient) {
       throw new NotFoundException(`Patient not found`);
     }
     return patient;
   }
 
-  async update(
-    id: string,
-    updatePatientDto: UpdatePatientDto,
-  ): Promise<Patient> {
+  async update(id: string, updatePatientDto: UpdatePatientDto): Promise<Patient> {
     const patient = await this.findOne(id);
-
+    
     let dobDate: any = patient.dob;
     if (updatePatientDto.dob !== undefined) {
-      dobDate =
-        updatePatientDto.dob === null ? null : new Date(updatePatientDto.dob);
+      dobDate = updatePatientDto.dob === null ? null : new Date(updatePatientDto.dob);
     }
 
     Object.assign(patient, {
       ...updatePatientDto,
     });
-
+    
     if (updatePatientDto.dob !== undefined) {
-      patient.dob = dobDate;
+       patient.dob = dobDate;
     }
 
     return await this.patientRepository.save(patient);
@@ -163,14 +146,9 @@ export class PatientService {
    * Upload or replace the avatar for the authenticated patient.
    * Only JPEG / PNG accepted; max 2 MB.
    */
-  async uploadAvatar(
-    auth0Id: string,
-    file: Express.Multer.File,
-  ): Promise<Patient> {
+  async uploadAvatar(auth0Id: string, file: Express.Multer.File): Promise<Patient> {
     if (!ALLOWED_AVATAR_MIMES.has(file.mimetype)) {
-      throw new BadRequestException(
-        'Only JPEG and PNG images are accepted for avatars',
-      );
+      throw new BadRequestException('Only JPEG and PNG images are accepted for avatars');
     }
     if (file.size > MAX_AVATAR_SIZE) {
       throw new BadRequestException('Avatar file must be under 2 MB');
@@ -189,9 +167,7 @@ export class PatientService {
       }
     }
 
-    const ext =
-      path.extname(file.originalname) ||
-      (file.mimetype === 'image/png' ? '.png' : '.jpg');
+    const ext = path.extname(file.originalname) || (file.mimetype === 'image/png' ? '.png' : '.jpg');
     const uniqueName = `${uuidv4()}${ext}`;
     fs.writeFileSync(path.join(this.avatarDir, uniqueName), file.buffer);
 
@@ -251,10 +227,7 @@ export class PatientService {
    * List reports for a patient with optional type/date filters and pagination.
    * Soft-deleted reports are excluded.
    */
-  async getReports(
-    patientId: string,
-    filter: ReportFilter = {},
-  ): Promise<PaginatedReports> {
+  async getReports(patientId: string, filter: ReportFilter = {}): Promise<PaginatedReports> {
     await this.findOne(patientId); // verify patient exists
 
     const { reportType, dateFrom, dateTo, page = 1, limit = 20 } = filter;
@@ -268,9 +241,7 @@ export class PatientService {
       qb.andWhere('r.report_type = :reportType', { reportType });
     }
     if (dateFrom) {
-      qb.andWhere('r.uploaded_at >= :dateFrom', {
-        dateFrom: new Date(dateFrom),
-      });
+      qb.andWhere('r.uploaded_at >= :dateFrom', { dateFrom: new Date(dateFrom) });
     }
     if (dateTo) {
       qb.andWhere('r.uploaded_at <= :dateTo', { dateTo: new Date(dateTo) });
@@ -291,9 +262,7 @@ export class PatientService {
       where: { id: reportId, patient: { id: patientId }, isDeleted: false },
     });
     if (!report) {
-      throw new NotFoundException(
-        `Medical report with ID ${reportId} not found for this patient`,
-      );
+      throw new NotFoundException(`Medical report with ID ${reportId} not found for this patient`);
     }
     return report;
   }
@@ -319,11 +288,7 @@ export class PatientService {
   /**
    * Upload a medical report using the Auth0 sub of the authenticated patient.
    */
-  async uploadReportByAuth0Id(
-    auth0Id: string,
-    dto: UploadReportDto,
-    file: Express.Multer.File,
-  ): Promise<MedicalReport> {
+  async uploadReportByAuth0Id(auth0Id: string, dto: UploadReportDto, file: Express.Multer.File): Promise<MedicalReport> {
     const patient = await this.findByAuth0Id(auth0Id);
     return this.uploadReport(patient.id, dto, file);
   }
@@ -331,10 +296,7 @@ export class PatientService {
   /**
    * List reports for the authenticated patient using their Auth0 sub.
    */
-  async getReportsByAuth0Id(
-    auth0Id: string,
-    filter: ReportFilter = {},
-  ): Promise<PaginatedReports> {
+  async getReportsByAuth0Id(auth0Id: string, filter: ReportFilter = {}): Promise<PaginatedReports> {
     const patient = await this.findByAuth0Id(auth0Id);
     return this.getReports(patient.id, filter);
   }
