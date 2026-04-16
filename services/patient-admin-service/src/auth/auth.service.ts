@@ -33,20 +33,23 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
     const id = uuidv4();
 
-    const patientData: Partial<Patient> = {
-      id,
-      name: dto.name,
-      email: dto.email.toLowerCase(),
-      phone: dto.phone,
-      dob: dto.dob ? new Date(dto.dob) : undefined,
-      gender: dto.gender,
-    };
+    // Use insert to bypass select:false on passwordHash
+    await this.patientRepository
+      .createQueryBuilder()
+      .insert()
+      .into(Patient)
+      .values({
+        id,
+        name: dto.name,
+        email: dto.email.toLowerCase(),
+        phone: dto.phone ?? null,
+        dob: dto.dob ? new Date(dto.dob) : undefined,
+        gender: dto.gender ?? null,
+        passwordHash,
+      } as any)
+      .execute();
 
-    const patient = this.patientRepository.create(patientData as Patient);
-    // Set passwordHash using direct assignment to bypass select: false
-    (patient as any).passwordHash = passwordHash;
-
-    const saved = await this.patientRepository.save(patient);
+    const saved = await this.patientRepository.findOneOrFail({ where: { id } });
 
     const token = this.issueToken(saved);
     return { token, user: this.publicUser(saved) };

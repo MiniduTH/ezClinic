@@ -49,7 +49,11 @@ export default function Navbar() {
                 <span className="text-sm text-gray-600 dark:text-gray-300 hidden sm:block">{user.name || user.email}</span>
                 <button
                   onClick={async () => {
-                    await fetch('/api/auth/logout', { method: 'POST' });
+                    try {
+                      await fetch('/api/auth/logout', { method: 'POST' });
+                    } catch {
+                      // Continue with redirect even if request fails
+                    }
                     window.location.href = '/login';
                   }}
                   className="text-sm px-3 py-1.5 rounded-md bg-teal-500 text-white hover:bg-teal-600 transition-colors"

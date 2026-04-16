@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
+import { decodeJwt as joseDecodeJwt, jwtVerify, type JWTPayload } from 'jose';
 import { cookies } from 'next/headers';
 
 const COOKIE_NAME = 'ezclinic_session';
@@ -22,22 +22,6 @@ function getSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET is not set');
   return new TextEncoder().encode(secret);
-}
-
-/**
- * Decode a backend JWT without verification (for quick read).
- * Verification is done separately via getSession().
- */
-function decodeJwt(token: string): JWTPayload | null {
-  try {
-    const [, payload] = token.split('.');
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-    return JSON.parse(Buffer.from(padded, 'base64').toString('utf8')) as JWTPayload;
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -117,17 +101,16 @@ export async function clearSessionCookie(): Promise<void> {
 
 /**
  * Get raw token from cookie (used by /api/auth/token route).
+ * Validates the token using jwtVerify before returning it.
  */
 export async function getTokenFromCookie(): Promise<string | null> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value;
     if (!token) return null;
-    // Verify expiry
-    const payload = decodeJwt(token);
-    if (!payload) return null;
-    const exp = payload.exp;
-    if (typeof exp === 'number' && Date.now() >= exp * 1000) return null;
+    // Use jwtVerify to validate signature and expiry
+    const secret = getSecret();
+    await jwtVerify(token, secret);
     return token;
   } catch {
     return null;
