@@ -9,7 +9,7 @@ const DOCTOR_API =
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password, role = 'patient' } = body;
+    const { email, password, role: rawRole = 'patient' } = body;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -17,6 +17,10 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    // Validate role to prevent privilege escalation
+    const role: 'patient' | 'doctor' =
+      rawRole === 'doctor' ? 'doctor' : 'patient';
 
     const serviceUrl =
       role === 'doctor' ? `${DOCTOR_API}/auth/login` : `${PATIENT_API}/auth/login`;

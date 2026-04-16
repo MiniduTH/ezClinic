@@ -26,7 +26,7 @@ export default function Navbar() {
         // ignore
       }
     }
-    if (user.role === 'patient') {
+    if (user && user.role === 'patient') {
       loadPatientAvatar();
     }
     return () => { mounted = false; };

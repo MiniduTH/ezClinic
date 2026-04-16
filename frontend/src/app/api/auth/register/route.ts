@@ -9,7 +9,11 @@ const DOCTOR_API =
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { role = 'patient', ...fields } = body;
+    const { role: rawRole = 'patient', ...fields } = body;
+
+    // Validate role to prevent privilege escalation
+    const role: 'patient' | 'doctor' =
+      rawRole === 'doctor' ? 'doctor' : 'patient';
 
     const serviceUrl =
       role === 'doctor'

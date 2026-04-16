@@ -43,7 +43,7 @@ export class AuthService {
         name: dto.name,
         email: dto.email.toLowerCase(),
         phone: dto.phone ?? null,
-        dob: dto.dob ? new Date(dto.dob) : undefined,
+        dob: dto.dob ? new Date(dto.dob) : null,
         gender: dto.gender ?? null,
         passwordHash,
       } as any)

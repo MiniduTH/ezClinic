@@ -20,10 +20,10 @@ export class RegisterPatientDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ description: 'Password (min 6 chars)' })
+  @ApiProperty({ description: 'Password (min 8 chars)' })
   @IsNotEmpty()
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   password: string;
 
   @ApiPropertyOptional()
