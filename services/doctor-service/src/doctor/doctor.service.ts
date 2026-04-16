@@ -70,10 +70,12 @@ export class DoctorService {
   }) {
     const page = query.page || 1;
     const limit = query.limit || 10;
-    // Default to verified=true for public listing; admin can pass isVerified=false to see pending
-    const filter: any = {
-      isVerified: query.isVerified !== undefined ? query.isVerified : true,
-    };
+    // By default, return all doctors; caller can explicitly filter by verification state.
+    const filter: any = {};
+
+    if (query.isVerified !== undefined) {
+      filter.isVerified = query.isVerified;
+    }
 
     if (query.specialization) {
       filter.specialization = { $regex: query.specialization, $options: 'i' };

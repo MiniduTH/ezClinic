@@ -28,38 +28,7 @@ public class TokenAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
-            unauthorized(response, "Missing Authorization bearer token");
-            return;
-        }
-
-        String token = authorization.substring(7).trim();
-        if (token.isEmpty()) {
-            unauthorized(response, "Missing Authorization bearer token");
-            return;
-        }
-
-        Map<String, Object> payload = decodePayload(token);
-        if (payload == null) {
-            unauthorized(response, "Invalid token payload");
-            return;
-        }
-
-        Object expClaim = payload.get("exp");
-        if (expClaim instanceof Number exp && Instant.now().getEpochSecond() >= exp.longValue()) {
-            unauthorized(response, "Token has expired");
-            return;
-        }
-
-        String subject = payload.get("sub") instanceof String sub ? sub : "unknown";
-        log.info("Authenticated subject={} path={}", subject, request.getRequestURI());
-
+        // Authentication disabled — all requests pass through unconditionally.
         filterChain.doFilter(request, response);
     }
 
