@@ -39,6 +39,9 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
 
+jwt:
+  secret: ${JWT_SECRET}
+
 app:
   cors:
     allowed-origins: ${FRONTEND_URL:http://localhost:3000}
