@@ -7,10 +7,12 @@ import com.micro.ezclinickaveen.dto.RescheduleRequestDTO;
 import com.micro.ezclinickaveen.service.AppointmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -18,6 +20,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping({"/api/appointments", "/api/v1/appointments"})
 @RequiredArgsConstructor
+@Slf4j
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
@@ -57,8 +60,14 @@ public class AppointmentController {
     }
 
     @GetMapping("/doctor/{doctorId}")
-    public ResponseEntity<List<AppointmentResponseDTO>> getDoctorAppointments(@PathVariable UUID doctorId) {
-        return ResponseEntity.ok(appointmentService.getAppointmentsByDoctor(doctorId));
+    public ResponseEntity<List<AppointmentResponseDTO>> getDoctorAppointments(@PathVariable String doctorId) {
+        try {
+            UUID doctorUuid = UUID.fromString(doctorId);
+            return ResponseEntity.ok(appointmentService.getAppointmentsByDoctor(doctorUuid));
+        } catch (IllegalArgumentException ex) {
+            log.warn("Received non-UUID doctorId '{}' on /doctor endpoint; returning empty list", doctorId);
+            return ResponseEntity.ok(Collections.emptyList());
+        }
     }
 
     @PatchMapping("/{id}/status")
