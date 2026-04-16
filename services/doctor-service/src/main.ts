@@ -29,6 +29,7 @@ async function bootstrap() {
 
     const path = req.path || req.originalUrl.split('?')[0];
     const isDocs = path.startsWith('/api/docs');
+    const isAuthRoute = path.startsWith('/api/v1/auth/');
 
     let isPublicDoctorRoute = false;
     if (req.method === 'GET' && path.startsWith('/api/v1/doctors')) {
@@ -45,7 +46,7 @@ async function bootstrap() {
       }
     }
 
-    if (isDocs || isPublicDoctorRoute) {
+    if (isDocs || isPublicDoctorRoute || isAuthRoute) {
       next();
       return;
     }

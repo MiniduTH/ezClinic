@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import { useUser } from '@auth0/nextjs-auth0/client';
+import { useUser } from '@/lib/session-context';
 import { useEffect, useState } from 'react';
 
 export default function Navbar() {
@@ -26,11 +26,13 @@ export default function Navbar() {
         // ignore
       }
     }
-    loadPatientAvatar();
+    if (user && user.role === 'patient') {
+      loadPatientAvatar();
+    }
     return () => { mounted = false; };
   }, [user]);
 
-  const avatarSrc = profileAvatar || (user as any)?.avatarUrl || user?.picture;
+  const avatarSrc = profileAvatar || null;
 
   return (
     <nav className="fixed top-0 z-50 w-full bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
@@ -45,12 +47,19 @@ export default function Navbar() {
             {!isLoading && user ? (
               <>
                 <span className="text-sm text-gray-600 dark:text-gray-300 hidden sm:block">{user.name || user.email}</span>
-                 <a
-                  href="/auth/logout"
+                <button
+                  onClick={async () => {
+                    try {
+                      await fetch('/api/auth/logout', { method: 'POST' });
+                    } catch {
+                      // Continue with redirect even if request fails
+                    }
+                    window.location.href = '/login';
+                  }}
                   className="text-sm px-3 py-1.5 rounded-md bg-teal-500 text-white hover:bg-teal-600 transition-colors"
                 >
                   Logout
-                </a>
+                </button>
                 <div className="flex items-center ms-1">
                   {avatarSrc ? (
                     <img src={avatarSrc} alt={user?.name ?? 'User'} className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
@@ -62,9 +71,9 @@ export default function Navbar() {
                 </div>
               </>
             ) : !isLoading ? (
-              <a href="/auth/login?returnTo=/" className="text-sm px-3 py-1.5 rounded-md bg-teal-500 text-white hover:bg-teal-600 transition-colors">
+              <Link href="/login" className="text-sm px-3 py-1.5 rounded-md bg-teal-500 text-white hover:bg-teal-600 transition-colors">
                 Login
-              </a>
+              </Link>
             ) : null}
           </div>
         </div>

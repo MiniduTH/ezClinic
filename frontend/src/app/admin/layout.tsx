@@ -8,7 +8,7 @@ export default async function AdminLayout({
 }) {
   const session = await getSessionWithRoles();
   if (!session) {
-    redirect('/auth/login');
+    redirect('/login');
   }
 
   // Role validation removed as requested

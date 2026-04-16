@@ -1,17 +1,57 @@
-import { auth0 } from '@/lib/auth0';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function proxy(request: Request) {
-  return await auth0.middleware(request);
+const COOKIE_NAME = 'ezclinic_session';
+
+const PROTECTED_PATTERNS = [
+  '/dashboard',
+  '/patients',
+  '/prescriptions',
+  '/availability',
+  '/telemedicine',
+  '/admin',
+  '/profile',
+  '/reports',
+  '/appointments',
+];
+
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Skip API routes and auth pages
+  if (
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/register') ||
+    pathname.startsWith('/_next')
+  ) {
+    return NextResponse.next();
+  }
+
+  const isProtected = PROTECTED_PATTERNS.some((p) => pathname.startsWith(p));
+  if (!isProtected) {
+    return NextResponse.next();
+  }
+
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+  if (!token) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('returnTo', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/auth/:path*',
     '/dashboard/:path*',
     '/patients/:path*',
     '/prescriptions/:path*',
     '/availability/:path*',
     '/telemedicine/:path*',
     '/admin/:path*',
+    '/profile/:path*',
+    '/reports/:path*',
+    '/appointments/:path*',
   ],
 };

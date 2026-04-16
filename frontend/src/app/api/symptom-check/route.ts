@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth0 } from '@/lib/auth0';
+import { getSession } from '@/lib/auth';
 
 function resolveTelemedicineBaseUrl(): string {
   const rawBaseUrl =
@@ -12,14 +12,13 @@ function resolveTelemedicineBaseUrl(): string {
 
 export async function POST(request: Request) {
   try {
-    const session = await auth0.getSession();
+    const session = await getSession();
     
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Attempt to retrieve access token securely
-    const { token } = await auth0.getAccessToken();
+    const token = session.tokenSet.accessToken;
 
     if (!token) {
       return NextResponse.json({ error: 'Token missing' }, { status: 401 });
