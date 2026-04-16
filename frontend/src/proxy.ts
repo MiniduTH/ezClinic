@@ -34,7 +34,8 @@ export async function proxy(request: NextRequest) {
 
   const token = request.cookies.get(COOKIE_NAME)?.value;
   if (!token) {
-    const loginUrl = new URL('/login', request.url);
+    const loginPath = pathname.startsWith('/admin') ? '/admin-login' : '/login';
+    const loginUrl = new URL(loginPath, request.url);
     loginUrl.searchParams.set('returnTo', pathname);
     return NextResponse.redirect(loginUrl);
   }
