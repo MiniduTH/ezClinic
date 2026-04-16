@@ -27,6 +27,16 @@ async function bootstrap() {
       return;
     }
 
+    const path = req.path || req.originalUrl.split('?')[0];
+    // Public routes: auth endpoints and docs
+    if (
+      path.startsWith('/api/v1/auth/') ||
+      path.startsWith('/api/docs')
+    ) {
+      next();
+      return;
+    }
+
     const authorization = req.headers.authorization;
     if (!authorization || !authorization.startsWith('Bearer ')) {
       res.status(401).json({ message: 'Missing Authorization bearer token' });

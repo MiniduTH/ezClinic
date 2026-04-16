@@ -33,6 +33,9 @@ export class Doctor {
   @Prop({ default: false })
   isVerified: boolean;
 
+  @Prop({ select: false })
+  passwordHash: string;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

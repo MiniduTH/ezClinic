@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Auth0Provider } from "@auth0/nextjs-auth0/client";
+import { SessionProvider } from "@/lib/session-context";
 
 export const metadata: Metadata = {
   title: "ezClinic",
@@ -20,7 +20,7 @@ export default function RootLayout({
       <body
         className="antialiased bg-gray-50 font-sans"
       >
-        <Auth0Provider>
+        <SessionProvider>
           <Navbar />
           <Sidebar />
           <div className="p-4 sm:ml-64 mt-14">
@@ -28,7 +28,7 @@ export default function RootLayout({
               {children}
             </main>
           </div>
-        </Auth0Provider>
+        </SessionProvider>
       </body>
     </html>
   );

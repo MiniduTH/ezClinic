@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useUser } from "@auth0/nextjs-auth0/client";
+import { useUser } from "@/lib/session-context";
 import { getUserRole } from "@/lib/roles";
 import Link from "next/link";
 import NotificationBanner from "@/components/notifications/NotificationBanner";

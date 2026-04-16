@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useUser } from "@auth0/nextjs-auth0/client";
+import { useUser } from "@/lib/session-context";
 
 export default function DoctorDashboard() {
   const { user } = useUser();
