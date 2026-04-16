@@ -61,13 +61,7 @@ public class AppointmentController {
 
     @GetMapping("/doctor/{doctorId}")
     public ResponseEntity<List<AppointmentResponseDTO>> getDoctorAppointments(@PathVariable String doctorId) {
-        try {
-            UUID doctorUuid = UUID.fromString(doctorId);
-            return ResponseEntity.ok(appointmentService.getAppointmentsByDoctor(doctorUuid));
-        } catch (IllegalArgumentException ex) {
-            log.warn("Received non-UUID doctorId '{}' on /doctor endpoint; returning empty list", doctorId);
-            return ResponseEntity.ok(Collections.emptyList());
-        }
+        return ResponseEntity.ok(appointmentService.getAppointmentsByDoctor(doctorId));
     }
 
     @PatchMapping("/{id}/status")

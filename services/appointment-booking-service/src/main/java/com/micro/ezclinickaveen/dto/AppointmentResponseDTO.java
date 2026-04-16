@@ -12,7 +12,7 @@ import java.util.UUID;
 public class AppointmentResponseDTO {
     private UUID id;
     private UUID patientId;
-    private UUID doctorId;
+    private String doctorId;
     private Date appointmentDate;
     private String status;
     private String type;

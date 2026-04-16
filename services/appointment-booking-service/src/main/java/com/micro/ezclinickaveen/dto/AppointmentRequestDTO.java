@@ -16,7 +16,7 @@ public class AppointmentRequestDTO {
     private UUID patientId;
 
     @NotNull(message = "Doctor ID is required")
-    private UUID doctorId;
+    private String doctorId;
 
     private UUID slotId;
 
