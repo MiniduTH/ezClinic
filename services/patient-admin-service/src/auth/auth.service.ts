@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { Patient } from '../patient/entities/patient.entity';
+import { Admin } from '../admin/entities/admin.entity';
 import { RegisterPatientDto, LoginDto } from './dto/auth.dto';
 
 const ROLES_CLAIM = 'https://ezclinic.com/roles';
@@ -19,6 +20,8 @@ export class AuthService {
   constructor(
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
+    @InjectRepository(Admin)
+    private readonly adminRepository: Repository<Admin>,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -75,6 +78,26 @@ export class AuthService {
     return { token, user: this.publicUser(patient) };
   }
 
+  async loginAdmin(dto: LoginDto) {
+    const admin = await this.adminRepository
+      .createQueryBuilder('admin')
+      .addSelect('admin.passwordHash')
+      .where('admin.email = :email', { email: dto.email.toLowerCase() })
+      .getOne();
+
+    if (!admin || !admin.passwordHash) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const valid = await bcrypt.compare(dto.password, admin.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const token = this.issueAdminToken(admin);
+    return { token, user: this.publicAdmin(admin) };
+  }
+
   private issueToken(patient: Patient): string {
     return this.jwtService.sign({
       sub: patient.id,
@@ -85,8 +108,23 @@ export class AuthService {
     });
   }
 
+  private issueAdminToken(admin: Admin): string {
+    return this.jwtService.sign({
+      sub: admin.id,
+      email: admin.email,
+      name: admin.name,
+      role: 'admin',
+      [ROLES_CLAIM]: ['admin'],
+    });
+  }
+
   private publicUser(patient: Patient) {
     const { passwordHash: _pw, ...rest } = patient as any;
+    return rest;
+  }
+
+  private publicAdmin(admin: Admin) {
+    const { passwordHash: _pw, ...rest } = admin as any;
     return rest;
   }
 }

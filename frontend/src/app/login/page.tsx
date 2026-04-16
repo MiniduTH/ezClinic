@@ -6,7 +6,7 @@ import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState<"patient" | "doctor">("patient");
+  const [role, setRole] = useState<"patient" | "doctor" | "admin">("patient");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -34,6 +34,8 @@ export default function LoginPage() {
       // Redirect based on role
       if (role === "doctor") {
         router.push("/dashboard");
+      } else if (role === "admin") {
+        router.push("/admin");
       } else {
         router.push("/profile");
       }
@@ -76,6 +78,17 @@ export default function LoginPage() {
             }`}
           >
             Doctor
+          </button>
+          <button
+            type="button"
+            onClick={() => setRole("admin")}
+            className={`flex-1 py-2 text-sm font-semibold transition-colors ${
+              role === "admin"
+                ? "bg-teal-500 text-white"
+                : "bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            Admin
           </button>
         </div>
 

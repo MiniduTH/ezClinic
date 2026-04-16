@@ -19,11 +19,15 @@ export async function POST(request: Request) {
     }
 
     // Validate role to prevent privilege escalation
-    const role: 'patient' | 'doctor' =
-      rawRole === 'doctor' ? 'doctor' : 'patient';
+    const role: 'patient' | 'doctor' | 'admin' =
+      rawRole === 'doctor' ? 'doctor' : rawRole === 'admin' ? 'admin' : 'patient';
 
     const serviceUrl =
-      role === 'doctor' ? `${DOCTOR_API}/auth/login` : `${PATIENT_API}/auth/login`;
+      role === 'doctor'
+        ? `${DOCTOR_API}/auth/login`
+        : role === 'admin'
+        ? `${PATIENT_API}/auth/admin/login`
+        : `${PATIENT_API}/auth/login`;
 
     const res = await fetch(serviceUrl, {
       method: 'POST',
