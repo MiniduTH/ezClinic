@@ -57,6 +57,8 @@ function LoginPageContent() {
         return;
       }
 
+      window.dispatchEvent(new Event("ezclinic:session-changed"));
+
       // Redirect based on role
       if (role === "doctor") {
         router.push("/dashboard");

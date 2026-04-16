@@ -69,8 +69,10 @@ export class AdminService {
    */
   async getAllPatients(search?: string, status?: string, page = 1, limit = 20): Promise<{ data: Patient[]; total: number; page: number; limit: number }> {
     const query = this.patientRepository.createQueryBuilder('p')
-      .leftJoinAndSelect('p.medicalReports', 'r', 'r.is_deleted = false')
-      .orderBy('p.created_at', 'DESC')
+      .leftJoinAndSelect('p.medicalReports', 'r', 'r.isDeleted = :isDeleted', {
+        isDeleted: false,
+      })
+      .orderBy('p.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
@@ -147,7 +149,7 @@ export class AdminService {
     weekAgo.setDate(weekAgo.getDate() - 7);
     const newPatientsThisWeek = await this.patientRepository
       .createQueryBuilder('p')
-      .where('p.created_at >= :weekAgo', { weekAgo })
+      .where('p.createdAt >= :weekAgo', { weekAgo })
       .getCount();
 
     const recentPatients = await this.patientRepository.find({

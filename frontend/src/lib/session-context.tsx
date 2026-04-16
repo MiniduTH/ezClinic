@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 
 export interface SessionUser {
   sub: string;
@@ -19,18 +19,41 @@ const SessionContext = createContext<SessionContextValue>({
   user: null,
   isLoading: true,
 });
+const SESSION_ENDPOINT = "/api/auth/session";
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetch("/api/auth/session")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => setUser(data?.user ?? null))
-      .catch(() => setUser(null))
-      .finally(() => setIsLoading(false));
+  const refreshSession = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(SESSION_ENDPOINT);
+      const data = response.ok ? await response.json() : null;
+      setUser(data?.user ?? null);
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`Failed to refresh session from ${SESSION_ENDPOINT}`, error);
+      }
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshSession();
+  }, [refreshSession]);
+
+  useEffect(() => {
+    const handleSessionChange = () => {
+      void refreshSession();
+    };
+    window.addEventListener("ezclinic:session-changed", handleSessionChange);
+    return () => {
+      window.removeEventListener("ezclinic:session-changed", handleSessionChange);
+    };
+  }, [refreshSession]);
 
   return (
     <SessionContext.Provider value={{ user, isLoading }}>
