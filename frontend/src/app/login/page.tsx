@@ -6,7 +6,17 @@ import Link from "next/link";
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <div
+          className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-blue-50"
+          role="status"
+          aria-label="Loading login page"
+        >
+          Loading login page...
+        </div>
+      }
+    >
       <LoginPageContent />
     </Suspense>
   );
@@ -23,7 +33,7 @@ function LoginPageContent() {
 
   useEffect(() => {
     const initialRole = searchParams.get("role");
-    if (initialRole === "doctor" || initialRole === "admin") {
+    if (initialRole === "patient" || initialRole === "doctor" || initialRole === "admin") {
       setRole(initialRole);
     }
   }, [searchParams]);
