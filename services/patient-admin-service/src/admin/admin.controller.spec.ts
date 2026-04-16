@@ -4,7 +4,6 @@ import { AdminService } from './admin.service';
 
 describe('AdminController', () => {
   let controller: AdminController;
-  let service: AdminService;
 
   const mockAdminService = {
     create: jest.fn(),
@@ -14,6 +13,7 @@ describe('AdminController', () => {
     remove: jest.fn(),
     getDashboardStats: jest.fn(),
     getAllPatients: jest.fn(),
+    updatePatientStatus: jest.fn(),
     getPatientById: jest.fn(),
     deletePatient: jest.fn(),
   };
@@ -30,7 +30,6 @@ describe('AdminController', () => {
     }).compile();
 
     controller = module.get<AdminController>(AdminController);
-    service = module.get<AdminService>(AdminService);
   });
 
   afterEach(() => {
@@ -45,10 +44,12 @@ describe('AdminController', () => {
     it('should create an admin', async () => {
       const createDto = { name: 'Admin One', email: 'admin1@test.com' };
       const expectedResult = { id: 'uuid-123', ...createDto };
-      
+
       mockAdminService.create.mockResolvedValue(expectedResult);
 
-      const result = await controller.create(createDto, { user: { sub: 'auth0|test' } } as any);
+      const result = await controller.create(createDto, {
+        user: { sub: 'auth0|test' },
+      } as any);
       expect(result).toEqual(expectedResult);
       expect(mockAdminService.create).toHaveBeenCalledWith(createDto);
     });
@@ -56,7 +57,9 @@ describe('AdminController', () => {
 
   describe('findAll', () => {
     it('should return an array of admins', async () => {
-      const expectedResult = [{ id: 'uuid-123', name: 'Admin One', email: 'admin1@test.com' }];
+      const expectedResult = [
+        { id: 'uuid-123', name: 'Admin One', email: 'admin1@test.com' },
+      ];
       mockAdminService.findAll.mockResolvedValue(expectedResult);
 
       const result = await controller.findAll();
@@ -67,7 +70,11 @@ describe('AdminController', () => {
 
   describe('findOne', () => {
     it('should return a single admin', async () => {
-      const expectedResult = { id: 'uuid-123', name: 'Admin One', email: 'admin1@test.com' };
+      const expectedResult = {
+        id: 'uuid-123',
+        name: 'Admin One',
+        email: 'admin1@test.com',
+      };
       mockAdminService.findOne.mockResolvedValue(expectedResult);
 
       const result = await controller.findOne('uuid-123');
@@ -79,13 +86,20 @@ describe('AdminController', () => {
   describe('update', () => {
     it('should update an admin', async () => {
       const updateDto = { name: 'Admin Updated' };
-      const expectedResult = { id: 'uuid-123', name: 'Admin Updated', email: 'admin1@test.com' };
-      
+      const expectedResult = {
+        id: 'uuid-123',
+        name: 'Admin Updated',
+        email: 'admin1@test.com',
+      };
+
       mockAdminService.update.mockResolvedValue(expectedResult);
 
       const result = await controller.update('uuid-123', updateDto);
       expect(result).toEqual(expectedResult);
-      expect(mockAdminService.update).toHaveBeenCalledWith('uuid-123', updateDto);
+      expect(mockAdminService.update).toHaveBeenCalledWith(
+        'uuid-123',
+        updateDto,
+      );
     });
   });
 
@@ -101,7 +115,11 @@ describe('AdminController', () => {
 
   describe('Platform Operations', () => {
     it('should return dashboard stats', async () => {
-      const expectedStats = { totalPatients: 10, totalAdmins: 2, recentPatients: [] };
+      const expectedStats = {
+        totalPatients: 10,
+        totalAdmins: 2,
+        recentPatients: [],
+      };
       mockAdminService.getDashboardStats.mockResolvedValue(expectedStats);
 
       const result = await controller.getDashboardStats();
@@ -110,12 +128,22 @@ describe('AdminController', () => {
     });
 
     it('should return all patients setup for admin view', async () => {
-      const expectedPatients = [{ id: 'pat-123', name: 'Patient A', medicalReports: [] }];
+      const expectedPatients = {
+        data: [{ id: 'pat-123', name: 'Patient A', medicalReports: [] }],
+        total: 1,
+        page: 1,
+        limit: 20,
+      };
       mockAdminService.getAllPatients.mockResolvedValue(expectedPatients);
 
       const result = await controller.getAllPatients();
       expect(result).toEqual(expectedPatients);
-      expect(mockAdminService.getAllPatients).toHaveBeenCalledWith();
+      expect(mockAdminService.getAllPatients).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+        1,
+        20,
+      );
     });
 
     it('should remove a patient', async () => {

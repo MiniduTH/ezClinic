@@ -7,12 +7,14 @@ type TokenSetLike = {
 
 type RoleSource = {
   sub?: string;
+  role?: unknown;
   user?: RoleSource;
   tokenSet?: TokenSetLike;
   [ROLES_CLAIM]?: unknown;
 };
 
 function parseRoles(value: unknown): string[] {
+  if (typeof value === "string") return [value];
   if (!Array.isArray(value)) return [];
   return value.filter((role): role is string => typeof role === "string");
 }
@@ -36,7 +38,9 @@ function getRolesFromToken(token?: string): string[] {
     if (!payload) return [];
 
     const decoded = JSON.parse(decodeBase64Url(payload)) as Record<string, unknown>;
-    return parseRoles(decoded[ROLES_CLAIM]);
+    const claimRoles = parseRoles(decoded[ROLES_CLAIM]);
+    if (claimRoles.length > 0) return claimRoles;
+    return parseRoles(decoded.role);
   } catch {
     return [];
   }
@@ -48,8 +52,14 @@ export function getRoles(source: RoleSource | undefined | null): string[] {
   const directRoles = parseRoles(source[ROLES_CLAIM]);
   if (directRoles.length > 0) return directRoles;
 
+  const directRole = parseRoles(source.role);
+  if (directRole.length > 0) return directRole;
+
   const nestedRoles = parseRoles(source.user?.[ROLES_CLAIM]);
   if (nestedRoles.length > 0) return nestedRoles;
+
+  const nestedRole = parseRoles(source.user?.role);
+  if (nestedRole.length > 0) return nestedRole;
 
   const idTokenRoles = getRolesFromToken(source.tokenSet?.idToken);
   if (idTokenRoles.length > 0) return idTokenRoles;

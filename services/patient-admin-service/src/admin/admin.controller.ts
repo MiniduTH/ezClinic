@@ -11,7 +11,14 @@ import {
   HttpStatus,
   Req,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiBearerAuth,
+  ApiBody,
+} from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
@@ -48,8 +55,16 @@ export class AdminController {
 
   @Get('patients')
   @ApiOperation({ summary: 'Get all patients (paginated, searchable)' })
-  @ApiQuery({ name: 'search', required: false, description: 'Search by name or email' })
-  @ApiQuery({ name: 'status', required: false, enum: ['active', 'inactive', 'suspended'] })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Search by name or email',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['active', 'inactive', 'suspended'],
+  })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   getAllPatients(
@@ -58,7 +73,12 @@ export class AdminController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.adminService.getAllPatients(search, status, page ? +page : 1, limit ? +limit : 20);
+    return this.adminService.getAllPatients(
+      search,
+      status,
+      page ? +page : 1,
+      limit ? +limit : 20,
+    );
   }
 
   @Get('patients/:id')
@@ -71,7 +91,13 @@ export class AdminController {
   @Patch('patients/:id/suspend')
   @ApiOperation({ summary: 'Suspend or reactivate a patient account' })
   @ApiResponse({ status: 200, description: 'Status updated.' })
-  @ApiBody({ schema: { type: 'object', properties: { status: { type: 'string', enum: ['active', 'suspended'] } }, required: ['status'] } })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { status: { type: 'string', enum: ['active', 'suspended'] } },
+      required: ['status'],
+    },
+  })
   updatePatientStatus(
     @Param('id') id: string,
     @Body() dto: UpdateUserStatusDto,
@@ -98,8 +124,20 @@ export class AdminController {
 
   @Patch('doctors/:id/verify')
   @ApiOperation({ summary: 'Approve or reject a doctor registration' })
-  @ApiBody({ schema: { type: 'object', properties: { action: { type: 'string', enum: ['approve', 'reject'] }, reason: { type: 'string' } }, required: ['action'] } })
-  @ApiResponse({ status: 200, description: 'Doctor verification status updated.' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['approve', 'reject'] },
+        reason: { type: 'string' },
+      },
+      required: ['action'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Doctor verification status updated.',
+  })
   verifyDoctor(
     @Param('id') id: string,
     @Body() body: { action: 'approve' | 'reject'; reason?: string },
