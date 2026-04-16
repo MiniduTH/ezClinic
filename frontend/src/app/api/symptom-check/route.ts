@@ -34,7 +34,7 @@ export async function POST(request: Request) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ symptoms: body.symptoms }),
+      body: JSON.stringify({ patientId: session.user.sub, symptoms: body.symptoms }),
     });
 
     const data = await response.json();
