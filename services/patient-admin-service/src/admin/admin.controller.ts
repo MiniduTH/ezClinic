@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Post,
-  Put,
   Body,
   Patch,
   Param,
@@ -80,43 +79,6 @@ export class AdminController {
       page ? +page : 1,
       limit ? +limit : 20,
     );
-  }
-
-  // Legacy admin platform routes kept for frontend compatibility
-  @Get('admins/platform/stats')
-  @ApiOperation({
-    summary: 'Get platform statistics for admin dashboard (legacy route)',
-  })
-  getDashboardStatsLegacy() {
-    return this.adminService.getDashboardStats();
-  }
-
-  @Get('admins/platform/patients')
-  @ApiOperation({
-    summary: 'Get all patients for admin management (legacy route)',
-  })
-  async getAllPatientsLegacy(
-    @Query('search') search?: string,
-    @Query('status') status?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    const result = await this.adminService.getAllPatients(
-      search,
-      status,
-      page ? +page : 1,
-      limit ? +limit : 20,
-    );
-    return result.data;
-  }
-
-  @Put('admins/platform/patients/:id/status')
-  @ApiOperation({ summary: 'Update patient status (legacy route)' })
-  updatePatientStatusLegacy(
-    @Param('id') id: string,
-    @Body() dto: UpdateUserStatusDto,
-  ) {
-    return this.adminService.updatePatientStatus(id, dto);
   }
 
   @Get('patients/:id')
