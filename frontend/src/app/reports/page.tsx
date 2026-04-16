@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useUser } from "@auth0/nextjs-auth0/client";
+import { useUser } from "@/lib/session-context";
 
 const PATIENT_API =
   process.env.NEXT_PUBLIC_PATIENT_API || "http://localhost:3005/api/v1";

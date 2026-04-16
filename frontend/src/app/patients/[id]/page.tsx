@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 
 interface Patient {
@@ -17,9 +17,11 @@ interface Patient {
   avatarUrl?: string | null;
 }
 
+const PATIENT_API =
+  process.env.NEXT_PUBLIC_PATIENT_API || "http://localhost:3005/api/v1";
+
 export default function PatientProfilePage() {
   const params = useParams();
-  const router = useRouter();
   const id = params?.id as string;
   
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -57,8 +59,8 @@ export default function PatientProfilePage() {
         const headers = { Authorization: `Bearer ${accessToken}` };
 
         const [patientRes, reportsRes] = await Promise.all([
-          fetch(`http://localhost:3005/api/v1/patients/${id}`, { headers }),
-          fetch(`http://localhost:3005/api/v1/patients/${id}/reports`, { headers })
+          fetch(`${PATIENT_API}/patients/${id}`, { headers }),
+          fetch(`${PATIENT_API}/patients/${id}/reports`, { headers })
         ]);
 
         if (!patientRes.ok) {
@@ -78,8 +80,8 @@ export default function PatientProfilePage() {
           const reportsData = await reportsRes.json();
           setReports(reportsData);
         }
-      } catch (err: any) {
-        setError(err.message || "An error occurred.");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred.");
       } finally {
         setLoading(false);
       }
@@ -103,7 +105,7 @@ export default function PatientProfilePage() {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
 
-      const response = await fetch(`http://localhost:3005/api/v1/patients/${id}`, {
+      const response = await fetch(`${PATIENT_API}/patients/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -116,8 +118,8 @@ export default function PatientProfilePage() {
       const updatedData = await response.json();
       setPatient(updatedData);
       setIsEditing(false);
-    } catch (err: any) {
-      alert(err.message || "Failed to update.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update.");
     } finally {
       setSaving(false);
     }
@@ -136,7 +138,7 @@ export default function PatientProfilePage() {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
 
-      const response = await fetch(`http://localhost:3005/api/v1/patients/${id}/reports`, {
+      const response = await fetch(`${PATIENT_API}/patients/${id}/reports`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`
@@ -151,8 +153,8 @@ export default function PatientProfilePage() {
       alert("Report uploaded successfully!");
       setReportTitle("");
       setReportFile(null);
-    } catch (err: any) {
-      alert(err.message || "Failed to upload report.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to upload report.");
     } finally {
       setUploadingReport(false);
     }
@@ -165,7 +167,7 @@ export default function PatientProfilePage() {
       const tokenRes = await fetch("/api/auth/token");
       const { accessToken } = await tokenRes.json();
 
-      const response = await fetch(`http://localhost:3005/api/v1/patients/${id}/reports/${reportId}`, {
+      const response = await fetch(`${PATIENT_API}/patients/${id}/reports/${reportId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${accessToken}`
@@ -174,8 +176,8 @@ export default function PatientProfilePage() {
       
       if (!response.ok) throw new Error("Failed to delete report.");
       setReports((prev) => prev.filter(r => r.id !== reportId));
-    } catch (err: any) {
-      alert(err.message || "Failed to delete report.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete report.");
     }
   };
 

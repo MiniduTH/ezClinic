@@ -47,6 +47,9 @@ export class Patient {
   @Column({ name: 'emergency_contact', type: 'text', nullable: true })
   emergencyContact: string;
 
+  @Column({ name: 'password_hash', nullable: true, select: false })
+  passwordHash: string;
+
   // Account status: active | inactive | suspended
   @Column({ default: 'active' })
   status: PatientStatus;

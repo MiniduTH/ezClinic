@@ -17,12 +17,6 @@ spring:
     hibernate:
       ddl-auto: ${DDL_AUTO:update}
     show-sql: true
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: https://${AUTH0_DOMAIN:your-tenant.auth0.com}/
-          audiences: ${AUTH0_AUDIENCE:https://api.ezclinic.com}
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}

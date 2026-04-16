@@ -14,6 +14,9 @@ export class Admin {
   @Column({ unique: true })
   email: string;
 
+  @Column({ name: 'password_hash', nullable: true, select: false })
+  passwordHash: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

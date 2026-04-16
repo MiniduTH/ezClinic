@@ -16,7 +16,10 @@ export class CreateDoctorDto {
   @IsString()
   auth0Id?: string;
 
-  @ApiProperty({ description: 'Full name of the doctor', example: 'Dr. Kamal Silva' })
+  @ApiProperty({
+    description: 'Full name of the doctor',
+    example: 'Dr. Kamal Silva',
+  })
   @IsNotEmpty()
   @IsString()
   name: string;
@@ -26,7 +29,10 @@ export class CreateDoctorDto {
   @IsEmail()
   email: string;
 
-  @ApiPropertyOptional({ description: 'Medical specialization', example: 'Cardiologist' })
+  @ApiPropertyOptional({
+    description: 'Medical specialization',
+    example: 'Cardiologist',
+  })
   @IsOptional()
   @IsString()
   specialization?: string;

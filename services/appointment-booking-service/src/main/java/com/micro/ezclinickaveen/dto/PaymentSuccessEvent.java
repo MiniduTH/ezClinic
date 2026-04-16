@@ -13,7 +13,7 @@ import java.io.Serializable;
 public class PaymentSuccessEvent implements Serializable {
     private UUID appointmentId;
     private UUID patientId;
-    private UUID doctorId;
+    private String doctorId;
     private Date appointmentDate;
     private BigDecimal amountPaid;
     private String receiptNo;

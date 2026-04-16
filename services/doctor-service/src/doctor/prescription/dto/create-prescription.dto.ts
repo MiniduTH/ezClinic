@@ -33,7 +33,9 @@ export class MedicationDto {
 }
 
 export class CreatePrescriptionDto {
-  @ApiPropertyOptional({ description: 'Appointment this prescription belongs to' })
+  @ApiPropertyOptional({
+    description: 'Appointment this prescription belongs to',
+  })
   @IsOptional()
   @IsString()
   appointmentId?: string;

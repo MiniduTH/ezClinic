@@ -24,7 +24,7 @@ public class Appointment {
     private UUID patientId;
 
     @Column(name = "doctor_id", nullable = false)
-    private UUID doctorId;
+    private String doctorId;
 
     @Column(name = "slot_id")
     private UUID slotId;

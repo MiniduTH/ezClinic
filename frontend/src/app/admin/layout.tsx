@@ -1,6 +1,5 @@
 import { getSessionWithRoles } from '@/lib/auth0';
 import { redirect } from 'next/navigation';
-import { getUserRole } from '@/lib/roles';
 
 export default async function AdminLayout({
   children,
@@ -9,13 +8,10 @@ export default async function AdminLayout({
 }) {
   const session = await getSessionWithRoles();
   if (!session) {
-    redirect('/auth/login');
+    redirect('/login');
   }
 
-  const role = getUserRole(session);
-  if (role !== 'admin') {
-    redirect('/');
-  }
-
+  // Role validation removed as requested
+  
   return <>{children}</>;
 }

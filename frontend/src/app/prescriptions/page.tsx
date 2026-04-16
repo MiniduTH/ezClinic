@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 const DOCTOR_API = process.env.NEXT_PUBLIC_DOCTOR_SERVICE_URL || process.env.NEXT_PUBLIC_DOCTOR_API || "http://localhost:3002/api/v1";
-const APPOINTMENT_API = process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:8080/api/v1";
+const APPOINTMENT_API = process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:3004/api/v1";
 const PATIENT_API = process.env.NEXT_PUBLIC_PATIENT_SERVICE_URL || process.env.NEXT_PUBLIC_PATIENT_API || "http://localhost:3005/api/v1";
 
 interface Medication { name: string; dosage: string; frequency: string; duration: string; }
@@ -57,18 +57,18 @@ export default function PrescriptionPage() {
         const ar = await fetch(`${APPOINTMENT_API}/appointments/doctor/${id}`, { headers: h });
         if (ar.ok) {
           const ad = await ar.json();
-          const raw: any[] = Array.isArray(ad) ? ad : ad.data || [];
-          const filtered = raw.filter(a => ["CONFIRMED", "COMPLETED", "accepted", "completed"].includes((a.status || "").toUpperCase()));
+          const raw: Record<string, unknown>[] = Array.isArray(ad) ? ad : ad.data || [];
+          const filtered = raw.filter(a => ["CONFIRMED", "COMPLETED", "accepted", "completed"].includes(((a.status as string) || "").toUpperCase()));
           const enriched: Appointment[] = await Promise.all(filtered.map(async a => {
-            const patient = a.patientId ? await fetchPatient(a.patientId, token) : null;
-            return { id: a.id || a._id, patientId: a.patientId, patient: patient ?? undefined, date: a.date || a.appointmentDate || "", time: a.time || a.appointmentTime || "", status: (a.status || "").toUpperCase(), reason: a.reason || "" };
+            const patient = a.patientId ? await fetchPatient(a.patientId as string, token) : null;
+            return { id: (a.id || a._id) as string, patientId: a.patientId as string, patient: patient ?? undefined, date: (a.date || a.appointmentDate || "") as string, time: (a.time || a.appointmentTime || "") as string, status: ((a.status as string) || "").toUpperCase(), reason: (a.reason || "") as string };
           }));
           setAppointments(enriched);
         }
       } catch { }
       // prescriptions
       await loadPrescriptions(id, token);
-    } catch (e: any) { setInitError(e.message || "Init failed."); }
+    } catch (e) { setInitError(e instanceof Error ? e.message : "Init failed."); }
     finally { setInitLoading(false); }
   }, []);
 
@@ -139,7 +139,7 @@ export default function PrescriptionPage() {
       setShowForm(false);
       resetForm();
       await loadPrescriptions(doctorId);
-    } catch (e: any) { setFormError(e.message); }
+    } catch (e) { setFormError(e instanceof Error ? e.message : "An error occurred"); }
     finally { setSubmitting(false); }
   };
 

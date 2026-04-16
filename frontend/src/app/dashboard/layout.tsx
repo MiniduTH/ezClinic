@@ -9,7 +9,7 @@ export default async function DashboardLayout({
 }) {
   const session = await getSessionWithRoles();
   if (!session) {
-    redirect('/auth/login');
+    redirect('/login');
   }
 
   const role = getUserRole(session);

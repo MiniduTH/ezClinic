@@ -1,11 +1,10 @@
-import { auth0 } from './auth0';
+import { getSession } from './auth';
 
 /**
  * Perform a fetch to the backend passing the user's access token
  */
 export async function apiFetch(url: string, options: RequestInit = {}) {
-  // Try to get token from server-side session
-  const session = await auth0.getSession();
+  const session = await getSession();
   const token = session?.tokenSet?.accessToken;
 
   const headers = new Headers(options.headers || {});
@@ -14,7 +13,6 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  // Set default content type to json if not explicitly handling FormData
   if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }

@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -16,24 +8,20 @@ import {
 } from '@nestjs/swagger';
 import { PrescriptionService } from './prescription.service';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { RolesGuard } from '../../auth/roles.guard';
-import { Roles } from '../../auth/roles.decorator';
 
 @ApiTags('prescriptions')
-@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller()
 export class PrescriptionController {
   constructor(private readonly prescriptionService: PrescriptionService) {}
 
   @Post('doctors/:doctorId/prescriptions')
-  @UseGuards(RolesGuard)
-  @Roles('doctor')
-  @ApiOperation({ summary: 'Issue a digital prescription (doctor role required)' })
-  @ApiResponse({ status: 201, description: 'Prescription issued successfully.' })
+  @ApiOperation({ summary: 'Issue a digital prescription' })
+  @ApiResponse({
+    status: 201,
+    description: 'Prescription issued successfully.',
+  })
   @ApiResponse({ status: 400, description: 'Validation error.' })
-  @ApiResponse({ status: 403, description: 'Forbidden — doctor role required.' })
   create(
     @Param('doctorId') doctorId: string,
     @Body() dto: CreatePrescriptionDto,
@@ -68,7 +56,10 @@ export class PrescriptionController {
   @Get('appointments/:appointmentId/prescription')
   @ApiOperation({ summary: 'Get prescription for a specific appointment' })
   @ApiResponse({ status: 200, description: 'Prescription found.' })
-  @ApiResponse({ status: 404, description: 'No prescription for this appointment.' })
+  @ApiResponse({
+    status: 404,
+    description: 'No prescription for this appointment.',
+  })
   findByAppointment(@Param('appointmentId') appointmentId: string) {
     return this.prescriptionService.findByAppointment(appointmentId);
   }

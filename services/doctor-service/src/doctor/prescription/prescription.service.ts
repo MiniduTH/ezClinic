@@ -5,7 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Prescription, PrescriptionDocument } from '../schemas/prescription.schema';
+import {
+  Prescription,
+  PrescriptionDocument,
+} from '../schemas/prescription.schema';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 
 import { PatientIntegrationService } from '../integration/patient.integration.service';
@@ -16,7 +19,7 @@ export class PrescriptionService {
     @InjectModel(Prescription.name)
     private readonly prescriptionModel: Model<PrescriptionDocument>,
     private readonly patientIntegration: PatientIntegrationService,
-  ) { }
+  ) {}
 
   private wrap(data: any, message?: string) {
     return { success: true, data, ...(message && { message }) };
@@ -24,7 +27,9 @@ export class PrescriptionService {
 
   async create(doctorId: string, dto: CreatePrescriptionDto) {
     if (!dto.medications || dto.medications.length === 0) {
-      throw new BadRequestException('A prescription must include at least one medication.');
+      throw new BadRequestException(
+        'A prescription must include at least one medication.',
+      );
     }
 
     // Soft-validate patient via integration — non-blocking.
@@ -58,32 +63,56 @@ export class PrescriptionService {
     });
 
     const summary = this.generatePrescriptionSummary(prescription);
-    return this.wrap({ prescription, summary }, 'Prescription issued successfully.');
+    return this.wrap(
+      { prescription, summary },
+      'Prescription issued successfully.',
+    );
   }
 
   async findByDoctor(doctorId: string, page = 1, limit = 10) {
     const filter = { doctorId };
     const [data, totalItems] = await Promise.all([
-      this.prescriptionModel.find(filter).sort({ issuedAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      this.prescriptionModel
+        .find(filter)
+        .sort({ issuedAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
       this.prescriptionModel.countDocuments(filter),
     ]);
     return {
       success: true,
       data,
-      pagination: { page, limit, totalItems, totalPages: Math.ceil(totalItems / limit) },
+      pagination: {
+        page,
+        limit,
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+      },
     };
   }
 
   async findByPatient(patientId: string, page = 1, limit = 10) {
     const filter = { patientId };
     const [data, totalItems] = await Promise.all([
-      this.prescriptionModel.find(filter).populate('doctorId', 'name email specialization').sort({ issuedAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      this.prescriptionModel
+        .find(filter)
+        .populate('doctorId', 'name email specialization')
+        .sort({ issuedAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
       this.prescriptionModel.countDocuments(filter),
     ]);
     return {
       success: true,
       data,
-      pagination: { page, limit, totalItems, totalPages: Math.ceil(totalItems / limit) },
+      pagination: {
+        page,
+        limit,
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+      },
     };
   }
 
@@ -92,18 +121,23 @@ export class PrescriptionService {
       .findOne({ appointmentId })
       .populate('doctorId', 'name email specialization')
       .lean();
-    if (!prescription) throw new NotFoundException(`No prescription found for appointment ${appointmentId}`);
+    if (!prescription)
+      throw new NotFoundException(
+        `No prescription found for appointment ${appointmentId}`,
+      );
     const summary = this.generatePrescriptionSummary(prescription as any);
     return this.wrap({ prescription, summary });
   }
 
   async findOne(id: string) {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundException(`Prescription ${id} not found`);
+    if (!Types.ObjectId.isValid(id))
+      throw new NotFoundException(`Prescription ${id} not found`);
     const prescription = await this.prescriptionModel
       .findById(id)
       .populate('doctorId', 'name email specialization')
       .lean();
-    if (!prescription) throw new NotFoundException(`Prescription with ID ${id} not found`);
+    if (!prescription)
+      throw new NotFoundException(`Prescription with ID ${id} not found`);
     const summary = this.generatePrescriptionSummary(prescription as any);
     return this.wrap({ prescription, summary });
   }
@@ -117,10 +151,14 @@ export class PrescriptionService {
     lines.push('             ezClinic');
     lines.push('═══════════════════════════════════════════');
     lines.push('');
-    if (prescription.patientName) lines.push(`Patient:       ${prescription.patientName}`);
+    if (prescription.patientName)
+      lines.push(`Patient:       ${prescription.patientName}`);
     lines.push(`Patient ID:    ${prescription.patientId}`);
-    const issuedDate = prescription.issuedAt || prescription.createdAt || new Date();
-    lines.push(`Date Issued:   ${new Date(issuedDate).toLocaleDateString('en-LK', { year: 'numeric', month: 'long', day: 'numeric' })}`);
+    const issuedDate =
+      prescription.issuedAt || prescription.createdAt || new Date();
+    lines.push(
+      `Date Issued:   ${new Date(issuedDate).toLocaleDateString('en-LK', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+    );
     lines.push('');
     if (prescription.diagnosis) {
       lines.push(`Diagnosis:     ${prescription.diagnosis}`);
@@ -144,7 +182,9 @@ export class PrescriptionService {
       lines.push('');
     }
     if (prescription.followUpDate) {
-      lines.push(`Follow-up:     ${new Date(prescription.followUpDate).toLocaleDateString('en-LK', { year: 'numeric', month: 'long', day: 'numeric' })}`);
+      lines.push(
+        `Follow-up:     ${new Date(prescription.followUpDate).toLocaleDateString('en-LK', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+      );
       lines.push('');
     }
     lines.push('═══════════════════════════════════════════');

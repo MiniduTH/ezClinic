@@ -3,7 +3,10 @@ import { HydratedDocument } from 'mongoose';
 
 export type DoctorDocument = HydratedDocument<Doctor>;
 
-@Schema({ timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, _id: false })
+@Schema({
+  timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' },
+  _id: false,
+})
 export class Doctor {
   /** Auth0 sub used as the document _id (e.g. "auth0|abc123") */
   @Prop({ type: String, required: true })
@@ -29,6 +32,9 @@ export class Doctor {
 
   @Prop({ default: false })
   isVerified: boolean;
+
+  @Prop({ select: false })
+  passwordHash: string;
 
   createdAt?: Date;
   updatedAt?: Date;

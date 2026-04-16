@@ -31,4 +31,7 @@ export const AvailabilitySchema = SchemaFactory.createForClass(Availability);
 
 // Prevent double-booking: a doctor cannot have two overlapping slot definitions
 // on the same day starting at the same time.
-AvailabilitySchema.index({ doctorId: 1, dayOfWeek: 1, startTime: 1 }, { unique: true });
+AvailabilitySchema.index(
+  { doctorId: 1, dayOfWeek: 1, startTime: 1 },
+  { unique: true },
+);
