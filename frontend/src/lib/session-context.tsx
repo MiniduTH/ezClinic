@@ -30,7 +30,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const response = await fetch("/api/auth/session");
       const data = response.ok ? await response.json() : null;
       setUser(data?.user ?? null);
-    } catch {
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to refresh session", error);
+      }
       setUser(null);
     } finally {
       setIsLoading(false);
