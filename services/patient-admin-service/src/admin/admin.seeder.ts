@@ -6,7 +6,6 @@ import { Admin } from './entities/admin.entity';
 
 const INITIAL_ADMIN_EMAIL = 'admin@example.com';
 const INITIAL_ADMIN_NAME = 'Admin';
-const INITIAL_ADMIN_PASSWORD = 'Pass@123';
 const BCRYPT_ROUNDS = 10;
 
 @Injectable()
@@ -19,27 +18,37 @@ export class AdminSeeder implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
-    const existing = await this.adminRepository.findOne({
-      where: { email: INITIAL_ADMIN_EMAIL },
-    });
+    const initialAdminPassword =
+      process.env.INITIAL_ADMIN_PASSWORD || 'Pass@123';
 
-    if (existing) {
+    const existing = await this.adminRepository
+      .createQueryBuilder('admin')
+      .addSelect('admin.passwordHash')
+      .where('admin.email = :email', { email: INITIAL_ADMIN_EMAIL })
+      .getOne();
+
+    if (existing?.passwordHash) {
       return;
     }
 
-    const passwordHash = await bcrypt.hash(INITIAL_ADMIN_PASSWORD, BCRYPT_ROUNDS);
+    const passwordHash = await bcrypt.hash(initialAdminPassword, BCRYPT_ROUNDS);
 
-    await this.adminRepository
-      .createQueryBuilder()
-      .insert()
-      .into(Admin)
-      .values({
-        name: INITIAL_ADMIN_NAME,
-        email: INITIAL_ADMIN_EMAIL,
-        passwordHash,
-      } as any)
-      .execute();
-
-    this.logger.log(`Initial admin created: ${INITIAL_ADMIN_EMAIL}`);
+    if (existing) {
+      existing.passwordHash = passwordHash;
+      await this.adminRepository.save(existing);
+      this.logger.log('Initial admin password has been set.');
+    } else {
+      await this.adminRepository
+        .createQueryBuilder()
+        .insert()
+        .into(Admin)
+        .values({
+          name: INITIAL_ADMIN_NAME,
+          email: INITIAL_ADMIN_EMAIL,
+          passwordHash,
+        } as any)
+        .execute();
+      this.logger.log('Initial admin account created.');
+    }
   }
 }
