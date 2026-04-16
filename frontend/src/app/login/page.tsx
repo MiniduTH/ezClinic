@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [role, setRole] = useState<"patient" | "doctor" | "admin">("patient");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,11 +22,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const initialRole = new URLSearchParams(window.location.search).get("role");
+    const initialRole = searchParams.get("role");
     if (initialRole === "doctor" || initialRole === "admin") {
       setRole(initialRole);
     }
-  }, []);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
