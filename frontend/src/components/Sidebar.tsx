@@ -432,7 +432,7 @@ export default function Sidebar() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {user.name || "User"}
+                  {user?.name || "User"}
                 </p>
                 {/* Role pill */}
                 <span
@@ -460,7 +460,7 @@ export default function Sidebar() {
                 justifyContent: "center",
                 marginBottom: "8px",
               }}
-              title={user.name || "User"}
+              title={user?.name || "User"}
             >
               <div
                 style={{
