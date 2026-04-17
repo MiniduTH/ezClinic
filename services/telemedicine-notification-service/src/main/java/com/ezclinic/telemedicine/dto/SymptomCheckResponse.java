@@ -11,7 +11,7 @@ import java.util.UUID;
 public class SymptomCheckResponse {
 
     private UUID id;
-    private UUID patientId;
+    private String patientId;
     private String symptoms;
     private String aiSuggestion;
     private Instant createdAt;

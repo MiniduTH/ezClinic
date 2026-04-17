@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -67,6 +68,32 @@ public class NotificationService {
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + id));
         return NotificationResponse.fromEntity(notification);
+    }
+
+    /**
+     * Returns the notification delivery status for a given appointment ID.
+     * Searches sent notifications whose content references this appointment.
+     */
+    public Map<String, Object> getNotificationStatusByAppointment(String appointmentId) {
+        var notification = notificationRepository
+                .findFirstByContentContainingOrderByCreatedAtDesc(appointmentId)
+                .orElse(null);
+
+        if (notification == null) {
+            return Map.of(
+                    "appointmentId", appointmentId,
+                    "emailSent", false,
+                    "emailSentAt", ""
+            );
+        }
+
+        boolean sent = notification.getStatus() == NotificationStatus.SENT;
+        return Map.of(
+                "appointmentId", appointmentId,
+                "emailSent", sent,
+                "emailSentAt", sent && notification.getSentAt() != null
+                        ? notification.getSentAt().toString() : ""
+        );
     }
 
     // ─── Event-Driven Notification Helpers ──────────────────────────

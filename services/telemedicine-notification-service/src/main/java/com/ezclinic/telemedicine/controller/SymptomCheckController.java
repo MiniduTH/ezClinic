@@ -1,17 +1,24 @@
 package com.ezclinic.telemedicine.controller;
 
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.ezclinic.telemedicine.dto.SymptomCheckRequest;
 import com.ezclinic.telemedicine.dto.SymptomCheckResponse;
 import com.ezclinic.telemedicine.service.SymptomCheckService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/symptom-checks")
@@ -29,7 +36,7 @@ public class SymptomCheckController {
 
     @GetMapping("/patient/{patientId}")
     @Operation(summary = "Get patient symptom checks", description = "Retrieve a history of a patient's symptom checks")
-    public ResponseEntity<List<SymptomCheckResponse>> getPatientHistory(@PathVariable UUID patientId) {
+    public ResponseEntity<List<SymptomCheckResponse>> getPatientHistory(@PathVariable String patientId) {
         return ResponseEntity.ok(symptomCheckService.getPatientHistory(patientId));
     }
 
