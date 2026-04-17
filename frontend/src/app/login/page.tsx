@@ -9,11 +9,14 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div
-          className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-blue-50"
+          className="min-h-screen flex items-center justify-center"
+          style={{ background: "var(--bg-surface)" }}
           role="status"
           aria-label="Loading login page"
         >
-          Loading login page...
+          <span style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>
+            Loading…
+          </span>
         </div>
       }
     >
@@ -33,7 +36,11 @@ function LoginPageContent() {
 
   useEffect(() => {
     const initialRole = searchParams.get("role");
-    if (initialRole === "patient" || initialRole === "doctor" || initialRole === "admin") {
+    if (
+      initialRole === "patient" ||
+      initialRole === "doctor" ||
+      initialRole === "admin"
+    ) {
       setRole(initialRole);
     }
   }, [searchParams]);
@@ -59,7 +66,6 @@ function LoginPageContent() {
 
       window.dispatchEvent(new Event("ezclinic:session-changed"));
 
-      // Redirect based on role
       if (role === "doctor") {
         router.push("/dashboard");
       } else if (role === "admin") {
@@ -75,100 +81,172 @@ function LoginPageContent() {
     }
   };
 
+  const roles: Array<{ value: "patient" | "doctor" | "admin"; label: string }> =
+    [
+      { value: "patient", label: "Patient" },
+      { value: "doctor", label: "Doctor" },
+      { value: "admin", label: "Admin" },
+    ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-blue-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
+    <div
+      className="min-h-screen flex items-center justify-center px-4 py-12"
+      style={{ background: "var(--bg-surface)" }}
+    >
+      <div
+        className="w-full max-w-md p-8"
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: "12px",
+        }}
+      >
+        {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-teal-600">ezClinic</h1>
-          <p className="text-gray-500 mt-2 text-sm">Sign in to your account</p>
+          <div className="inline-flex items-baseline gap-0.5 mb-3">
+            <span
+              className="text-3xl font-bold"
+              style={{
+                color: "var(--brand)",
+                fontFamily: "ui-monospace, monospace",
+              }}
+            >
+              ez
+            </span>
+            <span
+              className="text-3xl font-bold"
+              style={{
+                color: "var(--text-primary)",
+                fontFamily: "ui-monospace, monospace",
+              }}
+            >
+              Clinic
+            </span>
+          </div>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            Sign in to your account
+          </p>
         </div>
 
-        {/* Role selector */}
-        <div className="flex rounded-xl border border-gray-200 mb-6 overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setRole("patient")}
-            className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-              role === "patient"
-                ? "bg-teal-500 text-white"
-                : "bg-white text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            Patient
-          </button>
-          <button
-            type="button"
-            onClick={() => setRole("doctor")}
-            className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-              role === "doctor"
-                ? "bg-teal-500 text-white"
-                : "bg-white text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            Doctor
-          </button>
-          <button
-            type="button"
-            onClick={() => setRole("admin")}
-            className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-              role === "admin"
-                ? "bg-teal-500 text-white"
-                : "bg-white text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            Admin
-          </button>
+        {/* Role segmented control */}
+        <div
+          className="flex mb-6 p-1 gap-1"
+          style={{
+            background: "var(--bg-muted)",
+            borderRadius: "10px",
+          }}
+        >
+          {roles.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRole(value)}
+              className="flex-1 py-2 text-sm font-medium transition-colors"
+              style={{
+                borderRadius: "8px",
+                background:
+                  role === value ? "var(--brand)" : "transparent",
+                color:
+                  role === value ? "#ffffff" : "var(--text-secondary)",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address
-            </label>
+          {/* Email — floating label */}
+          <div className="fl-group">
             <input
               type="email"
+              id="login-email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-              placeholder="you@example.com"
+              placeholder=" "
             />
+            <label htmlFor="login-email">Email Address</label>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
+          {/* Password — floating label */}
+          <div className="fl-group">
             <input
               type="password"
+              id="login-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-              placeholder="••••••••"
+              placeholder=" "
             />
+            <label htmlFor="login-password">Password</label>
           </div>
 
+          {/* Error message */}
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2">
+            <div
+              className="text-sm px-4 py-3 rounded-lg"
+              style={{
+                background: "var(--danger-surface)",
+                border: "1px solid var(--danger)",
+                color: "var(--danger-text)",
+              }}
+            >
               {error}
-            </p>
+            </div>
           )}
 
+          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-xl transition-colors disabled:opacity-60"
+            className="w-full h-11 font-medium text-sm flex items-center justify-center gap-2 transition-colors"
+            style={{
+              background: loading ? "var(--brand-hover)" : "var(--brand)",
+              color: "#ffffff",
+              borderRadius: "8px",
+              border: "none",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.8 : 1,
+            }}
           >
-            {loading ? "Signing in…" : "Sign In"}
+            {loading ? (
+              <>
+                <svg
+                  className="animate-spin"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+                Signing in…
+              </>
+            ) : (
+              "Sign In"
+            )}
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
+        {/* Footer link */}
+        <p
+          className="text-center text-sm mt-6"
+          style={{ color: "var(--text-muted)" }}
+        >
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-teal-600 font-semibold hover:underline">
+          <Link
+            href="/register"
+            className="font-medium hover:underline"
+            style={{ color: "var(--brand-text)" }}
+          >
             Register here
           </Link>
         </p>

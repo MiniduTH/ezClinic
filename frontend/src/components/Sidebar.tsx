@@ -1,113 +1,590 @@
 "use client";
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useUser } from '@/lib/session-context';
-import { getUserRole } from '@/lib/roles';
 
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useUser } from "@/lib/session-context";
+import { getUserRole } from "@/lib/roles";
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+const SIDEBAR_COLLAPSED_KEY = "ezclinic-sidebar-collapsed";
+const SIDEBAR_W_EXPANDED = "240px";
+const SIDEBAR_W_COLLAPSED = "64px";
+
+// ---------------------------------------------------------------------------
+// Inline SVG icon components
+// ---------------------------------------------------------------------------
+function IconHome() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
+
+function IconCalendar() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+
+function IconUser() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function IconUsers() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function IconStethoscope() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6 6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
+      <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4" />
+      <circle cx="20" cy="10" r="2" />
+    </svg>
+  );
+}
+
+function IconFileText() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
+
+function IconPill() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10.5 20H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H20a2 2 0 0 1 2 2v3" />
+      <circle cx="18" cy="18" r="4" />
+      <path d="m15.5 15.5 5 5" />
+    </svg>
+  );
+}
+
+function IconClock() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+
+function IconVideo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="23 7 16 12 23 17 23 7" />
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+    </svg>
+  );
+}
+
+function IconSearch() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
+function IconActivity() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  );
+}
+
+function IconGrid() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+    </svg>
+  );
+}
+
+function IconBadgeCheck() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+// Collapse / expand chevrons
+function IconChevronsLeft() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="11 17 6 12 11 7" />
+      <polyline points="18 17 13 12 18 7" />
+    </svg>
+  );
+}
+
+function IconChevronsRight() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="13 17 18 12 13 7" />
+      <polyline points="6 17 11 12 6 7" />
+    </svg>
+  );
+}
+
+// Hamburger / close
+function IconMenu() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  );
+}
+
+function IconClose() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Nav item type
+// ---------------------------------------------------------------------------
+interface NavItem {
+  name: string;
+  path: string;
+  icon: React.ReactNode;
+}
+
+// ---------------------------------------------------------------------------
+// Role-based nav item definitions
+// ---------------------------------------------------------------------------
+function getNavItems(role: string): NavItem[] {
+  if (role === "admin") {
+    return [
+      { name: "Dashboard", path: "/admin", icon: <IconGrid /> },
+      { name: "Patients", path: "/admin/patients", icon: <IconUsers /> },
+      { name: "Doctor Verification", path: "/admin/doctors", icon: <IconBadgeCheck /> },
+    ];
+  }
+  if (role === "doctor") {
+    return [
+      { name: "Dashboard", path: "/dashboard", icon: <IconHome /> },
+      { name: "Appointments", path: "/appointments", icon: <IconCalendar /> },
+      { name: "Prescriptions", path: "/prescriptions", icon: <IconPill /> },
+      { name: "Availability", path: "/availability", icon: <IconClock /> },
+      { name: "Telemedicine", path: "/telemedicine", icon: <IconVideo /> },
+    ];
+  }
+  // patient (default)
+  return [
+    { name: "Profile", path: "/profile", icon: <IconUser /> },
+    { name: "Find Doctors", path: "/doctors", icon: <IconSearch /> },
+    { name: "Appointments", path: "/appointments", icon: <IconCalendar /> },
+    { name: "Medical Reports", path: "/reports", icon: <IconFileText /> },
+    { name: "Prescriptions", path: "/prescriptions", icon: <IconPill /> },
+    { name: "Symptom Checker", path: "/symptom-checker", icon: <IconActivity /> },
+  ];
+}
+
+// Role pill colours
+const ROLE_BADGE: Record<string, { bg: string; text: string }> = {
+  admin: { bg: "var(--danger-surface)", text: "var(--danger-text)" },
+  doctor: { bg: "var(--brand-surface)", text: "var(--brand-text)" },
+  patient: { bg: "var(--accent-surface)", text: "var(--accent)" },
+};
+
+// ---------------------------------------------------------------------------
+// Main Sidebar component
+// ---------------------------------------------------------------------------
 export default function Sidebar() {
   const { user, isLoading } = useUser();
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Read persisted collapsed state from localStorage and apply CSS var
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+      const isCollapsed = stored === "true";
+      setCollapsed(isCollapsed);
+      document.documentElement.style.setProperty(
+        "--sidebar-w",
+        isCollapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED
+      );
+    } catch {
+      // localStorage unavailable (SSR safety)
+    }
+  }, []);
+
+  function toggleCollapsed() {
+    const next = !collapsed;
+    setCollapsed(next);
+    document.documentElement.style.setProperty(
+      "--sidebar-w",
+      next ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED
+    );
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+    } catch {
+      // ignore
+    }
+  }
 
   if (isLoading || !user) return null;
 
   const role = getUserRole(user);
+  const navItems = getNavItems(role);
+  const badge = ROLE_BADGE[role] ?? ROLE_BADGE.patient;
 
-  let menuItems: { name: string; path: string; icon: string }[] = [];
+  const initials = (user.name || user.email || "U")
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
-  if (role === 'admin') {
-    menuItems = [
-      { name: 'Dashboard', path: '/admin', icon: '📊' },
-      { name: 'Patients', path: '/admin/patients', icon: '👤' },
-      { name: 'Doctor Verification', path: '/admin/doctors', icon: '🩺' },
-    ];
-  } else if (role === 'doctor') {
-    menuItems = [
-      { name: 'Dashboard', path: '/dashboard', icon: '📊' },
-      { name: 'Appointments', path: '/appointments', icon: '📅' },
-      { name: 'Prescriptions', path: '/prescriptions', icon: '💊' },
-      { name: 'Availability', path: '/availability', icon: '🗓️' },
-      { name: 'Telemedicine', path: '/telemedicine', icon: '📹' }
-    ];
-  } else {
-    // Patient
-    menuItems = [
-      { name: 'My Profile', path: '/profile', icon: '👤' },
-      { name: 'Find Doctors', path: '/doctors', icon: '🔍' },
-      { name: 'Appointments', path: '/appointments', icon: '📅' },
-      { name: 'Medical Reports', path: '/reports', icon: '📄' },
-      { name: 'Prescriptions', path: '/prescriptions', icon: '💊' },
-      { name: 'Symptom Checker', path: '/symptom-checker', icon: '🩺' },
-    ];
-  }
+  // ------------------------------------------------------------------
+  // Sidebar inner content (shared between desktop and mobile)
+  // ------------------------------------------------------------------
+  function SidebarContent({ isMobile = false }: { isMobile?: boolean }) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+        }}
+      >
+        {/* Nav items */}
+        <nav
+          aria-label="Main navigation"
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            overflowX: "hidden",
+            padding: "8px 8px 0",
+          }}
+        >
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "2px" }}>
+            {navItems.map((item) => {
+              const isActive =
+                pathname === item.path || pathname.startsWith(item.path + "/");
 
-  const navContent = (
-    <ul className="space-y-1 font-medium">
-      {menuItems.map((item) => {
-        const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
-        return (
-          <li key={item.path}>
-            <Link
-              href={item.path}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 rounded-lg p-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                isActive
-                  ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 font-semibold'
-                  : 'text-gray-900 dark:text-white hover:bg-teal-50 dark:hover:bg-gray-700'
-              }`}
+              return (
+                <li key={item.path}>
+                  <Link
+                    href={item.path}
+                    title={collapsed && !isMobile ? item.name : undefined}
+                    onClick={() => {
+                      if (isMobile) setMobileOpen(false);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: collapsed && !isMobile ? "0" : "12px",
+                      padding: "10px",
+                      borderRadius: "8px",
+                      textDecoration: "none",
+                      fontWeight: isActive ? 600 : 400,
+                      fontSize: "0.875rem",
+                      color: isActive ? "var(--brand-text)" : "var(--text-secondary)",
+                      backgroundColor: isActive ? "var(--brand-surface)" : "transparent",
+                      borderLeft: isActive ? "3px solid var(--brand)" : "3px solid transparent",
+                      transition: "background-color 120ms, color 120ms",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      justifyContent: collapsed && !isMobile ? "center" : "flex-start",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "var(--bg-muted)";
+                        (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-primary)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "transparent";
+                        (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-secondary)";
+                      }
+                    }}
+                  >
+                    <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+                      {item.icon}
+                    </span>
+                    {(!collapsed || isMobile) && (
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {item.name}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/* Bottom user card + collapse toggle */}
+        <div
+          style={{
+            flexShrink: 0,
+            borderTop: "1px solid var(--border)",
+            padding: "12px 8px",
+          }}
+        >
+          {/* User card — hide text when collapsed on desktop */}
+          {(!collapsed || isMobile) ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "8px 6px",
+                marginBottom: "8px",
+                borderRadius: "8px",
+                backgroundColor: "var(--bg-muted)",
+              }}
             >
-              <span className="text-xl" aria-hidden="true">{item.icon}</span>
-              <span className="text-sm">{item.name}</span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  );
+              {/* Avatar circle */}
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "50%",
+                  backgroundColor: "var(--brand)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  fontFamily: "ui-monospace, 'Cascadia Code', monospace",
+                  fontWeight: 700,
+                  fontSize: "0.8125rem",
+                  color: "#ffffff",
+                }}
+              >
+                {initials}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "0.8125rem",
+                    fontWeight: 600,
+                    color: "var(--text-primary)",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {user.name || "User"}
+                </p>
+                {/* Role pill */}
+                <span
+                  style={{
+                    display: "inline-block",
+                    marginTop: "3px",
+                    padding: "1px 7px",
+                    borderRadius: "999px",
+                    fontSize: "0.6875rem",
+                    fontWeight: 600,
+                    backgroundColor: badge.bg,
+                    color: badge.text,
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {role}
+                </span>
+              </div>
+            </div>
+          ) : (
+            /* Collapsed: avatar only */
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "8px",
+              }}
+              title={user.name || "User"}
+            >
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "50%",
+                  backgroundColor: "var(--brand)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontFamily: "ui-monospace, 'Cascadia Code', monospace",
+                  fontWeight: 700,
+                  fontSize: "0.8125rem",
+                  color: "#ffffff",
+                }}
+              >
+                {initials}
+              </div>
+            </div>
+          )}
+
+          {/* Collapse toggle button — desktop only */}
+          {!isMobile && (
+            <button
+              onClick={toggleCollapsed}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                padding: "8px",
+                borderRadius: "8px",
+                border: "none",
+                background: "transparent",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontSize: "0.8125rem",
+                fontWeight: 500,
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--bg-muted)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)";
+              }}
+            >
+              {collapsed ? <IconChevronsRight /> : <IconChevronsLeft />}
+              {!collapsed && <span>Collapse</span>}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
-      {/* Mobile hamburger — visible below 768px */}
+      {/* ── Mobile hamburger FAB — visible only on small screens ── */}
       <button
         onClick={() => setMobileOpen((v) => !v)}
-        aria-label="Toggle navigation menu"
+        aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
         aria-expanded={mobileOpen}
-        className="fixed bottom-4 left-4 z-50 sm:hidden flex h-12 w-12 items-center justify-center rounded-full bg-teal-600 text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+        style={{
+          position: "fixed",
+          bottom: "20px",
+          right: "20px",
+          zIndex: 60,
+          width: "48px",
+          height: "48px",
+          borderRadius: "50%",
+          backgroundColor: "var(--brand)",
+          border: "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#ffffff",
+          cursor: "pointer",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+        }}
+        className="sm:hidden"
       >
-        {mobileOpen ? (
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        ) : (
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        )}
+        {mobileOpen ? <IconClose /> : <IconMenu />}
       </button>
 
-      {/* Mobile overlay */}
+      {/* ── Mobile backdrop ── */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 sm:hidden"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 49,
+            backgroundColor: "rgba(0,0,0,0.45)",
+          }}
+          className="sm:hidden"
         />
       )}
 
-      {/* Sidebar */}
+      {/* ── Mobile sidebar drawer ── */}
       <aside
-        id="sidebar"
-        aria-label="Main navigation"
-        className={`fixed top-0 left-0 z-40 w-64 h-screen pt-20 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-transform ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'
-        }`}
+        aria-label="Mobile navigation"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          zIndex: 50,
+          width: "260px",
+          backgroundColor: "var(--bg-elevated)",
+          borderRight: "1px solid var(--border)",
+          transform: mobileOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 220ms ease",
+          paddingTop: "64px",
+        }}
+        className="sm:hidden"
       >
-        <div className="h-full px-3 pb-4 overflow-y-auto">
-          {navContent}
-        </div>
+        <SidebarContent isMobile={true} />
+      </aside>
+
+      {/* ── Desktop sidebar ── */}
+      <aside
+        aria-label="Main navigation"
+        style={{
+          position: "fixed",
+          top: "64px",
+          left: 0,
+          bottom: 0,
+          zIndex: 40,
+          width: "var(--sidebar-w, 240px)",
+          backgroundColor: "var(--bg-elevated)",
+          borderRight: "1px solid var(--border)",
+          transition: "width 200ms ease",
+          overflow: "hidden",
+        }}
+        className="hidden sm:block"
+      >
+        <SidebarContent isMobile={false} />
       </aside>
     </>
   );
 }
-

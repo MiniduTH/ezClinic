@@ -6,6 +6,9 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join, extname } from 'node:path';
+import { v4 as uuidv4 } from 'uuid';
 import { Doctor, DoctorDocument } from './schemas/doctor.schema';
 import {
   Availability,
@@ -136,6 +139,43 @@ export class DoctorService {
   async findByAuth0Id(auth0Id: string) {
     // Since _id IS the auth0 sub, this is just a findById
     return this.findOne(auth0Id);
+  }
+
+  async findPending() {
+    const doctors = await this.doctorModel
+      .find({ isVerified: false })
+      .sort({ createdAt: 1 })
+      .lean();
+    return doctors.map((d) => ({ ...d, id: (d as any)._id as string }));
+  }
+
+  async uploadCredentials(doctorId: string, files: Express.Multer.File[]) {
+    const doctor = await this.doctorModel.findById(doctorId);
+    if (!doctor) throw new NotFoundException(`Doctor with ID ${doctorId} not found`);
+
+    const uploadDir = join(process.cwd(), 'uploads', 'credentials');
+    mkdirSync(uploadDir, { recursive: true });
+
+    const savedPaths: string[] = [];
+    for (const file of files) {
+      const allowed = new Set(['application/pdf', 'image/jpeg', 'image/png']);
+      if (!allowed.has(file.mimetype)) {
+        throw new BadRequestException('Only PDF, JPEG, and PNG files are accepted');
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        throw new BadRequestException('Each file must be under 5 MB');
+      }
+      const filename = `${uuidv4()}${extname(file.originalname)}`;
+      writeFileSync(join(uploadDir, filename), file.buffer);
+      savedPaths.push(`/uploads/credentials/${filename}`);
+    }
+
+    doctor.credentialDocuments = [...(doctor.credentialDocuments ?? []), ...savedPaths];
+    await doctor.save();
+    return this.wrap(
+      { credentialDocuments: doctor.credentialDocuments },
+      `${files.length} credential document(s) uploaded successfully.`,
+    );
   }
 
   async verify(id: string, approve = true) {

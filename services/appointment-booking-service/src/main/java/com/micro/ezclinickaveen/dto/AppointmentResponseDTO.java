@@ -1,17 +1,17 @@
 package com.micro.ezclinickaveen.dto;
 
-import lombok.Builder;
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.UUID;
+
+import lombok.Builder;
+import lombok.Data;
 
 @Data
 @Builder
 public class AppointmentResponseDTO {
     private UUID id;
-    private UUID patientId;
+    private String patientId;
     private String doctorId;
     private Date appointmentDate;
     private String status;

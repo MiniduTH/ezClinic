@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Activity, AlertTriangle, CheckCircle, Info } from "lucide-react";
 
 type Severity = "LOW" | "MEDIUM" | "HIGH";
 
@@ -22,11 +21,22 @@ interface SymptomResult {
     disclaimer: string;
 }
 
+type Message = {
+    role: "patient" | "ai";
+    content: string;
+    result?: SymptomResult;
+};
+
 export default function SymptomCheckerPage() {
     const [symptoms, setSymptoms] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [result, setResult] = useState<SymptomResult | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const bottomRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages, loading]);
 
     const normalizeResult = (input: unknown): SymptomResult => {
         const parsed = (input && typeof input === "object" ? input : {}) as RawSymptomResult;
@@ -85,19 +95,19 @@ export default function SymptomCheckerPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!symptoms.trim()) return;
+        if (!symptoms.trim() || loading) return;
 
+        const userText = symptoms.trim();
+        setMessages((prev) => [...prev, { role: "patient", content: userText }]);
+        setSymptoms("");
         setLoading(true);
         setError(null);
-        setResult(null);
 
         try {
             const res = await fetch("/api/symptom-check", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ symptoms }),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ symptoms: userText }),
             });
 
             const data = await res.json();
@@ -106,8 +116,6 @@ export default function SymptomCheckerPage() {
                 throw new Error(data.error || "Failed to check symptoms");
             }
 
-            // Backend returns { id, patientId, symptoms, aiSuggestion: "<json string>", createdAt }
-            // Parse aiSuggestion and normalize older/newer AI response shapes.
             let parsedResult: SymptomResult;
             try {
                 const resolvedPayload = parseSuggestionPayload(data.aiSuggestion ?? data);
@@ -115,157 +123,345 @@ export default function SymptomCheckerPage() {
             } catch {
                 throw new Error("Could not parse AI response. Please try again.");
             }
-            setResult(parsedResult);
+
+            setMessages((prev) => [
+                ...prev,
+                { role: "ai", content: parsedResult.recommendation, result: parsedResult },
+            ]);
         } catch (err) {
             setError(err instanceof Error ? err.message : "An unexpected error occurred. Please try again.");
+            // Remove the typing indicator by not adding an AI message
         } finally {
             setLoading(false);
         }
     };
 
     const getSeverityBadge = (severity: Severity) => {
-        switch (severity) {
-            case "LOW":
-                return (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-200">
-                        <CheckCircle className="w-4 h-4" /> LOW
-                    </span>
-                );
-            case "MEDIUM":
-                return (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-sm font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                        <AlertTriangle className="w-4 h-4" /> MEDIUM
-                    </span>
-                );
-            case "HIGH":
-                return (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200">
-                        <Activity className="w-4 h-4" /> HIGH
-                    </span>
-                );
-            default:
-                return null;
+        const map: Record<Severity, { bg: string; color: string; border: string; label: string; icon: string }> = {
+            LOW: {
+                bg: "var(--success-surface)",
+                color: "var(--success-text)",
+                border: "var(--success-border)",
+                label: "LOW RISK",
+                icon: "✓",
+            },
+            MEDIUM: {
+                bg: "var(--warning-surface)",
+                color: "var(--warning-text)",
+                border: "var(--warning-border)",
+                label: "MEDIUM RISK",
+                icon: "⚠",
+            },
+            HIGH: {
+                bg: "var(--danger-surface)",
+                color: "var(--danger-text)",
+                border: "var(--danger-border)",
+                label: "HIGH RISK",
+                icon: "!",
+            },
+        };
+        const s = map[severity];
+        return (
+            <span
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                style={{
+                    background: s.bg,
+                    color: s.color,
+                    border: `1px solid ${s.border}`,
+                }}
+            >
+                {s.icon} {s.label}
+            </span>
+        );
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit(e as unknown as React.FormEvent);
         }
     };
 
     return (
-        <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-            <div className="mb-8 text-center">
-                <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">AI Symptom Checker</h1>
-                <p className="mt-4 text-lg text-gray-500">
-                    Describe your symptoms below, and our AI will provide initial guidance. Please be as detailed as possible.
-                </p>
-            </div>
+        <div
+            className="min-h-screen"
+            style={{ background: "var(--bg-surface)" }}
+        >
+            <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-4">
+                {/* Header */}
+                <div className="text-center mb-2">
+                    <h1
+                        className="text-2xl font-medium"
+                        style={{ color: "var(--text-primary)" }}
+                    >
+                        AI Symptom Checker
+                    </h1>
+                    <p
+                        className="mt-1 text-sm"
+                        style={{ color: "var(--text-muted)" }}
+                    >
+                        Describe your symptoms and our AI will provide initial guidance
+                    </p>
+                </div>
 
-            <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-100">
-                <div className="px-4 py-5 sm:p-6">
-                    <form onSubmit={handleSubmit}>
-                        <div>
-                            <label htmlFor="symptoms" className="block text-sm font-medium text-gray-700">
-                                What are you experiencing?
-                            </label>
-                            <div className="mt-2">
-                                <textarea
-                                    id="symptoms"
-                                    name="symptoms"
-                                    rows={4}
-                                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-3 border"
-                                    placeholder="e.g., I have had a headache for two days and a mild fever..."
-                                    value={symptoms}
-                                    onChange={(e) => setSymptoms(e.target.value)}
-                                    disabled={loading}
+                {/* Chat container */}
+                <div
+                    className="rounded-xl border flex flex-col gap-3 p-4 overflow-y-auto"
+                    style={{
+                        background: "var(--bg-elevated)",
+                        borderColor: "var(--border)",
+                        minHeight: "400px",
+                        maxHeight: "600px",
+                    }}
+                >
+                    {messages.length === 0 && !loading && (
+                        <div
+                            className="flex-1 flex items-center justify-center text-sm text-center"
+                            style={{ color: "var(--text-muted)" }}
+                        >
+                            <div>
+                                <div
+                                    className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+                                    style={{ background: "var(--bg-muted)" }}
+                                >
+                                    <svg
+                                        width="22"
+                                        height="22"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.5"
+                                        style={{ color: "var(--text-muted)" }}
+                                    >
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                    </svg>
+                                </div>
+                                No messages yet — describe your symptoms below
+                            </div>
+                        </div>
+                    )}
+
+                    {messages.map((msg, idx) => {
+                        if (msg.role === "patient") {
+                            return (
+                                <div key={idx} className="flex justify-end">
+                                    <div
+                                        className="max-w-[75%] px-4 py-3 text-sm"
+                                        style={{
+                                            background: "var(--brand)",
+                                            color: "#ffffff",
+                                            borderRadius: "18px 18px 4px 18px",
+                                        }}
+                                    >
+                                        {msg.content}
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        // AI message
+                        const result = msg.result;
+                        return (
+                            <div key={idx} className="flex items-start gap-3">
+                                {/* Avatar */}
+                                <div
+                                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
+                                    style={{
+                                        background: "var(--brand-surface)",
+                                        color: "var(--brand-text)",
+                                        fontFamily: "ui-monospace, monospace",
+                                    }}
+                                >
+                                    ez
+                                </div>
+                                {/* Bubble */}
+                                <div
+                                    className="max-w-[80%] px-4 py-3 text-sm space-y-2"
+                                    style={{
+                                        background: "var(--bg-muted)",
+                                        color: "var(--text-primary)",
+                                        borderRadius: "4px 18px 18px 18px",
+                                    }}
+                                >
+                                    {result?.severity && (
+                                        <div>{getSeverityBadge(result.severity)}</div>
+                                    )}
+                                    <p style={{ lineHeight: "1.6" }}>{msg.content}</p>
+
+                                    {result?.possibleConditions && result.possibleConditions.length > 0 && (
+                                        <div>
+                                            <p
+                                                className="text-xs font-semibold uppercase tracking-wider mb-1.5"
+                                                style={{ color: "var(--text-muted)" }}
+                                            >
+                                                Possible Conditions
+                                            </p>
+                                            <ul className="space-y-1">
+                                                {result.possibleConditions.map((c, i) => (
+                                                    <li
+                                                        key={i}
+                                                        className="flex items-center gap-2 text-xs"
+                                                        style={{ color: "var(--text-secondary)" }}
+                                                    >
+                                                        <span
+                                                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                                            style={{ background: "var(--brand)" }}
+                                                        />
+                                                        {c}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {result?.disclaimer && (
+                                        <p
+                                            className="text-xs pt-1 border-t"
+                                            style={{
+                                                color: "var(--text-muted)",
+                                                borderColor: "var(--border)",
+                                            }}
+                                        >
+                                            {result.disclaimer}
+                                        </p>
+                                    )}
+
+                                    {result && (
+                                        <div className="pt-1">
+                                            {result.severity === "HIGH" ? (
+                                                <span
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                                                    style={{
+                                                        background: "var(--danger-surface)",
+                                                        color: "var(--danger-text)",
+                                                    }}
+                                                >
+                                                    ⚠ Seek Emergency Care Immediately
+                                                </span>
+                                            ) : (
+                                                <Link
+                                                    href={`/appointments`}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                                                    style={{
+                                                        background: "var(--brand-surface)",
+                                                        color: "var(--brand-text)",
+                                                    }}
+                                                >
+                                                    Book an Appointment →
+                                                </Link>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* Typing indicator */}
+                    {loading && (
+                        <div className="flex items-start gap-3">
+                            <div
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
+                                style={{
+                                    background: "var(--brand-surface)",
+                                    color: "var(--brand-text)",
+                                    fontFamily: "ui-monospace, monospace",
+                                }}
+                            >
+                                ez
+                            </div>
+                            <div
+                                className="px-4 py-3 flex items-center gap-1.5"
+                                style={{
+                                    background: "var(--bg-muted)",
+                                    borderRadius: "4px 18px 18px 18px",
+                                    minWidth: 60,
+                                }}
+                            >
+                                <span
+                                    className="typing-dot w-2 h-2 rounded-full inline-block"
+                                    style={{ background: "var(--text-muted)" }}
+                                />
+                                <span
+                                    className="typing-dot w-2 h-2 rounded-full inline-block"
+                                    style={{ background: "var(--text-muted)" }}
+                                />
+                                <span
+                                    className="typing-dot w-2 h-2 rounded-full inline-block"
+                                    style={{ background: "var(--text-muted)" }}
                                 />
                             </div>
                         </div>
+                    )}
 
-                        {error && (
-                            <div className="mt-4 p-3 rounded-md bg-red-50 border border-red-200 flex items-start gap-2">
-                                <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                                <p className="text-sm border-red-400 text-red-700">{error}</p>
-                            </div>
-                        )}
-
-                        <div className="mt-5 text-right">
-                            <button
-                                type="submit"
-                                disabled={loading || !symptoms.trim()}
-                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors"
-                            >
-                                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                {loading ? "Analyzing..." : "Check Symptoms"}
-                            </button>
-                        </div>
-                    </form>
+                    <div ref={bottomRef} />
                 </div>
+
+                {/* Error */}
+                {error && (
+                    <div
+                        className="px-4 py-3 rounded-xl text-sm border"
+                        style={{
+                            background: "var(--danger-surface)",
+                            borderColor: "var(--danger-border)",
+                            color: "var(--danger-text)",
+                        }}
+                    >
+                        {error}
+                    </div>
+                )}
+
+                {/* Input area */}
+                <form onSubmit={handleSubmit} className="flex items-end gap-3">
+                    <textarea
+                        value={symptoms}
+                        onChange={(e) => setSymptoms(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        rows={3}
+                        placeholder="Describe your symptoms… (Enter to send, Shift+Enter for new line)"
+                        disabled={loading}
+                        className="flex-1 resize-none rounded-xl px-4 py-3 text-sm outline-none"
+                        style={{
+                            border: "1px solid var(--border)",
+                            background: "var(--bg-elevated)",
+                            color: "var(--text-primary)",
+                            lineHeight: "1.5",
+                        }}
+                    />
+                    <button
+                        type="submit"
+                        disabled={loading || !symptoms.trim()}
+                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
+                        style={{
+                            background: "var(--brand)",
+                            color: "#ffffff",
+                        }}
+                        aria-label="Send"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <line x1="22" y1="2" x2="11" y2="13" />
+                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
+                    </button>
+                </form>
+
+                {/* Disclaimer */}
+                <p
+                    className="text-xs text-center"
+                    style={{ color: "var(--text-muted)" }}
+                >
+                    AI-generated guidance only — not a substitute for professional medical advice.
+                </p>
             </div>
-
-            {result && (
-                <div className="mt-8 bg-white shadow rounded-lg overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                        <h3 className="text-lg leading-6 font-medium text-gray-900">Analysis Result</h3>
-                        {result.severity ? getSeverityBadge(result.severity) : null}
-                    </div>
-
-                    <div className="px-4 py-5 sm:p-6 space-y-6">
-                        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-md">
-                            <div className="flex">
-                                <div className="shrink-0">
-                                    <Info className="h-5 w-5 text-blue-400" aria-hidden="true" />
-                                </div>
-                                <div className="ml-3">
-                                    <h3 className="text-sm font-medium text-blue-800">Recommendation</h3>
-                                    <div className="mt-2 text-sm text-blue-700">
-                                        <p>{result.recommendation}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h4 className="text-sm font-medium text-gray-900 mb-3">Possible Conditions</h4>
-                            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                {result.possibleConditions?.map((condition, index) => (
-                                    <li
-                                        key={index}
-                                        className="col-span-1 bg-gray-50 rounded-md p-3 border border-gray-100 shadow-sm flex items-center"
-                                    >
-                                        <div className="w-2 h-2 rounded-full bg-blue-500 mr-3"></div>
-                                        <span className="text-sm text-gray-700">{condition}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                            {(!result.possibleConditions || result.possibleConditions.length === 0) && (
-                                <p className="text-sm text-gray-500 italic">No specific conditions identified.</p>
-                            )}
-                        </div>
-
-                        <div className="pt-4 mt-6 border-t border-gray-200">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <p className="text-xs text-gray-500 flex items-start gap-1 max-w-lg">
-                                    <Activity className="w-4 h-4 shrink-0 mt-0.5" />
-                                    <span>
-                                        {result.disclaimer ||
-                                            "This is an AI-generated assessment and does not constitute medical advice. Please consult a healthcare professional for an accurate diagnosis."}
-                                    </span>
-                                </p>
-
-                                {result.severity === "HIGH" ? (
-                                    <div className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 cursor-not-allowed">
-                                        Seek Emergency Care
-                                    </div>
-                                ) : (
-                                    <Link
-                                        href={`/appointments/new?symptoms=${encodeURIComponent(symptoms)}`}
-                                        className="inline-flex shrink-0 items-center justify-center px-5 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-                                    >
-                                        Book Appointment
-                                    </Link>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

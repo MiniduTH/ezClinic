@@ -23,6 +23,8 @@ interface Appointment {
     type: string;
     status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
     reason?: string;
+    paymentStatus?: string;
+    amountPaid?: number;
 }
 
 interface Doctor {
@@ -39,17 +41,46 @@ interface Doctor {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function statusBadge(status: string) {
-    const map: Record<string, string> = {
-        PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
-        CONFIRMED: "bg-green-100 text-green-800 border-green-200",
-        CANCELLED: "bg-red-100 text-red-800 border-red-200",
-        COMPLETED: "bg-blue-100 text-blue-800 border-blue-200",
+    const styleMap: Record<string, React.CSSProperties> = {
+        PENDING: {
+            backgroundColor: "var(--accent-surface)",
+            color: "var(--warning-text)",
+            borderColor: "var(--accent)",
+            border: "1px solid",
+        },
+        CONFIRMED: {
+            backgroundColor: "var(--brand-surface)",
+            color: "var(--brand-text)",
+            borderColor: "var(--brand-border)",
+            border: "1px solid",
+        },
+        COMPLETED: {
+            backgroundColor: "var(--bg-muted)",
+            color: "var(--text-secondary)",
+        },
+        CANCELLED: {
+            backgroundColor: "var(--danger-surface)",
+            color: "var(--danger-text)",
+            borderColor: "var(--danger-border)",
+            border: "1px solid",
+        },
+        RESCHEDULED: {
+            backgroundColor: "#f5f3ff",
+            color: "#7c3aed",
+            borderColor: "#ddd6fe",
+            border: "1px solid",
+        },
     };
+
+    const style: React.CSSProperties = styleMap[status] ?? {
+        backgroundColor: "var(--bg-muted)",
+        color: "var(--text-secondary)",
+    };
+
     return (
         <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                map[status] ?? "bg-gray-100 text-gray-700 border-gray-200"
-            }`}
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+            style={style}
         >
             {status}
         </span>
@@ -123,93 +154,261 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
     const filtered = filter === "ALL" ? appointments : appointments.filter((a) => a.status === filter);
 
     return (
-        <div className="max-w-5xl mx-auto py-8 space-y-6">
-            <div className="flex items-center justify-between">
+        <div
+            className="max-w-[1200px] mx-auto py-8 px-4 space-y-6"
+            style={{ backgroundColor: "var(--bg-surface)" }}
+        >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">My Appointments</h1>
-                    <p className="mt-1 text-sm text-gray-500">Manage your upcoming patient appointments</p>
+                    <h1 className="text-2xl font-medium" style={{ color: "var(--text-primary)" }}>
+                        My Appointments
+                    </h1>
+                    <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+                        Manage your upcoming patient appointments
+                    </p>
                 </div>
-                <Link href="/dashboard" className="text-sm text-teal-600 hover:text-teal-700 font-medium">
+                <Link
+                    href="/dashboard"
+                    className="text-sm font-medium shrink-0 transition-colors"
+                    style={{ color: "var(--brand)" }}
+                >
                     ← Back to Dashboard
                 </Link>
             </div>
 
-            {/* Filter Tabs */}
+            {/* Filter tabs */}
             <div className="flex gap-2 flex-wrap">
                 {["ALL", "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"].map((s) => (
                     <button
                         key={s}
                         onClick={() => setFilter(s)}
-                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                            filter === s ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        }`}
+                        className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+                        style={
+                            filter === s
+                                ? { backgroundColor: "var(--brand)", color: "#ffffff" }
+                                : { backgroundColor: "var(--bg-muted)", color: "var(--text-secondary)" }
+                        }
                     >
                         {s}
                     </button>
                 ))}
             </div>
 
+            {/* Content */}
             {loading ? (
                 <div className="flex justify-center items-center h-48">
-                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-teal-600" />
+                    <div
+                        className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2"
+                        style={{ borderColor: "var(--brand)" }}
+                    />
                 </div>
             ) : error ? (
-                <div className="p-6 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>
+                <div
+                    className="p-5 rounded-xl text-sm border"
+                    style={{
+                        backgroundColor: "var(--danger-surface)",
+                        borderColor: "var(--danger-border)",
+                        color: "var(--danger-text)",
+                    }}
+                >
+                    {error}
+                </div>
             ) : filtered.length === 0 ? (
-                <div className="p-12 text-center text-gray-500 bg-white rounded-2xl border border-gray-100">No appointments found.</div>
+                <div
+                    className="p-12 text-center rounded-2xl border"
+                    style={{
+                        backgroundColor: "var(--bg-elevated)",
+                        borderColor: "var(--border)",
+                        color: "var(--text-muted)",
+                    }}
+                >
+                    <svg
+                        className="mx-auto mb-4 h-12 w-12 opacity-40"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={1.5}
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5"
+                        />
+                    </svg>
+                    <p className="text-sm font-medium">No appointments found.</p>
+                </div>
             ) : (
                 <div className="space-y-3">
-                    {filtered.map((apt) => (
-                        <div
-                            key={apt.id}
-                            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center gap-4"
-                        >
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-semibold text-gray-900 truncate">{apt.patientName}</span>
-                                    {statusBadge(apt.status)}
+                    {filtered.map((apt) => {
+                        const initials = (apt.patientName || "?")
+                            .split(" ")
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase();
+
+                        return (
+                            <div
+                                key={apt.id}
+                                className="rounded-xl border p-5 flex flex-col sm:flex-row sm:items-center gap-4"
+                                style={{
+                                    backgroundColor: "var(--bg-elevated)",
+                                    borderColor: "var(--border)",
+                                }}
+                            >
+                                {/* Left: avatar + info */}
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                    {/* Avatar */}
+                                    <div
+                                        className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
+                                        style={{
+                                            backgroundColor: "var(--brand-surface)",
+                                            color: "var(--brand-text)",
+                                        }}
+                                    >
+                                        {initials}
+                                    </div>
+
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                            <span
+                                                className="font-semibold truncate"
+                                                style={{ color: "var(--text-primary)" }}
+                                            >
+                                                {apt.patientName}
+                                            </span>
+                                            {statusBadge(apt.status)}
+                                        </div>
+                                        <div
+                                            className="text-sm flex flex-wrap gap-x-3 gap-y-0.5"
+                                            style={{ color: "var(--text-muted)" }}
+                                        >
+                                            <span>📅 {apt.date}</span>
+                                            <span>🕐 {apt.time}</span>
+                                            <span>📍 {apt.type}</span>
+                                        </div>
+                                        {apt.reason && (
+                                            <p
+                                                className="mt-1 text-sm truncate"
+                                                style={{ color: "var(--text-secondary)" }}
+                                            >
+                                                Reason: {apt.reason}
+                                            </p>
+                                        )}
+                                        {apt.type.toLowerCase() === "telemedicine" && (
+                                            <div className="mt-4">
+                                                <NotificationBanner appointmentId={apt.id} />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="text-sm text-gray-500 space-x-3">
-                                    <span>📅 {apt.date}</span>
-                                    <span>🕐 {apt.time}</span>
-                                    <span>📍 {apt.type}</span>
-                                </div>
-                                {apt.reason && <p className="mt-1 text-sm text-gray-600 truncate">Reason: {apt.reason}</p>}
-                                {apt.type.toLowerCase() === "telemedicine" && (
-                                    <div className="mt-4">
-                                        <NotificationBanner appointmentId={apt.id} />
+
+                                {/* Right: actions */}
+                                {apt.status === "PENDING" && (
+                                    <div className="flex gap-2 shrink-0">
+                                        <button
+                                            onClick={() => handleAction(apt.id, "confirm")}
+                                            className="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors"
+                                            style={{
+                                                backgroundColor: "var(--brand)",
+                                                color: "#ffffff",
+                                            }}
+                                        >
+                                            Confirm
+                                        </button>
+                                        <button
+                                            onClick={() => handleAction(apt.id, "cancel")}
+                                            className="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors"
+                                            style={{
+                                                backgroundColor: "var(--danger-surface)",
+                                                color: "var(--danger-text)",
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
                                     </div>
                                 )}
+                                {apt.status === "CONFIRMED" && (
+                                    <Link
+                                        href={`/telemedicine/${apt.id}`}
+                                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-medium transition-colors"
+                                        style={{
+                                            backgroundColor: "var(--brand)",
+                                            color: "#ffffff",
+                                        }}
+                                    >
+                                        <svg
+                                            className="w-4 h-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth={2}
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"
+                                            />
+                                        </svg>
+                                        Start Session
+                                    </Link>
+                                )}
                             </div>
-                            {apt.status === "PENDING" && (
-                                <div className="flex gap-2 shrink-0">
-                                    <button
-                                        onClick={() => handleAction(apt.id, "confirm")}
-                                        className="px-3 py-1.5 text-sm rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors"
-                                    >
-                                        Confirm
-                                    </button>
-                                    <button
-                                        onClick={() => handleAction(apt.id, "cancel")}
-                                        className="px-3 py-1.5 text-sm rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            )}
-                            {apt.status === "CONFIRMED" && (
-                                <Link
-                                    href={`/telemedicine/${apt.id}`}
-                                    className="shrink-0 px-3 py-1.5 text-sm rounded-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors"
-                                >
-                                    📹 Start Session
-                                </Link>
-                            )}
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>
+    );
+}
+
+// ─── Pay Now Button ───────────────────────────────────────────────────────────
+
+function PayNowButton({ appointmentId, accessToken }: { appointmentId: string; accessToken: string }) {
+    const [loading, setLoading] = useState(false);
+
+    const handlePay = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(
+                `${APPOINTMENT_API.replace("/api/v1", "")}/api/payments/checkout-params/${appointmentId}`,
+                { headers: { Authorization: `Bearer ${accessToken}` } }
+            );
+            if (!res.ok) throw new Error("Could not fetch payment details");
+            const params: Record<string, string> = await res.json();
+
+            // Build a hidden form and submit to PayHere sandbox
+            const form = document.createElement("form");
+            form.method = "POST";
+            form.action = "https://sandbox.payhere.lk/pay/checkout";
+            form.target = "_blank";
+            Object.entries(params).forEach(([key, val]) => {
+                const input = document.createElement("input");
+                input.type = "hidden";
+                input.name = key;
+                input.value = String(val);
+                form.appendChild(input);
+            });
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+        } catch {
+            alert("Payment unavailable. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <button
+            onClick={handlePay}
+            disabled={loading}
+            className="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors disabled:opacity-50"
+            style={{ backgroundColor: "var(--accent)", color: "#ffffff" }}
+        >
+            {loading ? "Loading…" : "💳 Pay Now"}
+        </button>
     );
 }
 
@@ -250,17 +449,30 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
             if (aptsRes.ok) {
                 const data = await aptsRes.json();
                 const mapped = Array.isArray(data)
-                    ? data.map((a: Record<string, unknown>) => ({
-                          id: (a.id || a._id) as string,
-                          patientId: a.patientId as string,
-                          doctorId: a.doctorId as string,
-                          doctorName: (a.doctorName || "Unknown Doctor") as string,
-                          date: (a.date || a.appointmentDate) as string,
-                          time: (a.time || a.appointmentTime) as string,
-                          type: (a.type || a.consultationType || "Virtual") as string,
-                          status: ((a.status as string) || "PENDING").toUpperCase() as Appointment["status"],
-                          reason: a.reason as string | undefined,
-                      }))
+                    ? data.map((a: Record<string, unknown>) => {
+                          const rawDate = (a.appointmentDate || a.date) as string | undefined;
+                          const dateObj = rawDate ? new Date(rawDate) : null;
+                          const formattedDate = dateObj
+                              ? dateObj.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+                              : "—";
+                          const formattedTime = dateObj
+                              ? dateObj.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+                              : "";
+                          const rawType = ((a.type || a.consultationType || "VIRTUAL") as string).toUpperCase();
+                          return {
+                              id: (a.id || a._id) as string,
+                              patientId: a.patientId as string,
+                              doctorId: a.doctorId as string,
+                              doctorName: (a.doctorName || "") as string,
+                              date: formattedDate,
+                              time: formattedTime,
+                              type: rawType,
+                              status: ((a.status as string) || "PENDING").toUpperCase() as Appointment["status"],
+                              reason: a.reason as string | undefined,
+                              paymentStatus: (a.paymentStatus as string) || undefined,
+                              amountPaid: a.amountPaid as number | undefined,
+                          };
+                      })
                     : [];
                 setAppointments(mapped);
             }
@@ -290,6 +502,18 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
             setLoading(false);
         }
     }, [accessToken]);
+
+    // Resolve doctor names after both appointments and doctors are loaded
+    useEffect(() => {
+        if (doctors.length === 0) return;
+        setAppointments((prev) =>
+            prev.map((apt) => {
+                if (apt.doctorName) return apt;
+                const doc = doctors.find((d) => d.id === apt.doctorId || d._id === apt.doctorId);
+                return doc ? { ...apt, doctorName: doc.name } : { ...apt, doctorName: "Dr. (ID: " + apt.doctorId.slice(0, 8) + "…)" };
+            })
+        );
+    }, [doctors]);
 
     useEffect(() => {
         fetchAll();
@@ -357,64 +581,105 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
         ? availableDoctors.filter((d) => (d.specialization || d.specialty) === specialtyFilter)
         : availableDoctors;
 
+    const inputStyle: React.CSSProperties = {
+        width: "100%",
+        border: "1px solid var(--border)",
+        borderRadius: "8px",
+        padding: "8px 12px",
+        fontSize: "0.875rem",
+        backgroundColor: "var(--bg-elevated)",
+        color: "var(--text-primary)",
+        outline: "none",
+    };
+
     return (
-        <div className="max-w-4xl mx-auto py-8 space-y-6">
-            <div className="flex items-center justify-between">
+        <div
+            className="max-w-[1200px] mx-auto py-8 px-4 space-y-6"
+            style={{ backgroundColor: "var(--bg-surface)" }}
+        >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">My Appointments</h1>
-                    <p className="mt-1 text-sm text-gray-500">View and manage your consultations</p>
+                    <h1 className="text-2xl font-medium" style={{ color: "var(--text-primary)" }}>
+                        My Appointments
+                    </h1>
+                    <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+                        View and manage your consultations
+                    </p>
                 </div>
                 <button
                     onClick={() => setShowBooking(true)}
-                    className="px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition-colors shadow-sm"
+                    className="shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    style={{ backgroundColor: "var(--brand)", color: "#ffffff" }}
                 >
                     + Book Appointment
                 </button>
             </div>
 
-            {/* Filter Tabs */}
+            {/* Filter tabs */}
             <div className="flex gap-2 flex-wrap">
                 {["ALL", "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"].map((s) => (
                     <button
                         key={s}
                         onClick={() => setFilter(s)}
-                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                            filter === s ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        }`}
+                        className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+                        style={
+                            filter === s
+                                ? { backgroundColor: "var(--brand)", color: "#ffffff" }
+                                : { backgroundColor: "var(--bg-muted)", color: "var(--text-secondary)" }
+                        }
                     >
                         {s}
                     </button>
                 ))}
             </div>
 
-            {/* Booking Modal */}
+            {/* Book Appointment Modal */}
             {showBooking && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+                >
+                    <div
+                        className="w-full max-w-lg rounded-xl border p-6 space-y-4"
+                        style={{
+                            backgroundColor: "var(--bg-elevated)",
+                            borderColor: "var(--border)",
+                        }}
+                    >
+                        {/* Modal header */}
                         <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-gray-900">Book a Consultation</h2>
+                            <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+                                Book a Consultation
+                            </h2>
                             <button
                                 onClick={() => {
                                     setShowBooking(false);
                                     setBookError("");
                                 }}
-                                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                                className="text-2xl leading-none transition-colors"
+                                style={{ color: "var(--text-muted)" }}
                             >
                                 ×
                             </button>
                         </div>
 
                         <form onSubmit={handleBook} className="space-y-4">
-                            {/* Specialty filter for doctor search */}
+                            {/* Specialty filter */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Specialty</label>
+                                <label
+                                    className="block text-sm font-medium mb-1"
+                                    style={{ color: "var(--text-secondary)" }}
+                                >
+                                    Filter by Specialty
+                                </label>
                                 <select
                                     value={specialtyFilter}
                                     onChange={(e) => {
                                         setSpecialtyFilter(e.target.value);
                                         setSelectedDoctor("");
                                     }}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    style={inputStyle}
                                 >
                                     <option value="">All Specialties</option>
                                     {specialties.map((s) => (
@@ -425,18 +690,28 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                 </select>
                             </div>
 
+                            {/* Doctor select */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Select Doctor <span className="text-red-500">*</span>
+                                <label
+                                    className="block text-sm font-medium mb-1"
+                                    style={{ color: "var(--text-secondary)" }}
+                                >
+                                    Select Doctor{" "}
+                                    <span style={{ color: "var(--danger)" }}>*</span>
                                 </label>
                                 {filteredDoctors.length === 0 ? (
-                                    <p className="text-sm text-gray-400 italic">No doctors available.</p>
+                                    <p
+                                        className="text-sm italic"
+                                        style={{ color: "var(--text-muted)" }}
+                                    >
+                                        No doctors available.
+                                    </p>
                                 ) : (
                                     <select
                                         value={selectedDoctor}
                                         onChange={(e) => setSelectedDoctor(e.target.value)}
                                         required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                        style={inputStyle}
                                     >
                                         <option value="">Choose a doctor…</option>
                                         {filteredDoctors.map((d) => (
@@ -449,10 +724,15 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                 )}
                             </div>
 
+                            {/* Date & Time */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Date <span className="text-red-500">*</span>
+                                    <label
+                                        className="block text-sm font-medium mb-1"
+                                        style={{ color: "var(--text-secondary)" }}
+                                    >
+                                        Date{" "}
+                                        <span style={{ color: "var(--danger)" }}>*</span>
                                     </label>
                                     <input
                                         type="date"
@@ -460,48 +740,77 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                         onChange={(e) => setBookDate(e.target.value)}
                                         min={new Date().toISOString().split("T")[0]}
                                         required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                        style={inputStyle}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Time <span className="text-red-500">*</span>
+                                    <label
+                                        className="block text-sm font-medium mb-1"
+                                        style={{ color: "var(--text-secondary)" }}
+                                    >
+                                        Time{" "}
+                                        <span style={{ color: "var(--danger)" }}>*</span>
                                     </label>
                                     <input
                                         type="time"
                                         value={bookTime}
                                         onChange={(e) => setBookTime(e.target.value)}
                                         required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                        style={inputStyle}
                                     />
                                 </div>
                             </div>
 
+                            {/* Consultation type */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Consultation Type</label>
+                                <label
+                                    className="block text-sm font-medium mb-1"
+                                    style={{ color: "var(--text-secondary)" }}
+                                >
+                                    Consultation Type
+                                </label>
                                 <select
                                     value={bookType}
                                     onChange={(e) => setBookType(e.target.value)}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    style={inputStyle}
                                 >
                                     <option value="telemedicine">Virtual (Video Call)</option>
                                     <option value="in-person">In-Person (Clinic Visit)</option>
                                 </select>
                             </div>
 
+                            {/* Reason */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Reason / Symptoms</label>
+                                <label
+                                    className="block text-sm font-medium mb-1"
+                                    style={{ color: "var(--text-secondary)" }}
+                                >
+                                    Reason / Symptoms
+                                </label>
                                 <textarea
                                     value={bookReason}
                                     onChange={(e) => setBookReason(e.target.value)}
                                     rows={3}
                                     placeholder="Briefly describe your symptoms or reason for visit…"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                                    style={{ ...inputStyle, resize: "none" }}
                                 />
                             </div>
 
-                            {bookError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{bookError}</p>}
+                            {/* Error */}
+                            {bookError && (
+                                <p
+                                    className="text-sm rounded-lg px-3 py-2 border"
+                                    style={{
+                                        backgroundColor: "var(--danger-surface)",
+                                        borderColor: "var(--danger-border)",
+                                        color: "var(--danger-text)",
+                                    }}
+                                >
+                                    {bookError}
+                                </p>
+                            )}
 
+                            {/* Actions */}
                             <div className="flex justify-end gap-3 pt-2">
                                 <button
                                     type="button"
@@ -509,14 +818,22 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                         setShowBooking(false);
                                         setBookError("");
                                     }}
-                                    className="px-4 py-2 rounded-lg text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                                    className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                                    style={{
+                                        backgroundColor: "var(--bg-muted)",
+                                        color: "var(--text-secondary)",
+                                    }}
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={booking}
-                                    className="px-4 py-2 rounded-lg text-sm text-white bg-teal-600 hover:bg-teal-700 transition-colors disabled:opacity-50"
+                                    className="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                                    style={{
+                                        backgroundColor: "var(--brand)",
+                                        color: "#ffffff",
+                                    }}
                                 >
                                     {booking ? "Booking…" : "Confirm Booking"}
                                 </button>
@@ -526,19 +843,60 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                 </div>
             )}
 
-            {/* Appointments List */}
+            {/* Appointments list */}
             {loading ? (
                 <div className="flex justify-center items-center h-48">
-                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-teal-600" />
+                    <div
+                        className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2"
+                        style={{ borderColor: "var(--brand)" }}
+                    />
                 </div>
             ) : error ? (
-                <div className="p-6 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>
+                <div
+                    className="p-5 rounded-xl text-sm border"
+                    style={{
+                        backgroundColor: "var(--danger-surface)",
+                        borderColor: "var(--danger-border)",
+                        color: "var(--danger-text)",
+                    }}
+                >
+                    {error}
+                </div>
             ) : filtered.length === 0 ? (
-                <div className="p-12 text-center text-gray-500 bg-white rounded-2xl border border-gray-100">
-                    <p className="text-lg font-medium">No appointments yet</p>
-                    <p className="mt-1 text-sm">
+                <div
+                    className="p-12 text-center rounded-2xl border"
+                    style={{
+                        backgroundColor: "var(--bg-elevated)",
+                        borderColor: "var(--border)",
+                    }}
+                >
+                    <svg
+                        className="mx-auto mb-4 h-12 w-12 opacity-40"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={1.5}
+                        style={{ color: "var(--text-muted)" }}
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5"
+                        />
+                    </svg>
+                    <p
+                        className="text-base font-medium"
+                        style={{ color: "var(--text-secondary)" }}
+                    >
+                        No appointments yet
+                    </p>
+                    <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
                         Click{" "}
-                        <button onClick={() => setShowBooking(true)} className="text-teal-600 underline">
+                        <button
+                            onClick={() => setShowBooking(true)}
+                            className="underline"
+                            style={{ color: "var(--brand)" }}
+                        >
                             Book Appointment
                         </button>{" "}
                         to get started.
@@ -546,48 +904,107 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                 </div>
             ) : (
                 <div className="space-y-3">
-                    {filtered.map((apt) => (
-                        <div
-                            key={apt.id}
-                            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center gap-4"
-                        >
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-semibold text-gray-900 truncate">{apt.doctorName}</span>
-                                    {statusBadge(apt.status)}
-                                </div>
-                                <div className="text-sm text-gray-500 space-x-3">
-                                    <span>📅 {apt.date}</span>
-                                    <span>🕐 {apt.time}</span>
-                                    <span>{apt.type === "telemedicine" ? "📹 Virtual" : "🏥 In-Person"}</span>
-                                </div>
-                                {apt.reason && <p className="mt-1 text-sm text-gray-600 truncate">{apt.reason}</p>}
-                                {apt.type.toLowerCase() === "telemedicine" && (
-                                    <div className="mt-4">
-                                        <NotificationBanner appointmentId={apt.id} />
+                    {filtered.map((apt) => {
+                        const initials = (apt.doctorName || "?")
+                            .split(" ")
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase();
+
+                        return (
+                            <div
+                                key={apt.id}
+                                className="rounded-xl border p-5 flex flex-col sm:flex-row sm:items-center gap-4"
+                                style={{
+                                    backgroundColor: "var(--bg-elevated)",
+                                    borderColor: "var(--border)",
+                                }}
+                            >
+                                {/* Left: avatar + info */}
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                    {/* Avatar */}
+                                    <div
+                                        className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
+                                        style={{
+                                            backgroundColor: "var(--brand-surface)",
+                                            color: "var(--brand-text)",
+                                        }}
+                                    >
+                                        {initials}
                                     </div>
-                                )}
+
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                            <span
+                                                className="font-semibold truncate"
+                                                style={{ color: "var(--text-primary)" }}
+                                            >
+                                                {apt.doctorName}
+                                            </span>
+                                            {statusBadge(apt.status)}
+                                        </div>
+                                        <div
+                                            className="text-sm flex flex-wrap gap-x-3 gap-y-0.5"
+                                            style={{ color: "var(--text-muted)" }}
+                                        >
+                                            <span>📅 {apt.date}</span>
+                                            {apt.time && <span>🕐 {apt.time}</span>}
+                                            <span>{apt.type === "VIRTUAL" ? "📹 Virtual" : "🏥 In-Person"}</span>
+                                            {apt.amountPaid && (
+                                                <span>💳 LKR {apt.amountPaid.toLocaleString()}</span>
+                                            )}
+                                        </div>
+                                        {apt.reason && (
+                                            <p
+                                                className="mt-1 text-sm truncate"
+                                                style={{ color: "var(--text-secondary)" }}
+                                            >
+                                                {apt.reason}
+                                            </p>
+                                        )}
+                                        {apt.type === "VIRTUAL" && (
+                                            <div className="mt-4">
+                                                <NotificationBanner appointmentId={apt.id} />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Right: actions */}
+                                <div className="flex gap-2 shrink-0 items-center flex-wrap justify-end">
+                                    {/* Pay Now — shown when payment is still pending */}
+                                    {apt.paymentStatus === "PENDING" && apt.status !== "CANCELLED" && (
+                                        <PayNowButton appointmentId={apt.id} accessToken={accessToken} />
+                                    )}
+                                    {apt.status === "CONFIRMED" && apt.type === "VIRTUAL" && (
+                                        <Link
+                                            href={`/telemedicine/${apt.id}`}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-medium transition-colors"
+                                            style={{
+                                                backgroundColor: "var(--brand)",
+                                                color: "#ffffff",
+                                            }}
+                                        >
+                                            📹 Join Virtual Meeting
+                                        </Link>
+                                    )}
+                                    {(apt.status === "PENDING" || apt.status === "CONFIRMED") && (
+                                        <button
+                                            onClick={() => handleCancel(apt.id)}
+                                            className="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors"
+                                            style={{
+                                                backgroundColor: "var(--danger-surface)",
+                                                color: "var(--danger-text)",
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                            <div className="flex gap-2 shrink-0 items-end">
-                                {apt.status === "CONFIRMED" && apt.type === "telemedicine" && (
-                                    <Link
-                                        href={`/telemedicine/${apt.id}`}
-                                        className="px-3 py-1.5 text-sm rounded-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors"
-                                    >
-                                        📹 Join Virtual Meeting
-                                    </Link>
-                                )}
-                                {(apt.status === "PENDING" || apt.status === "CONFIRMED") && (
-                                    <button
-                                        onClick={() => handleCancel(apt.id)}
-                                        className="px-3 py-1.5 text-sm rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>
@@ -612,17 +1029,27 @@ export default function AppointmentsPage() {
     if (isLoading || tokenLoading) {
         return (
             <div className="flex justify-center items-center min-h-[50vh]">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-600" />
+                <div
+                    className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2"
+                    style={{ borderColor: "var(--brand)" }}
+                />
             </div>
         );
     }
 
     if (!user || !accessToken) {
         return (
-            <div className="flex justify-center items-center min-h-[50vh] text-gray-500">
+            <div
+                className="flex justify-center items-center min-h-[50vh]"
+                style={{ color: "var(--text-secondary)" }}
+            >
                 <p>
                     Please{" "}
-                    <a href="/auth/login?returnTo=/appointments" className="text-teal-600 underline">
+                    <a
+                        href="/auth/login?returnTo=/appointments"
+                        className="underline"
+                        style={{ color: "var(--brand)" }}
+                    >
                         log in
                     </a>{" "}
                     to view appointments.

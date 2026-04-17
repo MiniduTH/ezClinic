@@ -41,6 +41,7 @@ public class EventPublisher {
                 .paymentId(payment.getId())
                 .appointmentId(payment.getAppointment().getId())
                 .patientId(payment.getAppointment().getPatientId())
+                .doctorId(payment.getAppointment().getDoctorId())
                 .amount(payment.getAmount())
                 .status(payment.getStatus().name())
                 .transactionId(payment.getTransactionId())
