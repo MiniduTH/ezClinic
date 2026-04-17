@@ -1,0 +1,467 @@
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+
+type Severity = "LOW" | "MEDIUM" | "HIGH";
+
+interface RawSymptomResult {
+    aiSuggestion?: unknown;
+    recommendation?: string;
+    recommendedAction?: string;
+    severity?: string;
+    possibleConditions?: unknown;
+    disclaimer?: string;
+}
+
+interface SymptomResult {
+    severity?: Severity;
+    recommendation: string;
+    possibleConditions: string[];
+    disclaimer: string;
+}
+
+type Message = {
+    role: "patient" | "ai";
+    content: string;
+    result?: SymptomResult;
+};
+
+export default function SymptomCheckerPage() {
+    const [symptoms, setSymptoms] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const bottomRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages, loading]);
+
+    const normalizeResult = (input: unknown): SymptomResult => {
+        const parsed = (input && typeof input === "object" ? input : {}) as RawSymptomResult;
+        const possibleConditions = Array.isArray(parsed.possibleConditions)
+            ? parsed.possibleConditions.filter((condition): condition is string => typeof condition === "string")
+            : [];
+        const severity = parsed.severity === "LOW" || parsed.severity === "MEDIUM" || parsed.severity === "HIGH" ? parsed.severity : undefined;
+
+        return {
+            severity,
+            recommendation: parsed.recommendation || parsed.recommendedAction || "No recommendation provided.",
+            possibleConditions,
+            disclaimer:
+                parsed.disclaimer ||
+                "This is an AI-generated assessment and does not constitute medical advice. Please consult a healthcare professional for an accurate diagnosis.",
+        };
+    };
+
+    const stripCodeFences = (value: string): string => {
+        if (value.includes("```json")) {
+            return value.split("```json")[1].split("```")[0].trim();
+        }
+        if (value.includes("```")) {
+            return value.split("```")[1].split("```")[0].trim();
+        }
+        return value.trim();
+    };
+
+    const parseSuggestionPayload = (payload: unknown): unknown => {
+        let current: unknown = payload;
+
+        // Unwrap nested encoded structures (stringified JSON, wrapped aiSuggestion object)
+        for (let i = 0; i < 3; i += 1) {
+            if (typeof current === "string") {
+                const raw = stripCodeFences(current);
+                try {
+                    current = JSON.parse(raw);
+                    continue;
+                } catch {
+                    return {
+                        recommendation: raw,
+                    };
+                }
+            }
+
+            if (current && typeof current === "object" && "aiSuggestion" in (current as RawSymptomResult)) {
+                current = (current as RawSymptomResult).aiSuggestion;
+                continue;
+            }
+
+            break;
+        }
+
+        return current;
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!symptoms.trim() || loading) return;
+
+        const userText = symptoms.trim();
+        setMessages((prev) => [...prev, { role: "patient", content: userText }]);
+        setSymptoms("");
+        setLoading(true);
+        setError(null);
+
+        try {
+            const res = await fetch("/api/symptom-check", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ symptoms: userText }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to check symptoms");
+            }
+
+            let parsedResult: SymptomResult;
+            try {
+                const resolvedPayload = parseSuggestionPayload(data.aiSuggestion ?? data);
+                parsedResult = normalizeResult(resolvedPayload);
+            } catch {
+                throw new Error("Could not parse AI response. Please try again.");
+            }
+
+            setMessages((prev) => [
+                ...prev,
+                { role: "ai", content: parsedResult.recommendation, result: parsedResult },
+            ]);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "An unexpected error occurred. Please try again.");
+            // Remove the typing indicator by not adding an AI message
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getSeverityBadge = (severity: Severity) => {
+        const map: Record<Severity, { bg: string; color: string; border: string; label: string; icon: string }> = {
+            LOW: {
+                bg: "var(--success-surface)",
+                color: "var(--success-text)",
+                border: "var(--success-border)",
+                label: "LOW RISK",
+                icon: "✓",
+            },
+            MEDIUM: {
+                bg: "var(--warning-surface)",
+                color: "var(--warning-text)",
+                border: "var(--warning-border)",
+                label: "MEDIUM RISK",
+                icon: "⚠",
+            },
+            HIGH: {
+                bg: "var(--danger-surface)",
+                color: "var(--danger-text)",
+                border: "var(--danger-border)",
+                label: "HIGH RISK",
+                icon: "!",
+            },
+        };
+        const s = map[severity];
+        return (
+            <span
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                style={{
+                    background: s.bg,
+                    color: s.color,
+                    border: `1px solid ${s.border}`,
+                }}
+            >
+                {s.icon} {s.label}
+            </span>
+        );
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit(e as unknown as React.FormEvent);
+        }
+    };
+
+    return (
+        <div
+            className="min-h-screen"
+            style={{ background: "var(--bg-surface)" }}
+        >
+            <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-4">
+                {/* Header */}
+                <div className="text-center mb-2">
+                    <h1
+                        className="text-2xl font-medium"
+                        style={{ color: "var(--text-primary)" }}
+                    >
+                        AI Symptom Checker
+                    </h1>
+                    <p
+                        className="mt-1 text-sm"
+                        style={{ color: "var(--text-muted)" }}
+                    >
+                        Describe your symptoms and our AI will provide initial guidance
+                    </p>
+                </div>
+
+                {/* Chat container */}
+                <div
+                    className="rounded-xl border flex flex-col gap-3 p-4 overflow-y-auto"
+                    style={{
+                        background: "var(--bg-elevated)",
+                        borderColor: "var(--border)",
+                        minHeight: "400px",
+                        maxHeight: "600px",
+                    }}
+                >
+                    {messages.length === 0 && !loading && (
+                        <div
+                            className="flex-1 flex items-center justify-center text-sm text-center"
+                            style={{ color: "var(--text-muted)" }}
+                        >
+                            <div>
+                                <div
+                                    className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+                                    style={{ background: "var(--bg-muted)" }}
+                                >
+                                    <svg
+                                        width="22"
+                                        height="22"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.5"
+                                        style={{ color: "var(--text-muted)" }}
+                                    >
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                    </svg>
+                                </div>
+                                No messages yet — describe your symptoms below
+                            </div>
+                        </div>
+                    )}
+
+                    {messages.map((msg, idx) => {
+                        if (msg.role === "patient") {
+                            return (
+                                <div key={idx} className="flex justify-end">
+                                    <div
+                                        className="max-w-[75%] px-4 py-3 text-sm"
+                                        style={{
+                                            background: "var(--brand)",
+                                            color: "#ffffff",
+                                            borderRadius: "18px 18px 4px 18px",
+                                        }}
+                                    >
+                                        {msg.content}
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        // AI message
+                        const result = msg.result;
+                        return (
+                            <div key={idx} className="flex items-start gap-3">
+                                {/* Avatar */}
+                                <div
+                                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
+                                    style={{
+                                        background: "var(--brand-surface)",
+                                        color: "var(--brand-text)",
+                                        fontFamily: "ui-monospace, monospace",
+                                    }}
+                                >
+                                    ez
+                                </div>
+                                {/* Bubble */}
+                                <div
+                                    className="max-w-[80%] px-4 py-3 text-sm space-y-2"
+                                    style={{
+                                        background: "var(--bg-muted)",
+                                        color: "var(--text-primary)",
+                                        borderRadius: "4px 18px 18px 18px",
+                                    }}
+                                >
+                                    {result?.severity && (
+                                        <div>{getSeverityBadge(result.severity)}</div>
+                                    )}
+                                    <p style={{ lineHeight: "1.6" }}>{msg.content}</p>
+
+                                    {result?.possibleConditions && result.possibleConditions.length > 0 && (
+                                        <div>
+                                            <p
+                                                className="text-xs font-semibold uppercase tracking-wider mb-1.5"
+                                                style={{ color: "var(--text-muted)" }}
+                                            >
+                                                Possible Conditions
+                                            </p>
+                                            <ul className="space-y-1">
+                                                {result.possibleConditions.map((c, i) => (
+                                                    <li
+                                                        key={i}
+                                                        className="flex items-center gap-2 text-xs"
+                                                        style={{ color: "var(--text-secondary)" }}
+                                                    >
+                                                        <span
+                                                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                                            style={{ background: "var(--brand)" }}
+                                                        />
+                                                        {c}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {result?.disclaimer && (
+                                        <p
+                                            className="text-xs pt-1 border-t"
+                                            style={{
+                                                color: "var(--text-muted)",
+                                                borderColor: "var(--border)",
+                                            }}
+                                        >
+                                            {result.disclaimer}
+                                        </p>
+                                    )}
+
+                                    {result && (
+                                        <div className="pt-1">
+                                            {result.severity === "HIGH" ? (
+                                                <span
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                                                    style={{
+                                                        background: "var(--danger-surface)",
+                                                        color: "var(--danger-text)",
+                                                    }}
+                                                >
+                                                    ⚠ Seek Emergency Care Immediately
+                                                </span>
+                                            ) : (
+                                                <Link
+                                                    href={`/appointments`}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                                                    style={{
+                                                        background: "var(--brand-surface)",
+                                                        color: "var(--brand-text)",
+                                                    }}
+                                                >
+                                                    Book an Appointment →
+                                                </Link>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* Typing indicator */}
+                    {loading && (
+                        <div className="flex items-start gap-3">
+                            <div
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
+                                style={{
+                                    background: "var(--brand-surface)",
+                                    color: "var(--brand-text)",
+                                    fontFamily: "ui-monospace, monospace",
+                                }}
+                            >
+                                ez
+                            </div>
+                            <div
+                                className="px-4 py-3 flex items-center gap-1.5"
+                                style={{
+                                    background: "var(--bg-muted)",
+                                    borderRadius: "4px 18px 18px 18px",
+                                    minWidth: 60,
+                                }}
+                            >
+                                <span
+                                    className="typing-dot w-2 h-2 rounded-full inline-block"
+                                    style={{ background: "var(--text-muted)" }}
+                                />
+                                <span
+                                    className="typing-dot w-2 h-2 rounded-full inline-block"
+                                    style={{ background: "var(--text-muted)" }}
+                                />
+                                <span
+                                    className="typing-dot w-2 h-2 rounded-full inline-block"
+                                    style={{ background: "var(--text-muted)" }}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div ref={bottomRef} />
+                </div>
+
+                {/* Error */}
+                {error && (
+                    <div
+                        className="px-4 py-3 rounded-xl text-sm border"
+                        style={{
+                            background: "var(--danger-surface)",
+                            borderColor: "var(--danger-border)",
+                            color: "var(--danger-text)",
+                        }}
+                    >
+                        {error}
+                    </div>
+                )}
+
+                {/* Input area */}
+                <form onSubmit={handleSubmit} className="flex items-end gap-3">
+                    <textarea
+                        value={symptoms}
+                        onChange={(e) => setSymptoms(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        rows={3}
+                        placeholder="Describe your symptoms… (Enter to send, Shift+Enter for new line)"
+                        disabled={loading}
+                        className="flex-1 resize-none rounded-xl px-4 py-3 text-sm outline-none"
+                        style={{
+                            border: "1px solid var(--border)",
+                            background: "var(--bg-elevated)",
+                            color: "var(--text-primary)",
+                            lineHeight: "1.5",
+                        }}
+                    />
+                    <button
+                        type="submit"
+                        disabled={loading || !symptoms.trim()}
+                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg transition-colors disabled:opacity-40"
+                        style={{
+                            background: "var(--brand)",
+                            color: "#ffffff",
+                        }}
+                        aria-label="Send"
+                    >
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <line x1="22" y1="2" x2="11" y2="13" />
+                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
+                    </button>
+                </form>
+
+                {/* Disclaimer */}
+                <p
+                    className="text-xs text-center"
+                    style={{ color: "var(--text-muted)" }}
+                >
+                    AI-generated guidance only — not a substitute for professional medical advice.
+                </p>
+            </div>
+        </div>
+    );
+}
