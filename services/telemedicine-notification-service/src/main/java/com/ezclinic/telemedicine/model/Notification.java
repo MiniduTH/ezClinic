@@ -24,6 +24,9 @@ public class Notification {
     @Column(name = "recipient_email")
     private String recipientEmail;
 
+    @Column(name = "appointment_id")
+    private String appointmentId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     private NotificationType type;

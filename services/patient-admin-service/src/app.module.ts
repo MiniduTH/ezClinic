@@ -22,10 +22,12 @@ import { AppController } from './app.controller';
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
         entities: [Patient, MedicalReport, Admin],
-        synchronize: config.get<string>('NODE_ENV') !== 'production',
-        ssl: config.get<string>('NODE_ENV') === 'production'
-          ? { rejectUnauthorized: false }
-          : false,
+        // Keep synchronize disabled to avoid destructive schema diffs on existing data.
+        synchronize: false,
+        ssl:
+          config.get<string>('NODE_ENV') === 'production'
+            ? { rejectUnauthorized: false }
+            : false,
         logging: config.get<string>('NODE_ENV') === 'development',
       }),
     }),

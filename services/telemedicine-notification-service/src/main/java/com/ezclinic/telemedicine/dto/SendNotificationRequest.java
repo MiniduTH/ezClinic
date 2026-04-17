@@ -15,6 +15,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SendNotificationRequest {
 
+    private String appointmentId;
+
     @NotBlank(message = "User ID is required")
     private String userId;
 

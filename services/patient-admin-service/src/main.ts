@@ -1,7 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { DataSource } from 'typeorm';
 import { AppModule } from './app.module';
+import { ensurePatientIdSchema } from './supabase/ensure-patient-id-schema';
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const payload = token.split('.')[1];
@@ -20,6 +22,8 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const dataSource = app.get(DataSource);
+  await ensurePatientIdSchema(dataSource);
 
   app.use((req, res, next) => {
     if (req.method === 'OPTIONS') {
@@ -29,10 +33,7 @@ async function bootstrap() {
 
     const path = req.path || req.originalUrl.split('?')[0];
     // Public routes: auth endpoints and docs
-    if (
-      path.startsWith('/api/v1/auth/') ||
-      path.startsWith('/api/docs')
-    ) {
+    if (path.startsWith('/api/v1/auth/') || path.startsWith('/api/docs')) {
       next();
       return;
     }
@@ -92,7 +93,9 @@ async function bootstrap() {
   // Swagger API docs
   const config = new DocumentBuilder()
     .setTitle('ezClinic – Patient & Admin Service')
-    .setDescription('REST API for patient registration, profile management, medical reports, and admin operations.')
+    .setDescription(
+      'REST API for patient registration, profile management, medical reports, and admin operations.',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();

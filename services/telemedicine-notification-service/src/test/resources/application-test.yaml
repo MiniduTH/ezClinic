@@ -1,47 +1,48 @@
 server:
-  port: 0
-  servlet:
-    context-path: /api/v1
+    port: 0
+    servlet:
+        context-path: /api/v1
 
 spring:
-  application:
-    name: telemedicine-notification-service-test
-  datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
-      - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
+    application:
+        name: telemedicine-notification-service-test
+    datasource:
+        url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+        driver-class-name: org.h2.Driver
+        username: sa
+        password:
+    jpa:
+        hibernate:
+            ddl-auto: create-drop
+        show-sql: false
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.H2Dialect
+    autoconfigure:
+        exclude:
+            - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+            - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
 
 mailtrap:
-  api-key: test-key
-  sender: test@ezclinic.com
+    api-key: test-key
+    sender: test@ezclinic.com
+    recipient-override: test-recipient@example.com
 
 jitsi:
-  domain: meet.jit.si
-  app-id:
-  app-secret:
+    domain: meet.jit.si
+    app-id:
+    app-secret:
 
 gemini:
-  api-key: test-gemini-key
-  model: gemini-2.0-flash
+    api-key: test-gemini-key
+    model: gemini-2.0-flash
 
 springdoc:
-  api-docs:
-    path: /api-docs
-  swagger-ui:
-    path: /swagger-ui.html
+    api-docs:
+        path: /api-docs
+    swagger-ui:
+        path: /swagger-ui.html
 
 app:
-  cors:
-    allowed-origins: http://localhost:3000
+    cors:
+        allowed-origins: http://localhost:3000
