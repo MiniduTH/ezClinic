@@ -91,7 +91,7 @@ services:
       MONGO_URI: ${MONGO_URI:-mongodb://admin:password@mongodb:27017/doctor_db?authSource=admin}
       AUTH0_DOMAIN: ${AUTH0_DOMAIN:-dev-6x78k6ttww4d1cif.us.auth0.com}
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-https://api.ezclinic.com}
-      APPOINTMENT_SERVICE_URL: http://appointment-payment-service:3004/api/v1
+      APPOINTMENT_SERVICE_URL: http://appointment-booking-service:3004/api/v1
       PATIENT_SERVICE_URL: http://patient-admin-service:3005/api/v1
     depends_on:
       mongodb:
@@ -105,33 +105,33 @@ services:
       retries: 3
     restart: unless-stopped
 
-  appointment-payment-service:
+  appointment-booking-service:
     build:
-      context: ./services/appointment-payment-service
+      context: ./services/appointment-booking-service
       dockerfile: Dockerfile
     container_name: ezclinic-appointment
     ports:
       - "3004:3004"
     environment:
-      PORT: 3004
       SUPABASE_DB_URL: ${SUPABASE_DB_URL}
       SUPABASE_DB_USER: ${SUPABASE_DB_USER:-postgres}
       SUPABASE_DB_PASSWORD: ${SUPABASE_DB_PASSWORD}
-      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-dev-6x78k6ttww4d1cif.us.auth0.com}
-      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-https://api.ezclinic.com}
-      PAYHERE_MERCHANT_ID: ${PAYHERE_MERCHANT_ID}
-      PAYHERE_MERCHANT_SECRET: ${PAYHERE_MERCHANT_SECRET}
-      DOCTOR_SERVICE_URL: http://doctor-service:3002/api/v1
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
+      RABBITMQ_PASSWORD: guest
+      PAYHERE_MERCHANT_ID: ${PAYHERE_MERCHANT_ID}
+      PAYHERE_MERCHANT_SECRET: ${PAYHERE_MERCHANT_SECRET}
+      PAYHERE_NOTIFY_URL: ${PAYHERE_NOTIFY_URL:-http://localhost:8000/api/payments/payhere/notify}
+      PAYHERE_RETURN_URL: ${PAYHERE_RETURN_URL:-http://localhost:3000/appointments?status=success}
+      PAYHERE_CANCEL_URL: ${PAYHERE_CANCEL_URL:-http://localhost:3000/appointments?status=cancelled}
+      DOCTOR_SERVICE_URL: http://doctor-service:3002/api/v1/doctors
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
     depends_on:
       rabbitmq:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3004/api/v1/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3004/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -161,7 +161,7 @@ services:
       JITSI_APP_ID: ${JITSI_APP_ID}
       JITSI_APP_SECRET: ${JITSI_APP_SECRET}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      APPOINTMENT_SERVICE_URL: http://appointment-payment-service:3004/api/v1
+      APPOINTMENT_SERVICE_URL: http://appointment-booking-service:3004/api/v1
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
     depends_on:
       rabbitmq:
@@ -195,7 +195,7 @@ services:
     depends_on:
       - doctor-service
       - patient-admin-service
-      - appointment-payment-service
+      - appointment-booking-service
       - telemedicine-notification-service
     healthcheck:
       test: ["CMD", "kong", "health"]
@@ -234,7 +234,7 @@ services:
       # these bypass Kong and hit services directly.
       INTERNAL_DOCTOR_API: http://doctor-service:3002/api/v1
       INTERNAL_PATIENT_API: http://patient-admin-service:3005/api/v1
-      INTERNAL_APPOINTMENT_API: http://appointment-payment-service:3004/api/v1
+      INTERNAL_APPOINTMENT_API: http://appointment-booking-service:3004/api/v1
       INTERNAL_TELEMEDICINE_API: http://telemedicine-notification-service:8090/api/v1
     depends_on:
       kong:

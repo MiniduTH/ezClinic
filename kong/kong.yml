@@ -59,22 +59,25 @@ services:
           - /api/v1/admins
         strip_path: false
 
-  # ── appointment-payment-service (Spring Boot · PostgreSQL · port 3004) ────
-  - name: appointment-payment-service
-    url: http://appointment-payment-service:3004
+  # ── appointment-booking-service (Spring Boot · PostgreSQL · port 3004) ───
+  - name: appointment-booking-service
+    url: http://appointment-booking-service:3004
     connect_timeout: 60000
     write_timeout: 60000
     read_timeout: 60000
     routes:
+      # AppointmentController maps both /api/appointments and /api/v1/appointments;
+      # only the v1 path is exposed through Kong for frontend compatibility.
       - name: appointment-api
         paths:
           - /api/v1/appointments
         strip_path: false
 
-      # Includes public PayHere webhook POST /api/v1/payments/notify
+      # PaymentController is at /api/payments (no /v1 prefix).
+      # Includes public PayHere webhook POST /api/payments/payhere/notify.
       - name: payment-api
         paths:
-          - /api/v1/payments
+          - /api/payments
         strip_path: false
 
   # ── telemedicine-notification-service (Spring Boot · PostgreSQL · port 8090)
