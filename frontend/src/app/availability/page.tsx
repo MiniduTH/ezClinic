@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 const API_URL =
   process.env.NEXT_PUBLIC_DOCTOR_API || "http://localhost:3002/api/v1";
+
+async function getToken(): Promise<string> {
+  const r = await fetch("/api/auth/token");
+  if (!r.ok) throw new Error("Not authenticated");
+  const { accessToken } = await r.json();
+  return accessToken;
+}
 
 const DAYS = [
   "Monday",
@@ -54,7 +61,7 @@ interface Slot {
 type ModalMode = "add" | "edit";
 
 export default function AvailabilityPage() {
-  const doctorId = "69d71304d77fd0bbf5ec13eb";
+  const [doctorId, setDoctorId] = useState<string | null>(null);
 
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,18 +83,52 @@ export default function AvailabilityPage() {
     consultationType: "both",
   });
 
+  // Resolve the real doctor _id once on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(`${API_URL}/doctors/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Could not load doctor profile");
+        const data = await res.json();
+        const id = data?.data?._id ?? data?.data?.id ?? data?._id ?? data?.id;
+        if (id) setDoctorId(id);
+      } catch {
+        showMessage("error", "Could not resolve your doctor profile. Please re-login.");
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const showMessage = (type: "success" | "error", text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 4000);
   };
 
   const fetchSlots = useCallback(async () => {
+    if (!doctorId) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/doctors/${doctorId}/availability`);
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/doctors/${doctorId}/availability`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       if (data.success) {
-        setSlots(data.data.slots || []);
+        // Normalize slots: map Mongo `_id` to `id` and strip backend-only props
+        setSlots(
+          (data.data.slots || []).map((s: any) => ({
+            id: s.id ?? s._id,
+            dayOfWeek: s.dayOfWeek,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            isActive: !!s.isActive,
+            maxPatients: typeof s.maxPatients === "number" ? s.maxPatients : 1,
+            consultationType: s.consultationType || "both",
+          }))
+        );
       }
       setFetched(true);
     } catch {
@@ -117,6 +158,7 @@ export default function AvailabilityPage() {
   };
 
   const handleSave = async () => {
+    if (!doctorId) return;
     if (editSlot.startTime >= editSlot.endTime) {
       showMessage("error", "Start time must be before end time.");
       return;
@@ -124,18 +166,29 @@ export default function AvailabilityPage() {
 
     setLoading(true);
     try {
+      const token = await getToken();
       let res: Response;
+      // Build payload excluding backend-only fields like _id, doctorId, __v, id
+      const payload = {
+        dayOfWeek: editSlot.dayOfWeek,
+        startTime: editSlot.startTime,
+        endTime: editSlot.endTime,
+        isActive: editSlot.isActive,
+        maxPatients: editSlot.maxPatients,
+        consultationType: editSlot.consultationType,
+      };
+
       if (modalMode === "add") {
         res = await fetch(`${API_URL}/doctors/${doctorId}/availability`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editSlot),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
         });
       } else {
         res = await fetch(`${API_URL}/doctors/${doctorId}/availability/${editSlot.id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editSlot),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
         });
       }
 
@@ -155,12 +208,15 @@ export default function AvailabilityPage() {
   };
 
   const handleDelete = async (slotId: string) => {
+    if (!doctorId) return;
     if (!confirm("Are you sure you want to permanently delete this slot?")) return;
 
     setLoading(true);
     try {
+      const token = await getToken();
       const res = await fetch(`${API_URL}/doctors/${doctorId}/availability/${slotId}`, {
         method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok && res.status !== 204) throw new Error("Delete failed");
 
@@ -174,9 +230,12 @@ export default function AvailabilityPage() {
   };
 
   const handleToggle = async (slot: Slot) => {
+    if (!doctorId) return;
     try {
+      const token = await getToken();
       const res = await fetch(`${API_URL}/doctors/${doctorId}/availability/${slot.id}/toggle`, {
         method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (!res.ok) throw new Error("Toggle failed");

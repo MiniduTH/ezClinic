@@ -97,7 +97,7 @@ public class AppointmentService {
         return mapToDTO(appointment);
     }
 
-    public List<AppointmentResponseDTO> getAppointmentsByPatient(UUID patientId) {
+    public List<AppointmentResponseDTO> getAppointmentsByPatient(String patientId) {
         return appointmentRepository.findByPatientId(patientId).stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());

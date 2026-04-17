@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import FilePreviewModal from "@/components/FilePreviewModal";
 
 const DOCTOR_API = process.env.NEXT_PUBLIC_DOCTOR_API || "http://localhost:3002/api/v1";
 
@@ -16,6 +17,7 @@ interface PendingDoctor {
   consultationFee: number | null;
   isVerified: boolean;
   createdAt: string;
+  credentialDocuments?: string[];
 }
 
 type Toast = { id: number; message: string; kind: "success" | "error" };
@@ -59,13 +61,14 @@ function VerifyModal({
   onConfirm,
   onClose,
 }: {
-  doctor: PendingDoctor;
+  doctor: PendingDoctor & { credentialDocuments?: string[] };
   onConfirm: (doctorId: string, approve: boolean, notes: string) => void;
   onClose: () => void;
 }) {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [action, setAction] = useState<"approve" | "reject" | null>(null);
+  const [previewFile, setPreviewFile] = useState<{ title: string; url: string; fileType: string } | null>(null);
 
   const handleSubmit = async (approve: boolean) => {
     setAction(approve ? "approve" : "reject");
@@ -103,6 +106,47 @@ function VerifyModal({
               <p className="text-sm text-gray-700 dark:text-gray-300">Fee: LKR {Number(doctor.consultationFee).toFixed(2)}</p>
             )}
           </div>
+
+          {/* Credential documents */}
+          {doctor.credentialDocuments && doctor.credentialDocuments.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Credential Documents</label>
+              <div className="space-y-2">
+                {doctor.credentialDocuments.map((p, i) => {
+                  const filename = p.split('/').pop() || `document-${i + 1}`;
+                  const proxyUrl = `/api/admin/credential?path=${encodeURIComponent(p)}`;
+                  const ext = filename.split('.').pop() || '';
+                  const fileType = ext.toLowerCase() === 'pdf' ? 'application/pdf' : `image/${ext.toLowerCase()}`;
+                  return (
+                    <div key={p} className="flex items-center justify-between rounded-lg p-2" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+                      <div className="min-w-0 mr-3 text-sm truncate">
+                        <div className="font-medium text-gray-900 dark:text-white">{filename}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{p}</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewFile({ title: filename, url: proxyUrl, fileType })}
+                          className="rounded-lg px-3 py-1.5 text-xs font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30 border border-teal-200 dark:border-teal-800"
+                        >
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {previewFile && (
+            <FilePreviewModal
+              title={previewFile.title}
+              url={previewFile.url}
+              fileType={previewFile.fileType}
+              onClose={() => setPreviewFile(null)}
+            />
+          )}
 
           {/* Notes field */}
           <div>
@@ -297,7 +341,24 @@ export default function AdminDoctorsPage() {
               </dl>
 
               <button
-                onClick={() => setSelectedDoctor(doctor)}
+                onClick={async () => {
+                  try {
+                    const token = await getToken();
+                    const res = await fetch(`${DOCTOR_API}/doctors/${doctor.id}`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (res.ok) {
+                      const body = await res.json();
+                      // doctor service wraps in { success, data }
+                      const doc = body?.data ?? body;
+                      setSelectedDoctor({ ...doctor, ...(doc || {}) });
+                    } else {
+                      setSelectedDoctor(doctor);
+                    }
+                  } catch {
+                    setSelectedDoctor(doctor);
+                  }
+                }}
                 className="w-full rounded-xl bg-teal-600 py-2 text-sm font-medium text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
                 Review Application

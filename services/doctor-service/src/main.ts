@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
@@ -19,7 +21,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.use((req, res, next) => {
     if (req.method === 'OPTIONS') {
@@ -82,6 +84,9 @@ async function bootstrap() {
 
     next();
   });
+
+  // Serve uploaded credential files (auth middleware above still protects this path)
+  app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
 
   // Global prefix
   app.setGlobalPrefix('api/v1');

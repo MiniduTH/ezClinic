@@ -33,6 +33,9 @@ export class Doctor {
   @Prop({ default: false })
   isVerified: boolean;
 
+  @Prop({ type: [String], default: [] })
+  credentialDocuments: string[];
+
   @Prop({ select: false })
   passwordHash: string;
 

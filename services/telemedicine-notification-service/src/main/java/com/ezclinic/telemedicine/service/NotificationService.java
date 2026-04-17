@@ -8,6 +8,7 @@ import com.ezclinic.telemedicine.model.Notification;
 import com.ezclinic.telemedicine.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,9 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final EmailService emailService;
+
+    @Value("${jitsi.domain:meet.jit.si}")
+    private String jitsiDomain;
 
     @Transactional
     public NotificationResponse processAndSendNotification(SendNotificationRequest request) {
@@ -123,14 +127,35 @@ public class NotificationService {
     public void sendPaymentConfirmationNotification(String patientId, String appointmentId,
                                                      java.util.Map<String, Object> event) {
         String amount = String.valueOf(event.getOrDefault("amount", ""));
-        String subject = "Payment Confirmed — ezClinic";
+        String joinUrl = "https://" + jitsiDomain + "/ezclinic-" + appointmentId;
+        String subject = "Payment Confirmed — Your Session is Ready | ezClinic";
         String htmlContent = buildSimpleHtml("Payment Successful",
                 "Your payment of LKR <strong>" + amount + "</strong> for appointment <strong>" +
-                appointmentId + "</strong> has been received. Your appointment is now confirmed.");
+                appointmentId + "</strong> has been received. Your appointment is now confirmed." +
+                "<br><br>Join your virtual session: <a href='" + joinUrl + "' style='color:#0EA5E9'>" + joinUrl + "</a>");
 
         SendNotificationRequest req = SendNotificationRequest.builder()
                 .userId(patientId)
                 .recipientEmail(patientId + "@placeholder.local")
+                .type(com.ezclinic.telemedicine.enums.NotificationType.EMAIL)
+                .subject(subject)
+                .content(htmlContent)
+                .build();
+        processAndSendNotification(req);
+    }
+
+    public void sendDoctorSessionReadyNotification(String doctorId, String appointmentId,
+                                                    java.util.Map<String, Object> event) {
+        String joinUrl = "https://" + jitsiDomain + "/ezclinic-" + appointmentId;
+        String subject = "Patient Payment Confirmed — Session Ready | ezClinic";
+        String htmlContent = buildSimpleHtml("Virtual Session Ready",
+                "Your patient has completed payment for appointment <strong>" + appointmentId +
+                "</strong>. The appointment is now confirmed." +
+                "<br><br>Join your virtual session: <a href='" + joinUrl + "' style='color:#0EA5E9'>" + joinUrl + "</a>");
+
+        SendNotificationRequest req = SendNotificationRequest.builder()
+                .userId(doctorId)
+                .recipientEmail(doctorId + "@placeholder.local")
                 .type(com.ezclinic.telemedicine.enums.NotificationType.EMAIL)
                 .subject(subject)
                 .content(htmlContent)

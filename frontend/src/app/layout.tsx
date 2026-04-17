@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { SessionProvider } from "@/lib/session-context";
+import { ThemeProvider } from "@/lib/theme-context";
+import Navbar from "@/components/Navbar";
+import Sidebar from "@/components/Sidebar";
+import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "ezClinic",
   description: "ezClinic – Smart Healthcare Platform",
 };
 
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('ezclinic-theme');var d=t||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',d);}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -16,19 +19,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className="antialiased bg-gray-50 font-sans"
-      >
-        <SessionProvider>
-          <Navbar />
-          <Sidebar />
-          <div className="p-4 sm:ml-64 mt-14">
-            <main className="min-h-screen">
-              {children}
-            </main>
-          </div>
-        </SessionProvider>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body className="antialiased">
+        <ThemeProvider>
+          <SessionProvider>
+            <Navbar />
+            <Sidebar />
+            <AppShell>{children}</AppShell>
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

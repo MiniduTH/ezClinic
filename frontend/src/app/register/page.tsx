@@ -1,177 +1,111 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+import { Heart, Stethoscope, ShieldCheck, CheckCircle2, Gift, LogIn, UserPlus } from "lucide-react";
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const [role, setRole] = useState<"patient" | "doctor">("patient");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [specialization, setSpecialization] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      const body: Record<string, unknown> = { name, email, password, role };
-      if (role === "doctor" && specialization) {
-        body.specialization = specialization;
-      }
-
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Registration failed");
-        return;
-      }
-
-      // Redirect to appropriate dashboard
-      if (role === "doctor") {
-        router.push("/dashboard");
-      } else {
-        router.push("/profile");
-      }
-      router.refresh();
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-blue-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-teal-600">ezClinic</h1>
-          <p className="text-gray-500 mt-2 text-sm">Create your account</p>
-        </div>
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"32px 16px", background:"linear-gradient(160deg,#f0fdf4 0%,#e0f2fe 45%,#f8fafc 100%)" }}>
+      {/* Decorative blobs */}
+      <div style={{ position:"fixed", top:"-10%", right:"-5%", width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle,rgba(15,110,86,0.07) 0%,transparent 70%)", pointerEvents:"none", zIndex:0 }} />
+      <div style={{ position:"fixed", bottom:"-8%", left:"-4%", width:400, height:400, borderRadius:"50%", background:"radial-gradient(circle,rgba(3,105,161,0.05) 0%,transparent 70%)", pointerEvents:"none", zIndex:0 }} />
 
-        {/* Role selector */}
-        <div className="flex rounded-xl border border-gray-200 mb-6 overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setRole("patient")}
-            className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-              role === "patient"
-                ? "bg-teal-500 text-white"
-                : "bg-white text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            Patient
-          </button>
-          <button
-            type="button"
-            onClick={() => setRole("doctor")}
-            className={`flex-1 py-2 text-sm font-semibold transition-colors ${
-              role === "doctor"
-                ? "bg-teal-500 text-white"
-                : "bg-white text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            Doctor
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Full Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              autoComplete="name"
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-              placeholder="Your full name"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-              placeholder="you@example.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="new-password"
-              minLength={8}
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-              placeholder="Min. 8 characters"
-            />
-          </div>
-
-          {role === "doctor" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Specialization
-              </label>
-              <input
-                type="text"
-                value={specialization}
-                onChange={(e) => setSpecialization(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-                placeholder="e.g. Cardiologist, Surgeon"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Your account will require admin verification before access.
-              </p>
-            </div>
-          )}
-
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-xl transition-colors disabled:opacity-60"
-          >
-            {loading ? "Creating account…" : "Create Account"}
-          </button>
-        </form>
-
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Already have an account?{" "}
-          <Link href="/login" className="text-teal-600 font-semibold hover:underline">
-            Sign in
+      <div style={{ width:"100%", maxWidth:620, position:"relative", zIndex:1 }} className="anim-fade-up">
+        {/* Logo */}
+        <div style={{ textAlign:"center", marginBottom:40 }}>
+          <Link href="/" style={{ display:"inline-flex", alignItems:"center", gap:10, textDecoration:"none", marginBottom:16 }}>
+            <Image src="/ezClinicLogo.png" alt="ezClinic" width={40} height={40} style={{ objectFit:"contain" }} />
+            <span style={{ fontFamily:"ui-monospace,monospace", fontSize:"1.4rem", fontWeight:700 }}>
+              <span style={{ color:"#0f6e56" }}>ez</span>
+              <span style={{ color:"#0f172a" }}>Clinic</span>
+            </span>
           </Link>
-        </p>
+          <h1 style={{ fontSize:"1.75rem", fontWeight:800, color:"#0f172a", marginBottom:6, letterSpacing:"-0.02em" }}>Welcome to ezClinic</h1>
+          <p style={{ color:"#94a3b8", fontSize:"0.9375rem" }}>Choose your role to get started or sign in.</p>
+        </div>
+
+        {/* Role cards */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:24 }}>
+          {/* Patient card */}
+          <div style={{ padding:28, borderRadius:20, background:"white", border:"1px solid #e2e8f0", boxShadow:"0 2px 12px rgba(0,0,0,0.04)" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:20 }}>
+              <div style={{ width:48, height:48, borderRadius:14, background:"#e1f5ee", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <Heart size={22} color="#0f6e56" strokeWidth={2} />
+              </div>
+              <div>
+                <h3 style={{ fontSize:"1rem", fontWeight:700, color:"#0f172a", margin:0 }}>Patient</h3>
+                <p style={{ fontSize:"0.8125rem", color:"#94a3b8", margin:0 }}>Book & manage care</p>
+              </div>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              <Link href="/register/patient"
+                style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"10px 0", borderRadius:10, background:"#0f6e56", color:"white", fontSize:"0.875rem", fontWeight:600, textDecoration:"none", transition:"opacity 0.2s" }}
+                onMouseEnter={e=>{(e.currentTarget as HTMLAnchorElement).style.opacity="0.88";}}
+                onMouseLeave={e=>{(e.currentTarget as HTMLAnchorElement).style.opacity="1";}}>
+                <UserPlus size={15} /> Create Account
+              </Link>
+              <Link href="/login?role=patient"
+                style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"10px 0", borderRadius:10, background:"#f1f5f9", color:"#0f6e56", fontSize:"0.875rem", fontWeight:600, textDecoration:"none", border:"1px solid #e2e8f0", transition:"background-color 0.2s" }}
+                onMouseEnter={e=>{(e.currentTarget as HTMLAnchorElement).style.backgroundColor="#e1f5ee";}}
+                onMouseLeave={e=>{(e.currentTarget as HTMLAnchorElement).style.backgroundColor="#f1f5f9";}}>
+                <LogIn size={15} /> Sign In
+              </Link>
+            </div>
+          </div>
+
+          {/* Doctor card */}
+          <div style={{ padding:28, borderRadius:20, background:"white", border:"1px solid #e2e8f0", boxShadow:"0 2px 12px rgba(0,0,0,0.04)" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:20 }}>
+              <div style={{ width:48, height:48, borderRadius:14, background:"#e0f2fe", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <Stethoscope size={22} color="#0369a1" strokeWidth={2} />
+              </div>
+              <div>
+                <h3 style={{ fontSize:"1rem", fontWeight:700, color:"#0f172a", margin:0 }}>Doctor</h3>
+                <p style={{ fontSize:"0.8125rem", color:"#94a3b8", margin:0 }}>Join & see patients</p>
+              </div>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              <Link href="/register/doctor"
+                style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"10px 0", borderRadius:10, background:"#0369a1", color:"white", fontSize:"0.875rem", fontWeight:600, textDecoration:"none", transition:"opacity 0.2s" }}
+                onMouseEnter={e=>{(e.currentTarget as HTMLAnchorElement).style.opacity="0.88";}}
+                onMouseLeave={e=>{(e.currentTarget as HTMLAnchorElement).style.opacity="1";}}>
+                <UserPlus size={15} /> Apply as Doctor
+              </Link>
+              <Link href="/login?role=doctor"
+                style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"10px 0", borderRadius:10, background:"#f1f5f9", color:"#0369a1", fontSize:"0.875rem", fontWeight:600, textDecoration:"none", border:"1px solid #e2e8f0", transition:"background-color 0.2s" }}
+                onMouseEnter={e=>{(e.currentTarget as HTMLAnchorElement).style.backgroundColor="#e0f2fe";}}
+                onMouseLeave={e=>{(e.currentTarget as HTMLAnchorElement).style.backgroundColor="#f1f5f9";}}>
+                <LogIn size={15} /> Sign In
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Trust indicators */}
+        <div style={{ display:"flex", justifyContent:"center", gap:24, marginBottom:24, flexWrap:"wrap" }}>
+          {[
+            { icon:<ShieldCheck size={14} color="#0f6e56" />, text:"HIPAA Compliant" },
+            { icon:<CheckCircle2 size={14} color="#0369a1" />, text:"Verified Doctors" },
+            { icon:<Gift size={14} color="#d97706" />, text:"Free to Join" },
+          ].map(item => (
+            <div key={item.text} style={{ display:"flex", alignItems:"center", gap:6, fontSize:"0.8125rem", color:"#64748b" }}>
+              {item.icon}
+              <span>{item.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Admin portal */}
+        <div style={{ textAlign:"center" }}>
+          <Link href="/admin-login"
+            style={{ display:"inline-flex", alignItems:"center", gap:6, fontSize:"0.8125rem", color:"#94a3b8", textDecoration:"none", padding:"6px 14px", borderRadius:8, border:"1px solid #e2e8f0", transition:"all 0.2s" }}
+            onMouseEnter={e=>{(e.currentTarget as HTMLAnchorElement).style.color="#475569";(e.currentTarget as HTMLAnchorElement).style.borderColor="#cbd5e1";}}
+            onMouseLeave={e=>{(e.currentTarget as HTMLAnchorElement).style.color="#94a3b8";(e.currentTarget as HTMLAnchorElement).style.borderColor="#e2e8f0";}}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Admin Portal
+          </Link>
+        </div>
       </div>
     </div>
   );

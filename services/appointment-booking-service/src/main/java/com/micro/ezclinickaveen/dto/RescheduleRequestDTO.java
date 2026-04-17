@@ -1,12 +1,12 @@
 package com.micro.ezclinickaveen.dto;
 
+import java.time.LocalDate;
+
 import com.fasterxml.jackson.annotation.JsonFormat;
+
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-
-import java.time.LocalDate;
-import java.util.UUID;
 
 @Data
 public class RescheduleRequestDTO {
@@ -16,6 +16,5 @@ public class RescheduleRequestDTO {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate newAppointmentDate;
 
-    @NotNull(message = "New slot ID is required")
-    private UUID newSlotId;
+    private String newSlotId;
 }

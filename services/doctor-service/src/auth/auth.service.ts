@@ -1,6 +1,7 @@
 import {
   Injectable,
   ConflictException,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -63,6 +64,12 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, doctor.passwordHash);
     if (!valid) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+
+    if (!doctor.isVerified) {
+      throw new ForbiddenException(
+        'Your account is pending admin verification. You will be notified once approved.',
+      );
     }
 
     const id = (doctor as any)._id as string;

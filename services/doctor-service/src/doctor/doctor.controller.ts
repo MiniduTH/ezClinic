@@ -10,7 +10,11 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFiles,
+  BadRequestException,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -18,6 +22,7 @@ import {
   ApiQuery,
   ApiParam,
   ApiBearerAuth,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { DoctorService } from './doctor.service';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
@@ -76,16 +81,30 @@ export class DoctorController {
   @Patch(':id/verify')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify or reject a doctor registration' })
-  @ApiResponse({
-    status: 200,
-    description: 'Doctor verification status updated.',
-  })
+  @ApiResponse({ status: 200, description: 'Doctor verification status updated.' })
   @ApiResponse({ status: 404, description: 'Doctor not found.' })
   verifyDoctor(
     @Param('id') id: string,
-    @Body() body: { action?: 'approve' | 'reject'; reason?: string },
+    @Body() body: { action?: 'approve' | 'reject'; approved?: boolean; reason?: string; notes?: string },
   ) {
-    const approve = !body.action || body.action === 'approve';
+    const approve = body.approved !== undefined
+      ? body.approved
+      : (!body.action || body.action === 'approve');
+    return this.doctorService.verify(id, approve);
+  }
+
+  @Put(':id/verify')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verify or reject a doctor registration (PUT alias)' })
+  @ApiResponse({ status: 200, description: 'Doctor verification status updated.' })
+  @ApiResponse({ status: 404, description: 'Doctor not found.' })
+  verifyDoctorPut(
+    @Param('id') id: string,
+    @Body() body: { action?: 'approve' | 'reject'; approved?: boolean; reason?: string; notes?: string },
+  ) {
+    const approve = body.approved !== undefined
+      ? body.approved
+      : (!body.action || body.action === 'approve');
     return this.doctorService.verify(id, approve);
   }
 
@@ -105,6 +124,31 @@ export class DoctorController {
   getMyAvailability(@CurrentUser() user: Record<string, unknown>) {
     const auth0Sub = user['sub'] as string;
     return this.doctorService.getAvailability(auth0Sub);
+  }
+
+  @Get('pending')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all unverified doctors awaiting admin review' })
+  @ApiResponse({ status: 200, description: 'Array of pending doctor profiles.' })
+  findPending() {
+    return this.doctorService.findPending();
+  }
+
+  @Post('me/credentials')
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload credential documents for admin verification (max 5 files, PDF/JPEG/PNG, 5 MB each)' })
+  @ApiResponse({ status: 201, description: 'Credential documents uploaded.' })
+  @UseInterceptors(FilesInterceptor('files', 5))
+  uploadCredentials(
+    @CurrentUser() user: Record<string, unknown>,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('At least one file is required');
+    }
+    const doctorId = user['sub'] as string;
+    return this.doctorService.uploadCredentials(doctorId, files);
   }
 
   @Get(':id')

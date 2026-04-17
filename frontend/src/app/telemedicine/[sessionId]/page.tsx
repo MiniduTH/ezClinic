@@ -1,7 +1,6 @@
 import React from 'react';
 import { headers } from 'next/headers';
 import Link from 'next/link';
-import { Video, Calendar, User, Clock, AlertCircle } from 'lucide-react';
 
 type SessionStatus = 'SCHEDULED' | 'STARTED' | 'COMPLETED' | 'CANCELLED';
 
@@ -35,7 +34,7 @@ export default async function TelemedicineSessionPage({
       headers: {
         cookie: cookieString,
       },
-      cache: 'no-store', // Always fetch latest session state
+      cache: 'no-store',
     });
 
     if (res.ok) {
@@ -51,20 +50,51 @@ export default async function TelemedicineSessionPage({
 
   if (fetchError || !sessionData) {
     return (
-      <div className="max-w-4xl mx-auto py-16 px-4 sm:px-6 lg:px-8 text-center">
-        <div className="inline-flex items-center justify-center p-4 bg-red-100 rounded-full mb-4">
-          <AlertCircle className="w-8 h-8 text-red-600" />
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Notice</h1>
-        <p className="text-gray-500 mb-8">
-          Unable to load telemedicine session details or the session does not exist.
-        </p>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+      <div
+        className="min-h-screen flex items-center justify-center px-4"
+        style={{ background: 'var(--bg-surface)' }}
+      >
+        <div
+          className="w-full max-w-md p-10 text-center rounded-xl border"
+          style={{
+            background: 'var(--bg-elevated)',
+            borderColor: 'var(--border)',
+          }}
         >
-          Return to Dashboard
-        </Link>
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
+            style={{ background: 'var(--danger-surface)' }}
+          >
+            <svg
+              width="26"
+              height="26"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ color: 'var(--danger)' }}
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+            Session Not Found
+          </h1>
+          <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
+            Unable to load telemedicine session details or the session does not exist.
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center justify-center w-full h-11 rounded-lg text-sm font-medium"
+            style={{ background: 'var(--brand)', color: '#ffffff' }}
+          >
+            Return to Dashboard
+          </Link>
+        </div>
       </div>
     );
   }
@@ -82,83 +112,175 @@ export default async function TelemedicineSessionPage({
     hour12: true,
   }).format(new Date(sessionData.scheduledAt));
 
-  const getStatusColor = (status: SessionStatus) => {
+  const getStatusStyle = (status: SessionStatus): React.CSSProperties => {
     switch (status) {
-      case 'SCHEDULED': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'STARTED': return 'bg-green-100 text-green-800 border-green-200';
-      case 'COMPLETED': return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'CANCELLED': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'SCHEDULED':
+        return { background: 'var(--accent-surface)', color: 'var(--warning-text)', border: '1px solid var(--warning-border)' };
+      case 'STARTED':
+        return { background: 'var(--brand-surface)', color: 'var(--brand-text)', border: '1px solid var(--brand-border)' };
+      case 'COMPLETED':
+        return { background: 'var(--bg-muted)', color: 'var(--text-secondary)' };
+      case 'CANCELLED':
+        return { background: 'var(--danger-surface)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)' };
+      default:
+        return { background: 'var(--bg-muted)', color: 'var(--text-secondary)' };
     }
   };
 
   const showIframe = sessionData.status === 'SCHEDULED' || sessionData.status === 'STARTED';
 
   return (
-    <div className="max-w-6xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-      {/* Header Info */}
-      <div className="bg-white px-6 py-6 border-b border-gray-200 rounded-lg shadow-sm border mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Video className="w-6 h-6 text-blue-600" />
-            Virtual Consultation
-          </h1>
-          <div className="mt-2 text-sm text-gray-500 flex flex-wrap items-center gap-x-6 gap-y-2">
-            <div className="flex items-center gap-1.5">
-              <User className="w-4 h-4 text-gray-400" />
-              <span className="font-medium text-gray-700">Dr. {sessionData.doctorName}</span> 
-              <span className="text-gray-400 mx-1">•</span> 
-              <span>Patient: {sessionData.patientName}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              <span>{formattedDate}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-gray-400" />
-              <span>{formattedTime}</span>
-            </div>
-          </div>
-        </div>
-        
-        <div>
-           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(sessionData.status)}`}>
-            {sessionData.status}
-          </span>
-        </div>
-      </div>
+    <div
+      className="min-h-screen"
+      style={{ background: 'var(--bg-surface)' }}
+    >
+      <div className="max-w-[1200px] mx-auto px-4 py-8 space-y-5">
 
-      {/* Jitsi Meet Encapsulation or Status State */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-[600px] flex flex-col">
-        {showIframe && sessionData.meetingUrl ? (
-          <iframe
-            src={sessionData.meetingUrl}
-            allow="camera; microphone; fullscreen; display-capture"
-            className="w-full grow"
-            style={{ height: '600px', border: 'none' }}
-            title={`Telemedicine session for ${sessionData.patientName}`}
-          />
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-gray-50">
-             <div className="inline-flex items-center justify-center p-4 bg-gray-200 rounded-full mb-4">
-               {sessionData.status === 'COMPLETED' ? (
-                 <CheckCircle className="w-8 h-8 text-gray-600" />
-               ) : (
-                 <AlertCircle className="w-8 h-8 text-red-600" />
-               )}
-             </div>
-             <h2 className="text-xl font-bold text-gray-900 mb-2">
-               Session {sessionData.status.toLowerCase()}
-             </h2>
-             <p className="text-gray-500 max-w-md">
-               This telemedicine session has been {sessionData.status.toLowerCase()}. The meeting room is no longer available.
-             </p>
+        {/* Session info bar */}
+        <div
+          className="rounded-xl border px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          style={{
+            background: 'var(--bg-elevated)',
+            borderColor: 'var(--border)',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: 'var(--brand-surface)' }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ color: 'var(--brand)' }}
+              >
+                <polygon points="23 7 16 12 23 17 23 7" />
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+                Virtual Consultation
+              </h1>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+                <span>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    Dr. {sessionData.doctorName}
+                  </span>
+                  {' · '}
+                  Patient: {sessionData.patientName}
+                </span>
+                <span>{formattedDate}</span>
+                <span>{formattedTime}</span>
+              </div>
+            </div>
           </div>
-        )}
+
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <span
+              className="px-3 py-1 rounded-full text-xs font-semibold"
+              style={getStatusStyle(sessionData.status)}
+            >
+              {sessionData.status}
+            </span>
+            <Link
+              href="/dashboard"
+              className="text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors"
+              style={{
+                borderColor: 'var(--border)',
+                color: 'var(--text-secondary)',
+                background: 'transparent',
+              }}
+            >
+              ← Dashboard
+            </Link>
+          </div>
+        </div>
+
+        {/* Video area */}
+        <div
+          className="rounded-xl border overflow-hidden"
+          style={{
+            background: 'var(--bg-elevated)',
+            borderColor: 'var(--border)',
+            minHeight: '600px',
+          }}
+        >
+          {showIframe && sessionData.meetingUrl ? (
+            <iframe
+              src={sessionData.meetingUrl}
+              allow="camera; microphone; fullscreen; display-capture"
+              style={{ width: '100%', height: '650px', border: 'none', display: 'block' }}
+              title={`Telemedicine session for ${sessionData.patientName}`}
+            />
+          ) : (
+            <div
+              className="flex flex-col items-center justify-center p-16 text-center"
+              style={{ minHeight: '600px' }}
+            >
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5"
+                style={{
+                  background: sessionData.status === 'COMPLETED' ? 'var(--bg-muted)' : 'var(--danger-surface)',
+                }}
+              >
+                {sessionData.status === 'COMPLETED' ? (
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                ) : (
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    style={{ color: 'var(--danger)' }}
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                )}
+              </div>
+              <h2
+                className="text-xl font-semibold mb-2 capitalize"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                Session {sessionData.status.toLowerCase()}
+              </h2>
+              <p className="text-sm max-w-sm" style={{ color: 'var(--text-muted)' }}>
+                This telemedicine session has been{' '}
+                {sessionData.status.toLowerCase()}. The meeting room is no longer available.
+              </p>
+              <Link
+                href="/appointments"
+                className="mt-6 inline-flex items-center px-5 py-2.5 rounded-lg text-sm font-medium"
+                style={{ background: 'var(--brand)', color: '#ffffff' }}
+              >
+                View Appointments
+              </Link>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
 }
 
-// Ensure proper icon is imported for 'CheckCircle' fallback
-import { CheckCircle } from 'lucide-react';

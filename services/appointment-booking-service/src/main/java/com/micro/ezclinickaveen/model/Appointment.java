@@ -1,11 +1,25 @@
 package com.micro.ezclinickaveen.model;
 
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-
 import java.util.Date;
 import java.util.UUID;
+
+import org.hibernate.annotations.CreationTimestamp;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "appointments")
@@ -21,13 +35,13 @@ public class Appointment {
     private UUID id;
 
     @Column(name = "patient_id", nullable = false)
-    private UUID patientId;
+    private String patientId;
 
     @Column(name = "doctor_id", nullable = false)
     private String doctorId;
 
     @Column(name = "slot_id")
-    private UUID slotId;
+    private String slotId;
 
     @Column(name = "appointment_date", nullable = false)
     @Temporal(TemporalType.DATE)
