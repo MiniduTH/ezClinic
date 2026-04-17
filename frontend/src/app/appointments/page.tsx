@@ -857,12 +857,26 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                         {filteredDoctors.map((d) => (
                                             <option key={d.id} value={d.id}>
                                                 {d.name} — {d.specialization || d.specialty || "General"}
-                                                {d.consultationFee ? ` (LKR ${d.consultationFee})` : ""}
+                                                {d.consultationFee ? ` (LKR ${Number(d.consultationFee).toFixed(2)} → LKR ${Number((d.consultationFee * 1.25)).toFixed(2)})` : ""}
                                             </option>
                                         ))}
                                     </select>
                                 )}
                             </div>
+
+                            {/* Display fee with 25% markup when a doctor is chosen */}
+                            {selectedDoctor && (
+                                (() => {
+                                    const doc = doctors.find((dd) => dd.id === selectedDoctor || dd._id === selectedDoctor);
+                                    const base = doc?.consultationFee ?? 0;
+                                    const total = Number((base * 1.25).toFixed(2));
+                                    return (
+                                        <div className="mt-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+                                            <strong>Fee:</strong> LKR {base ? base.toLocaleString() : "0.00"} &nbsp;→&nbsp; <strong>LKR {total.toLocaleString()}</strong> (including 25% service)
+                                        </div>
+                                    );
+                                })()
+                            )}
 
                             {/* Availability Slots */}
                             {selectedDoctor && (
