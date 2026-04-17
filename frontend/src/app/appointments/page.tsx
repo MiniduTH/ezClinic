@@ -49,7 +49,61 @@ interface AvailabilitySlot {
     maxPatients: number;
 }
 
+function getJwtSub(token: string): string | null {
+    try {
+        const payloadPart = token.split(".")[1];
+        if (!payloadPart) return null;
+        const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+        const payload = JSON.parse(atob(padded)) as { sub?: unknown };
+        return typeof payload.sub === "string" ? payload.sub : null;
+    } catch {
+        return null;
+    }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function isTelemedicineType(type: string): boolean {
+    const normalized = (type || "").toUpperCase();
+    return normalized === "VIRTUAL" || normalized === "TELEMEDICINE";
+}
+
+function extractDisplayName(raw: unknown): string | undefined {
+    if (!raw || typeof raw !== "object") return undefined;
+    const value = raw as Record<string, unknown>;
+    const firstName = typeof value.firstName === "string" ? value.firstName : "";
+    const lastName = typeof value.lastName === "string" ? value.lastName : "";
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    return (
+        (typeof value.name === "string" && value.name) ||
+        (typeof value.fullName === "string" && value.fullName) ||
+        (fullName.length > 0 ? fullName : undefined) ||
+        (typeof value.displayName === "string" && value.displayName) ||
+        (typeof value.username === "string" && value.username) ||
+        undefined
+    );
+}
+
+function SessionLiveBadge() {
+    return (
+        <span
+            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium"
+            style={{
+                backgroundColor: "rgba(34, 197, 94, 0.12)",
+                color: "#166534",
+                border: "1px solid rgba(34, 197, 94, 0.35)",
+            }}
+        >
+            <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-600" />
+            </span>
+            Session Live
+        </span>
+    );
+}
 
 function statusBadge(status: string) {
     const styleMap: Record<string, React.CSSProperties> = {
@@ -89,10 +143,7 @@ function statusBadge(status: string) {
     };
 
     return (
-        <span
-            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-            style={style}
-        >
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" style={style}>
             {status}
         </span>
     );
@@ -106,6 +157,7 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [filter, setFilter] = useState<string>("ALL");
+    const [liveSessionByAppointment, setLiveSessionByAppointment] = useState<Record<string, boolean>>({});
 
     // Resolve doctorId by calling doctor-service /doctors/me (more reliable than JWT claims)
     const [doctorId, setDoctorId] = useState<string | null>(null);
@@ -162,21 +214,74 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
 
             // If any appointments lack a patientName, try to resolve names from patient-admin service
             try {
-                const idsToResolve = Array.from(new Set(mapped.filter((m) => !m.patientName || m.patientName === "Unknown Patient").map((m) => m.patientId))).filter(Boolean);
+                const idsToResolve = Array.from(
+                    new Set(mapped.filter((m) => !m.patientName || m.patientName === "Unknown Patient").map((m) => m.patientId)),
+                ).filter(Boolean);
                 if (idsToResolve.length > 0 && accessToken) {
-                    const responses = await Promise.all(
-                        idsToResolve.map((id) =>
-                            fetch(`${PATIENT_API}/patients/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } }).then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
-                        ),
-                    );
                     const nameById: Record<string, string> = {};
-                    responses.forEach((res, idx) => {
-                        const id = idsToResolve[idx];
-                        if (!res) return;
-                        const raw = (res.data ?? res) as any;
-                        const resolved = (raw.name || raw.fullName || (raw.firstName && raw.lastName && `${raw.firstName} ${raw.lastName}`) || raw.displayName || raw.username) as string | undefined;
-                        if (resolved) nameById[id] = resolved;
-                    });
+
+                    const resolvePatientById = async (id: string) => {
+                        const candidates = Array.from(new Set([id, decodeURIComponent(id)]));
+
+                        for (const candidateId of candidates) {
+                            try {
+                                const response = await fetch(`${PATIENT_API}/patients/${encodeURIComponent(candidateId)}`, {
+                                    headers: { Authorization: `Bearer ${accessToken}` },
+                                });
+
+                                if (!response.ok) continue;
+
+                                const payload = await response.json().catch(() => null);
+                                const raw = payload?.data ?? payload;
+                                const name = extractDisplayName(raw);
+
+                                if (name) {
+                                    nameById[id] = name;
+                                    return;
+                                }
+                            } catch {
+                                // continue trying other candidates/fallbacks
+                            }
+                        }
+                    };
+
+                    await Promise.all(idsToResolve.map((id) => resolvePatientById(id)));
+
+                    // Fallback: load patient directory once and match unresolved IDs.
+                    const unresolvedIds = idsToResolve.filter((id) => !nameById[id]);
+                    if (unresolvedIds.length > 0) {
+                        try {
+                            const allPatientsRes = await fetch(`${PATIENT_API}/patients`, {
+                                headers: { Authorization: `Bearer ${accessToken}` },
+                            });
+
+                            if (allPatientsRes.ok) {
+                                const payload = await allPatientsRes.json().catch(() => null);
+                                const records = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
+                                const byId = new Map<string, string>();
+
+                                for (const item of records) {
+                                    if (!item || typeof item !== "object") continue;
+                                    const record = item as Record<string, unknown>;
+                                    const id = (typeof record.id === "string" && record.id) || (typeof record._id === "string" && record._id) || "";
+                                    const name = extractDisplayName(record);
+                                    if (id && name) {
+                                        byId.set(id, name);
+                                        byId.set(encodeURIComponent(id), name);
+                                    }
+                                }
+
+                                unresolvedIds.forEach((id) => {
+                                    const normalizedId = decodeURIComponent(id);
+                                    const resolved = byId.get(id) || byId.get(normalizedId) || byId.get(encodeURIComponent(normalizedId));
+                                    if (resolved) nameById[id] = resolved;
+                                });
+                            }
+                        } catch {
+                            // ignore fallback failures and keep existing labels
+                        }
+                    }
+
                     if (Object.keys(nameById).length > 0) {
                         setAppointments((prev) => prev.map((p) => ({ ...p, patientName: nameById[p.patientId] ?? p.patientName })));
                     }
@@ -194,6 +299,50 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
     useEffect(() => {
         fetchAppointments();
     }, [fetchAppointments]);
+
+    useEffect(() => {
+        const candidates = appointments.filter((apt) => isTelemedicineType(apt.type) && apt.status !== "CANCELLED" && apt.status !== "COMPLETED");
+
+        if (candidates.length === 0) {
+            setLiveSessionByAppointment({});
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadLiveState = async () => {
+            const results = await Promise.all(
+                candidates.map(async (apt) => {
+                    try {
+                        const res = await fetch(`/api/telemedicine/status/${apt.id}`, { cache: "no-store" });
+                        if (!res.ok) return [apt.id, false] as const;
+                        const data = await res.json();
+                        return [apt.id, Boolean(data?.live)] as const;
+                    } catch {
+                        return [apt.id, false] as const;
+                    }
+                }),
+            );
+
+            if (cancelled) return;
+
+            const next: Record<string, boolean> = {};
+            for (const [appointmentId, isLive] of results) {
+                if (isLive) next[appointmentId] = true;
+            }
+            setLiveSessionByAppointment(next);
+        };
+
+        void loadLiveState();
+        const intervalId = window.setInterval(() => {
+            void loadLiveState();
+        }, 15000);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(intervalId);
+        };
+    }, [appointments]);
 
     const handleAction = async (id: string, action: "confirm" | "cancel") => {
         try {
@@ -227,10 +376,7 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
     const filtered = filter === "ALL" ? appointments : appointments.filter((a) => a.status === filter);
 
     return (
-        <div
-            className="max-w-[1200px] mx-auto py-8 px-4 space-y-6"
-            style={{ backgroundColor: "var(--bg-surface)" }}
-        >
+        <div className="max-w-300 mx-auto py-8 px-4 space-y-6" style={{ backgroundColor: "var(--bg-surface)" }}>
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
                 <div>
@@ -241,11 +387,7 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
                         Manage your upcoming patient appointments
                     </p>
                 </div>
-                <Link
-                    href="/dashboard"
-                    className="text-sm font-medium shrink-0 transition-colors"
-                    style={{ color: "var(--brand)" }}
-                >
+                <Link href="/dashboard" className="text-sm font-medium shrink-0 transition-colors" style={{ color: "var(--brand)" }}>
                     ← Back to Dashboard
                 </Link>
             </div>
@@ -271,10 +413,7 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
             {/* Content */}
             {loading ? (
                 <div className="flex justify-center items-center h-48">
-                    <div
-                        className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2"
-                        style={{ borderColor: "var(--brand)" }}
-                    />
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2" style={{ borderColor: "var(--brand)" }} />
                 </div>
             ) : error ? (
                 <div
@@ -296,13 +435,7 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
                         color: "var(--text-muted)",
                     }}
                 >
-                    <svg
-                        className="mx-auto mb-4 h-12 w-12 opacity-40"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={1.5}
-                    >
+                    <svg className="mx-auto mb-4 h-12 w-12 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -314,6 +447,8 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
             ) : (
                 <div className="space-y-3">
                     {filtered.map((apt) => {
+                        const isVirtualAppointment = isTelemedicineType(apt.type);
+                        const isLiveSession = Boolean(liveSessionByAppointment[apt.id]);
                         const initials = (apt.patientName || "?")
                             .split(" ")
                             .map((n) => n[0])
@@ -345,31 +480,22 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
 
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                            <span
-                                                className="font-semibold truncate"
-                                                style={{ color: "var(--text-primary)" }}
-                                            >
+                                            <span className="font-semibold truncate" style={{ color: "var(--text-primary)" }}>
                                                 {apt.patientName}
                                             </span>
                                             {statusBadge(apt.status)}
                                         </div>
-                                        <div
-                                            className="text-sm flex flex-wrap gap-x-3 gap-y-0.5"
-                                            style={{ color: "var(--text-muted)" }}
-                                        >
+                                        <div className="text-sm flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: "var(--text-muted)" }}>
                                             <span>📅 {apt.date}</span>
                                             <span>🕐 {apt.time}</span>
                                             <span>📍 {apt.type}</span>
                                         </div>
                                         {apt.reason && (
-                                            <p
-                                                className="mt-1 text-sm truncate"
-                                                style={{ color: "var(--text-secondary)" }}
-                                            >
+                                            <p className="mt-1 text-sm truncate" style={{ color: "var(--text-secondary)" }}>
                                                 Reason: {apt.reason}
                                             </p>
                                         )}
-                                        {apt.type.toLowerCase() === "telemedicine" && (
+                                        {isVirtualAppointment && (
                                             <div className="mt-4">
                                                 <NotificationBanner appointmentId={apt.id} />
                                             </div>
@@ -402,30 +528,27 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
                                         </button>
                                     </div>
                                 )}
-                                {apt.status === "CONFIRMED" && (
-                                    <Link
-                                        href={`/telemedicine/${apt.id}`}
-                                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-medium transition-colors"
-                                        style={{
-                                            backgroundColor: "var(--brand)",
-                                            color: "#ffffff",
-                                        }}
-                                    >
-                                        <svg
-                                            className="w-4 h-4"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                            strokeWidth={2}
+                                {apt.status === "CONFIRMED" && isVirtualAppointment && (
+                                    <div className="shrink-0 flex items-center gap-2">
+                                        {isLiveSession && <SessionLiveBadge />}
+                                        <Link
+                                            href={`/telemedicine/${apt.id}`}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-medium transition-colors"
+                                            style={{
+                                                backgroundColor: isLiveSession ? "#16a34a" : "var(--brand)",
+                                                color: "#ffffff",
+                                            }}
                                         >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"
-                                            />
-                                        </svg>
-                                        Start Session
-                                    </Link>
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"
+                                                />
+                                            </svg>
+                                            {isLiveSession ? "Join Session" : "Start Session"}
+                                        </Link>
+                                    </div>
                                 )}
                             </div>
                         );
@@ -444,10 +567,9 @@ function PayNowButton({ appointmentId, accessToken }: { appointmentId: string; a
     const handlePay = async () => {
         setLoading(true);
         try {
-            const res = await fetch(
-                `${APPOINTMENT_API.replace("/api/v1", "")}/api/payments/checkout-params/${appointmentId}`,
-                { headers: { Authorization: `Bearer ${accessToken}` } }
-            );
+            const res = await fetch(`${APPOINTMENT_API.replace("/api/v1", "")}/api/payments/checkout-params/${appointmentId}`, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
             if (!res.ok) throw new Error("Could not fetch payment details");
             const params: Record<string, string> = await res.json();
 
@@ -505,6 +627,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
     const [booking, setBooking] = useState(false);
     const [bookError, setBookError] = useState("");
     const [specialtyFilter, setSpecialtyFilter] = useState("");
+    const [liveSessionByAppointment, setLiveSessionByAppointment] = useState<Record<string, boolean>>({});
 
     // Availability slot state – populated when a doctor is selected
     const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
@@ -532,7 +655,10 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
         setUpcomingDates([]);
         setBookDate("");
         setBookTime("");
-        if (!selectedDoctor) { setAvailabilitySlots([]); return; }
+        if (!selectedDoctor) {
+            setAvailabilitySlots([]);
+            return;
+        }
         (async () => {
             setSlotsLoading(true);
             try {
@@ -557,7 +683,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                 setSlotsLoading(false);
             }
         })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedDoctor, accessToken]);
 
     const fetchAll = useCallback(async () => {
@@ -566,13 +692,29 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
             const headers = { Authorization: `Bearer ${accessToken}` };
 
             // Resolve patient identity
+            let resolvedPatientId: string | null = null;
+
             const meRes = await fetch(`${PATIENT_API}/patients/me`, { headers });
-            if (!meRes.ok) throw new Error("Could not load patient profile");
-            const me = await meRes.json();
-            setPatientId(me.id);
+            if (meRes.ok) {
+                const me = await meRes.json();
+                const raw = (me?.data ?? me) as Record<string, unknown>;
+                resolvedPatientId = (typeof raw.id === "string" && raw.id) || (typeof raw._id === "string" && raw._id) || null;
+            }
+
+            // Fallback: derive patient ID from JWT subject so appointments page still works
+            // even if patient-profile endpoint is temporarily unavailable.
+            if (!resolvedPatientId) {
+                resolvedPatientId = getJwtSub(accessToken);
+            }
+
+            if (!resolvedPatientId) {
+                throw new Error("Could not load patient profile");
+            }
+
+            setPatientId(resolvedPatientId);
 
             // Fetch appointments
-            const aptsRes = await fetch(`${APPOINTMENT_API}/appointments/patient/${me.id}`, { headers });
+            const aptsRes = await fetch(`${APPOINTMENT_API}/appointments/patient/${resolvedPatientId}`, { headers });
             if (aptsRes.ok) {
                 const data = await aptsRes.json();
                 const mapped = Array.isArray(data)
@@ -609,7 +751,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
             if (docsRes.ok) {
                 const docsData = await docsRes.json();
                 const rawDoctors = Array.isArray(docsData) ? docsData : docsData.data || [];
-                            const normalizedDoctors: Doctor[] = rawDoctors
+                const normalizedDoctors: Doctor[] = rawDoctors
                     .map((d: Record<string, unknown>) => ({
                         _id: (d._id as string) || undefined,
                         id: ((d.id as string) || (d._id as string) || "") as string,
@@ -618,11 +760,11 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                         specialization: (d.specialization as string) || (d.specialty as string) || "General",
                         consultationFee: Number(d.consultationFee ?? 0),
                         consultationType: (d.consultationType as string) || undefined,
-                                    availability: Array.isArray(d.availability) ? (d.availability as Array<{ isActive?: boolean }>) : [],
-                                    isVerified: !!(d as any).isVerified,
+                        availability: Array.isArray(d.availability) ? (d.availability as Array<{ isActive?: boolean }>) : [],
+                        isVerified: !!(d as any).isVerified,
                     }))
                     .filter((d: Doctor) => Boolean(d.id));
-                            setDoctors(normalizedDoctors);
+                setDoctors(normalizedDoctors);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : "An error occurred");
@@ -639,13 +781,57 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                 if (apt.doctorName) return apt;
                 const doc = doctors.find((d) => d.id === apt.doctorId || d._id === apt.doctorId);
                 return doc ? { ...apt, doctorName: doc.name } : { ...apt, doctorName: "Dr. (ID: " + apt.doctorId.slice(0, 8) + "…)" };
-            })
+            }),
         );
     }, [doctors]);
 
     useEffect(() => {
         fetchAll();
     }, [fetchAll]);
+
+    useEffect(() => {
+        const candidates = appointments.filter((apt) => isTelemedicineType(apt.type) && apt.status !== "CANCELLED" && apt.status !== "COMPLETED");
+
+        if (candidates.length === 0) {
+            setLiveSessionByAppointment({});
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadLiveState = async () => {
+            const results = await Promise.all(
+                candidates.map(async (apt) => {
+                    try {
+                        const res = await fetch(`/api/telemedicine/status/${apt.id}`, { cache: "no-store" });
+                        if (!res.ok) return [apt.id, false] as const;
+                        const data = await res.json();
+                        return [apt.id, Boolean(data?.live)] as const;
+                    } catch {
+                        return [apt.id, false] as const;
+                    }
+                }),
+            );
+
+            if (cancelled) return;
+
+            const next: Record<string, boolean> = {};
+            for (const [appointmentId, isLive] of results) {
+                if (isLive) next[appointmentId] = true;
+            }
+            setLiveSessionByAppointment(next);
+        };
+
+        void loadLiveState();
+        const intervalId = window.setInterval(() => {
+            void loadLiveState();
+        }, 15000);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(intervalId);
+        };
+    }, [appointments]);
 
     const handleBook = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -671,8 +857,18 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                 }),
             });
             if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.message || "Booking failed");
+                const contentType = res.headers.get("content-type") || "";
+                let message = "Booking failed";
+
+                if (contentType.includes("application/json")) {
+                    const err = (await res.json().catch(() => ({}))) as { message?: string };
+                    if (err?.message) message = err.message;
+                } else {
+                    const errText = await res.text().catch(() => "");
+                    if (errText) message = errText;
+                }
+
+                throw new Error(message);
             }
             setShowBooking(false);
             setSelectedDoctor("");
@@ -728,10 +924,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
     };
 
     return (
-        <div
-            className="max-w-[1200px] mx-auto py-8 px-4 space-y-6"
-            style={{ backgroundColor: "var(--bg-surface)" }}
-        >
+        <div className="max-w-300 mx-auto py-8 px-4 space-y-6" style={{ backgroundColor: "var(--bg-surface)" }}>
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
                 <div>
@@ -807,10 +1000,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                         <form onSubmit={handleBook} className="space-y-4">
                             {/* Specialty filter */}
                             <div>
-                                <label
-                                    className="block text-sm font-medium mb-1"
-                                    style={{ color: "var(--text-secondary)" }}
-                                >
+                                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
                                     Filter by Specialty
                                 </label>
                                 <select
@@ -832,32 +1022,22 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
 
                             {/* Doctor select */}
                             <div>
-                                <label
-                                    className="block text-sm font-medium mb-1"
-                                    style={{ color: "var(--text-secondary)" }}
-                                >
-                                    Select Doctor{" "}
-                                    <span style={{ color: "var(--danger)" }}>*</span>
+                                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
+                                    Select Doctor <span style={{ color: "var(--danger)" }}>*</span>
                                 </label>
                                 {filteredDoctors.length === 0 ? (
-                                    <p
-                                        className="text-sm italic"
-                                        style={{ color: "var(--text-muted)" }}
-                                    >
+                                    <p className="text-sm italic" style={{ color: "var(--text-muted)" }}>
                                         No doctors available.
                                     </p>
                                 ) : (
-                                    <select
-                                        value={selectedDoctor}
-                                        onChange={(e) => setSelectedDoctor(e.target.value)}
-                                        required
-                                        style={inputStyle}
-                                    >
+                                    <select value={selectedDoctor} onChange={(e) => setSelectedDoctor(e.target.value)} required style={inputStyle}>
                                         <option value="">Choose a doctor…</option>
                                         {filteredDoctors.map((d) => (
                                             <option key={d.id} value={d.id}>
                                                 {d.name} — {d.specialization || d.specialty || "General"}
-                                                {d.consultationFee ? ` (LKR ${Number(d.consultationFee).toFixed(2)} → LKR ${Number((d.consultationFee * 1.25)).toFixed(2)})` : ""}
+                                                {d.consultationFee
+                                                    ? ` (LKR ${Number(d.consultationFee).toFixed(2)} → LKR ${Number(d.consultationFee * 1.25).toFixed(2)})`
+                                                    : ""}
                                             </option>
                                         ))}
                                     </select>
@@ -865,18 +1045,18 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                             </div>
 
                             {/* Display fee with 25% markup when a doctor is chosen */}
-                            {selectedDoctor && (
+                            {selectedDoctor &&
                                 (() => {
                                     const doc = doctors.find((dd) => dd.id === selectedDoctor || dd._id === selectedDoctor);
                                     const base = doc?.consultationFee ?? 0;
                                     const total = Number((base * 1.25).toFixed(2));
                                     return (
                                         <div className="mt-3 text-sm" style={{ color: "var(--text-secondary)" }}>
-                                            <strong>Fee:</strong> LKR {base ? base.toLocaleString() : "0.00"} &nbsp;→&nbsp; <strong>LKR {total.toLocaleString()}</strong> (including 25% service)
+                                            <strong>Fee:</strong> LKR {base ? base.toLocaleString() : "0.00"} &nbsp;→&nbsp;{" "}
+                                            <strong>LKR {total.toLocaleString()}</strong> (including 25% service)
                                         </div>
                                     );
-                                })()
-                            )}
+                                })()}
 
                             {/* Availability Slots */}
                             {selectedDoctor && (
@@ -885,14 +1065,23 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                         Available Time Slots <span style={{ color: "var(--danger)" }}>*</span>
                                     </label>
                                     {slotsLoading ? (
-                                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading slots…</p>
+                                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                                            Loading slots…
+                                        </p>
                                     ) : availabilitySlots.length === 0 ? (
-                                        <p className="text-sm italic" style={{ color: "var(--text-muted)" }}>No active slots for this doctor.</p>
+                                        <p className="text-sm italic" style={{ color: "var(--text-muted)" }}>
+                                            No active slots for this doctor.
+                                        </p>
                                     ) : (
                                         <div className="grid grid-cols-2 gap-2">
                                             {availabilitySlots.map((slot) => {
                                                 const isSelected = selectedSlot?._id === slot._id;
-                                                const typeLabel = slot.consultationType === "both" ? "In-Person & Virtual" : slot.consultationType === "in-person" ? "In-Person" : "Virtual";
+                                                const typeLabel =
+                                                    slot.consultationType === "both"
+                                                        ? "In-Person & Virtual"
+                                                        : slot.consultationType === "in-person"
+                                                          ? "In-Person"
+                                                          : "Virtual";
                                                 return (
                                                     <button
                                                         key={slot._id}
@@ -915,9 +1104,14 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                                         }}
                                                     >
                                                         <div className="font-semibold">{slot.dayOfWeek}</div>
-                                                        <div style={{ color: "var(--text-secondary)" }}>{slot.startTime} – {slot.endTime}</div>
+                                                        <div style={{ color: "var(--text-secondary)" }}>
+                                                            {slot.startTime} – {slot.endTime}
+                                                        </div>
                                                         <div className="mt-1">
-                                                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "var(--bg-muted)", color: "var(--text-muted)" }}>
+                                                            <span
+                                                                className="text-xs px-1.5 py-0.5 rounded-full"
+                                                                style={{ backgroundColor: "var(--bg-muted)", color: "var(--text-muted)" }}
+                                                            >
                                                                 {typeLabel}
                                                             </span>
                                                         </div>
@@ -963,19 +1157,18 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
 
                             {/* Consultation type */}
                             <div>
-                                <label
-                                    className="block text-sm font-medium mb-1"
-                                    style={{ color: "var(--text-secondary)" }}
-                                >
+                                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
                                     Consultation Type
                                 </label>
                                 <select
                                     value={bookType}
                                     onChange={(e) => setBookType(e.target.value)}
                                     disabled={!!selectedSlot && selectedSlot.consultationType !== "both"}
-                                    style={{ ...inputStyle, opacity: (selectedSlot && selectedSlot.consultationType !== "both") ? 0.7 : 1 }}
+                                    style={{ ...inputStyle, opacity: selectedSlot && selectedSlot.consultationType !== "both" ? 0.7 : 1 }}
                                 >
-                                    {(!selectedSlot || selectedSlot.consultationType === "both" || selectedSlot.consultationType === "telemedicine") && (
+                                    {(!selectedSlot ||
+                                        selectedSlot.consultationType === "both" ||
+                                        selectedSlot.consultationType === "telemedicine") && (
                                         <option value="telemedicine">Virtual (Video Call)</option>
                                     )}
                                     {(!selectedSlot || selectedSlot.consultationType === "both" || selectedSlot.consultationType === "in-person") && (
@@ -986,10 +1179,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
 
                             {/* Reason */}
                             <div>
-                                <label
-                                    className="block text-sm font-medium mb-1"
-                                    style={{ color: "var(--text-secondary)" }}
-                                >
+                                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
                                     Reason / Symptoms
                                 </label>
                                 <textarea
@@ -1056,10 +1246,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
             {/* Appointments list */}
             {loading ? (
                 <div className="flex justify-center items-center h-48">
-                    <div
-                        className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2"
-                        style={{ borderColor: "var(--brand)" }}
-                    />
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2" style={{ borderColor: "var(--brand)" }} />
                 </div>
             ) : error ? (
                 <div
@@ -1094,19 +1281,12 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                             d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5"
                         />
                     </svg>
-                    <p
-                        className="text-base font-medium"
-                        style={{ color: "var(--text-secondary)" }}
-                    >
+                    <p className="text-base font-medium" style={{ color: "var(--text-secondary)" }}>
                         No appointments yet
                     </p>
                     <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
                         Click{" "}
-                        <button
-                            onClick={() => setShowBooking(true)}
-                            className="underline"
-                            style={{ color: "var(--brand)" }}
-                        >
+                        <button onClick={() => setShowBooking(true)} className="underline" style={{ color: "var(--brand)" }}>
                             Book Appointment
                         </button>{" "}
                         to get started.
@@ -1115,6 +1295,8 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
             ) : (
                 <div className="space-y-3">
                     {filtered.map((apt) => {
+                        const isVirtualAppointment = isTelemedicineType(apt.type);
+                        const isLiveSession = Boolean(liveSessionByAppointment[apt.id]);
                         const initials = (apt.doctorName || "?")
                             .split(" ")
                             .map((n) => n[0])
@@ -1146,34 +1328,23 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
 
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                            <span
-                                                className="font-semibold truncate"
-                                                style={{ color: "var(--text-primary)" }}
-                                            >
+                                            <span className="font-semibold truncate" style={{ color: "var(--text-primary)" }}>
                                                 {apt.doctorName}
                                             </span>
                                             {statusBadge(apt.status)}
                                         </div>
-                                        <div
-                                            className="text-sm flex flex-wrap gap-x-3 gap-y-0.5"
-                                            style={{ color: "var(--text-muted)" }}
-                                        >
+                                        <div className="text-sm flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: "var(--text-muted)" }}>
                                             <span>📅 {apt.date}</span>
                                             {apt.time && <span>🕐 {apt.time}</span>}
                                             <span>{apt.type === "VIRTUAL" ? "📹 Virtual" : "🏥 In-Person"}</span>
-                                            {apt.amountPaid && (
-                                                <span>💳 LKR {apt.amountPaid.toLocaleString()}</span>
-                                            )}
+                                            {apt.amountPaid && <span>💳 LKR {apt.amountPaid.toLocaleString()}</span>}
                                         </div>
                                         {apt.reason && (
-                                            <p
-                                                className="mt-1 text-sm truncate"
-                                                style={{ color: "var(--text-secondary)" }}
-                                            >
+                                            <p className="mt-1 text-sm truncate" style={{ color: "var(--text-secondary)" }}>
                                                 {apt.reason}
                                             </p>
                                         )}
-                                        {apt.type === "VIRTUAL" && (
+                                        {isVirtualAppointment && (
                                             <div className="mt-4">
                                                 <NotificationBanner appointmentId={apt.id} />
                                             </div>
@@ -1187,18 +1358,34 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                     {apt.paymentStatus === "PENDING" && apt.status !== "CANCELLED" && (
                                         <PayNowButton appointmentId={apt.id} accessToken={accessToken} />
                                     )}
-                                    {apt.status === "CONFIRMED" && apt.type === "VIRTUAL" && (
-                                        <Link
-                                            href={`/telemedicine/${apt.id}`}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-medium transition-colors"
-                                            style={{
-                                                backgroundColor: "var(--brand)",
-                                                color: "#ffffff",
-                                            }}
-                                        >
-                                            📹 Join Virtual Meeting
-                                        </Link>
-                                    )}
+                                    {apt.status === "CONFIRMED" &&
+                                        isVirtualAppointment &&
+                                        (isLiveSession ? (
+                                            <div className="flex items-center gap-2">
+                                                <SessionLiveBadge />
+                                                <Link
+                                                    href={`/telemedicine/${apt.id}`}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-medium transition-colors"
+                                                    style={{
+                                                        backgroundColor: "#16a34a",
+                                                        color: "#ffffff",
+                                                    }}
+                                                >
+                                                    📹 Join Virtual Meeting
+                                                </Link>
+                                            </div>
+                                        ) : (
+                                            <span
+                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full font-medium"
+                                                style={{
+                                                    backgroundColor: "var(--bg-muted)",
+                                                    color: "var(--text-secondary)",
+                                                    border: "1px solid var(--border)",
+                                                }}
+                                            >
+                                                Waiting for doctor to start session
+                                            </span>
+                                        ))}
                                     {(apt.status === "PENDING" || apt.status === "CONFIRMED") && (
                                         <button
                                             onClick={() => handleCancel(apt.id)}
@@ -1239,27 +1426,17 @@ export default function AppointmentsPage() {
     if (isLoading || tokenLoading) {
         return (
             <div className="flex justify-center items-center min-h-[50vh]">
-                <div
-                    className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2"
-                    style={{ borderColor: "var(--brand)" }}
-                />
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2" style={{ borderColor: "var(--brand)" }} />
             </div>
         );
     }
 
     if (!user || !accessToken) {
         return (
-            <div
-                className="flex justify-center items-center min-h-[50vh]"
-                style={{ color: "var(--text-secondary)" }}
-            >
+            <div className="flex justify-center items-center min-h-[50vh]" style={{ color: "var(--text-secondary)" }}>
                 <p>
                     Please{" "}
-                    <a
-                        href="/auth/login?returnTo=/appointments"
-                        className="underline"
-                        style={{ color: "var(--brand)" }}
-                    >
+                    <a href="/auth/login?returnTo=/appointments" className="underline" style={{ color: "var(--brand)" }}>
                         log in
                     </a>{" "}
                     to view appointments.

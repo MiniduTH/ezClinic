@@ -31,7 +31,7 @@ class NotificationControllerTest extends BaseApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.status").value("SENT"))
-                .andExpect(jsonPath("$.recipientEmail").value("patient@example.com"));
+                .andExpect(jsonPath("$.recipientEmail").value("test-recipient@example.com"));
     }
 
     @Test
@@ -89,5 +89,44 @@ class NotificationControllerTest extends BaseApiTest {
     void getNotification_returns400ForUnknownId() throws Exception {
         mockMvc.perform(get(BASE_URL + "/" + UUID.randomUUID()))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("GET /notifications/status/{appointmentId} - returns sent=true after send")
+    void getAppointmentNotificationStatus_returnsSentStatus() throws Exception {
+        String appointmentId = UUID.randomUUID().toString();
+        String userId = UUID.randomUUID().toString();
+
+        mockMvc.perform(post(BASE_URL + "/send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "appointmentId": "%s",
+                                    "userId": "%s",
+                                    "recipientEmail": "patient@example.com",
+                                    "type": "EMAIL",
+                                    "subject": "Appointment Reminder",
+                                    "content": "Your appointment is confirmed."
+                                }
+                                """.formatted(appointmentId, userId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(BASE_URL + "/status/" + appointmentId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.appointmentId").value(appointmentId))
+                .andExpect(jsonPath("$.emailSent").value(true))
+                .andExpect(jsonPath("$.emailSentAt").exists());
+    }
+
+    @Test
+    @DisplayName("GET /notifications/status/{appointmentId} - returns sent=false when no notification exists")
+    void getAppointmentNotificationStatus_returnsNotSentWhenMissing() throws Exception {
+        String appointmentId = UUID.randomUUID().toString();
+
+        mockMvc.perform(get(BASE_URL + "/status/" + appointmentId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.appointmentId").value(appointmentId))
+                .andExpect(jsonPath("$.emailSent").value(false))
+                .andExpect(jsonPath("$.emailSentAt").isEmpty());
     }
 }

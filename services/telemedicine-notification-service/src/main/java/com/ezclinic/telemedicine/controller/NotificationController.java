@@ -1,6 +1,7 @@
 package com.ezclinic.telemedicine.controller;
 
 import com.ezclinic.telemedicine.dto.NotificationResponse;
+import com.ezclinic.telemedicine.dto.NotificationStatusResponse;
 import com.ezclinic.telemedicine.dto.SendNotificationRequest;
 import com.ezclinic.telemedicine.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,5 +38,11 @@ public class NotificationController {
     @Operation(summary = "Get notification by ID", description = "Retrieve a specific notification record")
     public ResponseEntity<NotificationResponse> getNotification(@PathVariable UUID id) {
         return ResponseEntity.ok(notificationService.getNotification(id));
+    }
+
+    @GetMapping("/status/{appointmentId}")
+    @Operation(summary = "Get appointment notification status", description = "Returns whether notification email has been sent for an appointment")
+    public ResponseEntity<NotificationStatusResponse> getAppointmentNotificationStatus(@PathVariable String appointmentId) {
+        return ResponseEntity.ok(notificationService.getAppointmentNotificationStatus(appointmentId));
     }
 }

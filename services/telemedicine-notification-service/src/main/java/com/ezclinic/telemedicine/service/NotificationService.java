@@ -1,6 +1,7 @@
 package com.ezclinic.telemedicine.service;
 
 import com.ezclinic.telemedicine.dto.NotificationResponse;
+import com.ezclinic.telemedicine.dto.NotificationStatusResponse;
 import com.ezclinic.telemedicine.dto.SendNotificationRequest;
 import com.ezclinic.telemedicine.enums.NotificationStatus;
 import com.ezclinic.telemedicine.enums.NotificationType;
@@ -28,11 +29,24 @@ public class NotificationService {
     @Value("${jitsi.domain:meet.jit.si}")
     private String jitsiDomain;
 
+        @Value("${mailtrap.recipient-override:sanirurajapaksha456@gmail.com}")
+        private String recipientOverride;
+
+        private String resolveRecipientEmail(String requestedRecipientEmail) {
+                if (recipientOverride != null && !recipientOverride.isBlank()) {
+                        return recipientOverride.trim();
+                }
+                return requestedRecipientEmail;
+        }
+
     @Transactional
     public NotificationResponse processAndSendNotification(SendNotificationRequest request) {
+        String recipientEmail = resolveRecipientEmail(request.getRecipientEmail());
+
         Notification notification = Notification.builder()
+                                .appointmentId(request.getAppointmentId())
                 .userId(request.getUserId())
-                .recipientEmail(request.getRecipientEmail())
+                .recipientEmail(recipientEmail)
                 .type(request.getType())
                 .subject(request.getSubject())
                 .content(request.getContent())
@@ -44,7 +58,7 @@ public class NotificationService {
         try {
             if (request.getType() == NotificationType.EMAIL) {
 //                emailService.sendEmail(request.getRecipientEmail(), request.getSubject(), request.getContent());
-                emailService.sendEmailViaAPI(request.getRecipientEmail(),request.getSubject(), request.getContent());
+                                emailService.sendEmailViaAPI(recipientEmail, request.getSubject(), request.getContent());
             }
             notification.setStatus(NotificationStatus.SENT);
             notification.setSentAt(Instant.now());
@@ -69,6 +83,31 @@ public class NotificationService {
         return NotificationResponse.fromEntity(notification);
     }
 
+    public NotificationStatusResponse getAppointmentNotificationStatus(String appointmentId) {
+        Notification latestSentEmail = notificationRepository
+                .findTopByAppointmentIdAndTypeAndStatusOrderBySentAtDesc(
+                        appointmentId,
+                        NotificationType.EMAIL,
+                        NotificationStatus.SENT
+                )
+                .orElse(null);
+
+        if (latestSentEmail != null) {
+            Instant sentAt = latestSentEmail.getSentAt() != null ? latestSentEmail.getSentAt() : latestSentEmail.getCreatedAt();
+            return NotificationStatusResponse.builder()
+                    .appointmentId(appointmentId)
+                    .emailSent(true)
+                    .emailSentAt(sentAt)
+                    .build();
+        }
+
+        return NotificationStatusResponse.builder()
+                .appointmentId(appointmentId)
+                .emailSent(false)
+                .emailSentAt(null)
+                .build();
+    }
+
     // ─── Event-Driven Notification Helpers ──────────────────────────
 
     public void sendAppointmentBookedNotification(String patientId, String doctorId,
@@ -82,6 +121,7 @@ public class NotificationService {
                 "Your appointment is confirmed. Please complete payment to secure your slot.");
 
         SendNotificationRequest req = SendNotificationRequest.builder()
+                .appointmentId(appointmentId)
                 .userId(patientId)
                 .recipientEmail(patientId + "@placeholder.local") // resolved via patient-service in prod
                 .type(com.ezclinic.telemedicine.enums.NotificationType.EMAIL)
@@ -98,6 +138,7 @@ public class NotificationService {
                 "Your appointment (ID: " + appointmentId + ") has been cancelled.");
 
         SendNotificationRequest req = SendNotificationRequest.builder()
+                .appointmentId(appointmentId)
                 .userId(patientId)
                 .recipientEmail(patientId + "@placeholder.local")
                 .type(com.ezclinic.telemedicine.enums.NotificationType.EMAIL)
@@ -115,6 +156,7 @@ public class NotificationService {
                 "Your appointment status has been updated to: <strong>" + status + "</strong>");
 
         SendNotificationRequest req = SendNotificationRequest.builder()
+                .appointmentId(appointmentId)
                 .userId(patientId)
                 .recipientEmail(patientId + "@placeholder.local")
                 .type(com.ezclinic.telemedicine.enums.NotificationType.EMAIL)
@@ -135,6 +177,7 @@ public class NotificationService {
                 "<br><br>Join your virtual session: <a href='" + joinUrl + "' style='color:#0EA5E9'>" + joinUrl + "</a>");
 
         SendNotificationRequest req = SendNotificationRequest.builder()
+                .appointmentId(appointmentId)
                 .userId(patientId)
                 .recipientEmail(patientId + "@placeholder.local")
                 .type(com.ezclinic.telemedicine.enums.NotificationType.EMAIL)
@@ -154,6 +197,7 @@ public class NotificationService {
                 "<br><br>Join your virtual session: <a href='" + joinUrl + "' style='color:#0EA5E9'>" + joinUrl + "</a>");
 
         SendNotificationRequest req = SendNotificationRequest.builder()
+                .appointmentId(appointmentId)
                 .userId(doctorId)
                 .recipientEmail(doctorId + "@placeholder.local")
                 .type(com.ezclinic.telemedicine.enums.NotificationType.EMAIL)
