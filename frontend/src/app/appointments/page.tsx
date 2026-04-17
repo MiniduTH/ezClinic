@@ -36,6 +36,17 @@ interface Doctor {
     consultationFee: number;
     consultationType?: string;
     availability?: Array<{ isActive?: boolean }>;
+    isVerified?: boolean;
+}
+
+interface AvailabilitySlot {
+    _id: string;
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+    isActive: boolean;
+    consultationType: string;
+    maxPatients: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -96,29 +107,83 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
     const [error, setError] = useState("");
     const [filter, setFilter] = useState<string>("ALL");
 
-    // In production, doctorId should come from the authenticated user's profile on doctor-service
-    const doctorId = ((user as Record<string, unknown>)?.["https://ezclinic.com/doctorId"] as string) || "69d71304d77fd0bbf5ec13eb";
+    // Resolve doctorId by calling doctor-service /doctors/me (more reliable than JWT claims)
+    const [doctorId, setDoctorId] = useState<string | null>(null);
+
+    useEffect(() => {
+        (async () => {
+            if (!accessToken) return;
+            try {
+                const res = await fetch(`${DOCTOR_API}/doctors/me`, { headers: { Authorization: `Bearer ${accessToken}` } });
+                if (!res.ok) return;
+                const data = await res.json();
+                const id = data?.data?._id ?? data?.data?.id ?? data?._id ?? data?.id;
+                if (id) setDoctorId(id);
+            } catch {
+                // ignore - fallback handled below
+            }
+        })();
+    }, [accessToken]);
 
     const fetchAppointments = useCallback(async () => {
+        if (!doctorId) return;
         setLoading(true);
         try {
             const res = await fetch(`${APPOINTMENT_API}/appointments/doctor/${doctorId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
             if (!res.ok) throw new Error("Failed to load appointments");
             const data = await res.json();
             const mapped = Array.isArray(data)
-                ? data.map((a: Record<string, unknown>) => ({
-                      id: (a.id || a._id) as string,
-                      patientId: a.patientId as string,
-                      patientName: (a.patientName || "Unknown Patient") as string,
-                      doctorId: a.doctorId as string,
-                      date: (a.date || a.appointmentDate) as string,
-                      time: (a.time || a.appointmentTime) as string,
-                      type: (a.type || a.consultationType || "Virtual") as string,
-                      status: ((a.status as string) || "PENDING").toUpperCase() as Appointment["status"],
-                      reason: (a.reason || a.issues) as string | undefined,
-                  }))
+                ? data.map((a: Record<string, unknown>) => {
+                      const rawDate = (a.appointmentDate || a.date) as string | undefined;
+                      const dateObj = rawDate ? new Date(rawDate) : null;
+                      const formattedDate = dateObj
+                          ? dateObj.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+                          : (rawDate as string) || "—";
+                      const formattedTime = dateObj
+                          ? dateObj.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
+                          : ((a.time || a.appointmentTime) as string) || "";
+                      const rawType = ((a.type || a.consultationType || "VIRTUAL") as string).toUpperCase();
+                      return {
+                          id: (a.id || a._id) as string,
+                          patientId: a.patientId as string,
+                          patientName: (a.patientName || "Unknown Patient") as string,
+                          doctorId: a.doctorId as string,
+                          date: formattedDate,
+                          time: formattedTime,
+                          type: rawType,
+                          status: ((a.status as string) || "PENDING").toUpperCase() as Appointment["status"],
+                          reason: (a.reason || a.issues) as string | undefined,
+                          paymentStatus: (a.paymentStatus as string) || undefined,
+                          amountPaid: (a.amountPaid as number) || undefined,
+                      };
+                  })
                 : [];
             setAppointments(mapped);
+
+            // If any appointments lack a patientName, try to resolve names from patient-admin service
+            try {
+                const idsToResolve = Array.from(new Set(mapped.filter((m) => !m.patientName || m.patientName === "Unknown Patient").map((m) => m.patientId))).filter(Boolean);
+                if (idsToResolve.length > 0 && accessToken) {
+                    const responses = await Promise.all(
+                        idsToResolve.map((id) =>
+                            fetch(`${PATIENT_API}/patients/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } }).then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
+                        ),
+                    );
+                    const nameById: Record<string, string> = {};
+                    responses.forEach((res, idx) => {
+                        const id = idsToResolve[idx];
+                        if (!res) return;
+                        const raw = (res.data ?? res) as any;
+                        const resolved = (raw.name || raw.fullName || (raw.firstName && raw.lastName && `${raw.firstName} ${raw.lastName}`) || raw.displayName || raw.username) as string | undefined;
+                        if (resolved) nameById[id] = resolved;
+                    });
+                    if (Object.keys(nameById).length > 0) {
+                        setAppointments((prev) => prev.map((p) => ({ ...p, patientName: nameById[p.patientId] ?? p.patientName })));
+                    }
+                }
+            } catch {
+                // gracefully ignore lookup failures
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : "An error occurred");
         } finally {
@@ -132,10 +197,18 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
 
     const handleAction = async (id: string, action: "confirm" | "cancel") => {
         try {
-            await fetch(`${APPOINTMENT_API}/appointments/${id}/${action}`, {
-                method: "PUT",
-                headers: { Authorization: `Bearer ${accessToken}` },
-            });
+            if (action === "cancel") {
+                await fetch(`${APPOINTMENT_API}/appointments/${id}`, {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                });
+            } else {
+                await fetch(`${APPOINTMENT_API}/appointments/${id}/status`, {
+                    method: "PATCH",
+                    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "CONFIRMED" }),
+                });
+            }
             await fetchAppointments();
         } catch {
             setAppointments((prev) =>
@@ -433,6 +506,60 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
     const [bookError, setBookError] = useState("");
     const [specialtyFilter, setSpecialtyFilter] = useState("");
 
+    // Availability slot state – populated when a doctor is selected
+    const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
+    const [slotsLoading, setSlotsLoading] = useState(false);
+    const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
+    const [upcomingDates, setUpcomingDates] = useState<string[]>([]);
+
+    /** Returns the next `count` calendar dates that fall on the given day-of-week */
+    const getUpcomingDatesForDay = (dayOfWeek: string, count = 8): string[] => {
+        const dayIndex = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(dayOfWeek);
+        const results: string[] = [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        for (let offset = 0; results.length < count; offset++) {
+            const d = new Date(today);
+            d.setDate(today.getDate() + offset);
+            if (d.getDay() === dayIndex) results.push(d.toISOString().split("T")[0]);
+        }
+        return results;
+    };
+
+    // Fetch availability when a doctor is chosen
+    useEffect(() => {
+        setSelectedSlot(null);
+        setUpcomingDates([]);
+        setBookDate("");
+        setBookTime("");
+        if (!selectedDoctor) { setAvailabilitySlots([]); return; }
+        (async () => {
+            setSlotsLoading(true);
+            try {
+                const res = await fetch(`${DOCTOR_API}/doctors/${selectedDoctor}/availability`, {
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                const raw: AvailabilitySlot[] = (data.data?.slots || data.slots || []).map((s: any) => ({
+                    _id: s._id || s.id,
+                    dayOfWeek: s.dayOfWeek,
+                    startTime: s.startTime,
+                    endTime: s.endTime,
+                    isActive: !!s.isActive,
+                    consultationType: s.consultationType || "both",
+                    maxPatients: s.maxPatients ?? 1,
+                }));
+                setAvailabilitySlots(raw.filter((s) => s.isActive));
+            } catch {
+                setAvailabilitySlots([]);
+            } finally {
+                setSlotsLoading(false);
+            }
+        })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedDoctor, accessToken]);
+
     const fetchAll = useCallback(async () => {
         setLoading(true);
         try {
@@ -482,7 +609,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
             if (docsRes.ok) {
                 const docsData = await docsRes.json();
                 const rawDoctors = Array.isArray(docsData) ? docsData : docsData.data || [];
-                const normalizedDoctors: Doctor[] = rawDoctors
+                            const normalizedDoctors: Doctor[] = rawDoctors
                     .map((d: Record<string, unknown>) => ({
                         _id: (d._id as string) || undefined,
                         id: ((d.id as string) || (d._id as string) || "") as string,
@@ -491,10 +618,11 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                         specialization: (d.specialization as string) || (d.specialty as string) || "General",
                         consultationFee: Number(d.consultationFee ?? 0),
                         consultationType: (d.consultationType as string) || undefined,
-                        availability: Array.isArray(d.availability) ? (d.availability as Array<{ isActive?: boolean }>) : [],
+                                    availability: Array.isArray(d.availability) ? (d.availability as Array<{ isActive?: boolean }>) : [],
+                                    isVerified: !!(d as any).isVerified,
                     }))
                     .filter((d: Doctor) => Boolean(d.id));
-                setDoctors(normalizedDoctors);
+                            setDoctors(normalizedDoctors);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : "An error occurred");
@@ -521,8 +649,8 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
 
     const handleBook = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!patientId || !selectedDoctor || !bookDate || !bookTime) {
-            setBookError("Please fill in all required fields.");
+        if (!patientId || !selectedDoctor || !bookDate || !selectedSlot) {
+            setBookError("Please select a doctor, a time slot, and a date.");
             return;
         }
         setBooking(true);
@@ -537,6 +665,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                 body: JSON.stringify({
                     patientId,
                     doctorId: selectedDoctor,
+                    slotId: selectedSlot._id,
                     appointmentDate: bookDate,
                     type: bookType === "telemedicine" ? "VIRTUAL" : "PHYSICAL",
                 }),
@@ -550,6 +679,9 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
             setBookDate("");
             setBookTime("");
             setBookReason("");
+            setSelectedSlot(null);
+            setAvailabilitySlots([]);
+            setUpcomingDates([]);
             await fetchAll();
         } catch (err) {
             setBookError(err instanceof Error ? err.message : "An error occurred");
@@ -561,8 +693,8 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
     const handleCancel = async (id: string) => {
         if (!confirm("Cancel this appointment?")) return;
         try {
-            await fetch(`${APPOINTMENT_API}/appointments/${id}/cancel`, {
-                method: "PUT",
+            await fetch(`${APPOINTMENT_API}/appointments/${id}`, {
+                method: "DELETE",
                 headers: { Authorization: `Bearer ${accessToken}` },
             });
             await fetchAll();
@@ -573,7 +705,10 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
 
     const filtered = filter === "ALL" ? appointments : appointments.filter((a) => a.status === filter);
 
-    const availableDoctors = doctors.filter((d) => !d.availability || d.availability.length === 0 || d.availability.some((slot) => slot.isActive));
+    // Only show verified doctors to patients for booking
+    const availableDoctors = doctors
+        .filter((d) => d.isVerified !== false) // treat undefined as allowed, but explicitly hide false
+        .filter((d) => !d.availability || d.availability.length === 0 || d.availability.some((slot) => slot.isActive));
 
     const specialties = Array.from(new Set(availableDoctors.map((d) => d.specialization || d.specialty).filter(Boolean)));
 
@@ -656,6 +791,11 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                 onClick={() => {
                                     setShowBooking(false);
                                     setBookError("");
+                                    setSelectedDoctor("");
+                                    setSelectedSlot(null);
+                                    setAvailabilitySlots([]);
+                                    setUpcomingDates([]);
+                                    setBookDate("");
                                 }}
                                 className="text-2xl leading-none transition-colors"
                                 style={{ color: "var(--text-muted)" }}
@@ -724,42 +864,88 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                 )}
                             </div>
 
-                            {/* Date & Time */}
-                            <div className="grid grid-cols-2 gap-3">
+                            {/* Availability Slots */}
+                            {selectedDoctor && (
                                 <div>
-                                    <label
-                                        className="block text-sm font-medium mb-1"
-                                        style={{ color: "var(--text-secondary)" }}
-                                    >
-                                        Date{" "}
-                                        <span style={{ color: "var(--danger)" }}>*</span>
+                                    <label className="block text-sm font-medium mb-2" style={{ color: "var(--text-secondary)" }}>
+                                        Available Time Slots <span style={{ color: "var(--danger)" }}>*</span>
                                     </label>
-                                    <input
-                                        type="date"
-                                        value={bookDate}
-                                        onChange={(e) => setBookDate(e.target.value)}
-                                        min={new Date().toISOString().split("T")[0]}
-                                        required
-                                        style={inputStyle}
-                                    />
+                                    {slotsLoading ? (
+                                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading slots…</p>
+                                    ) : availabilitySlots.length === 0 ? (
+                                        <p className="text-sm italic" style={{ color: "var(--text-muted)" }}>No active slots for this doctor.</p>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {availabilitySlots.map((slot) => {
+                                                const isSelected = selectedSlot?._id === slot._id;
+                                                const typeLabel = slot.consultationType === "both" ? "In-Person & Virtual" : slot.consultationType === "in-person" ? "In-Person" : "Virtual";
+                                                return (
+                                                    <button
+                                                        key={slot._id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedSlot(slot);
+                                                            setBookDate("");
+                                                            setUpcomingDates(getUpcomingDatesForDay(slot.dayOfWeek));
+                                                            // Auto-set consultation type if not "both"
+                                                            if (slot.consultationType !== "both") {
+                                                                setBookType(slot.consultationType);
+                                                            }
+                                                        }}
+                                                        className="text-left rounded-lg border p-3 transition-all text-sm"
+                                                        style={{
+                                                            borderColor: isSelected ? "var(--brand)" : "var(--border)",
+                                                            backgroundColor: isSelected ? "var(--brand-surface)" : "var(--bg-elevated)",
+                                                            color: "var(--text-primary)",
+                                                            outline: isSelected ? "2px solid var(--brand)" : "none",
+                                                        }}
+                                                    >
+                                                        <div className="font-semibold">{slot.dayOfWeek}</div>
+                                                        <div style={{ color: "var(--text-secondary)" }}>{slot.startTime} – {slot.endTime}</div>
+                                                        <div className="mt-1">
+                                                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "var(--bg-muted)", color: "var(--text-muted)" }}>
+                                                                {typeLabel}
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
+                            )}
+
+                            {/* Date picker – shown after a slot is selected */}
+                            {selectedSlot && upcomingDates.length > 0 && (
                                 <div>
-                                    <label
-                                        className="block text-sm font-medium mb-1"
-                                        style={{ color: "var(--text-secondary)" }}
-                                    >
-                                        Time{" "}
-                                        <span style={{ color: "var(--danger)" }}>*</span>
+                                    <label className="block text-sm font-medium mb-2" style={{ color: "var(--text-secondary)" }}>
+                                        Pick a Date ({selectedSlot.dayOfWeek}s) <span style={{ color: "var(--danger)" }}>*</span>
                                     </label>
-                                    <input
-                                        type="time"
-                                        value={bookTime}
-                                        onChange={(e) => setBookTime(e.target.value)}
-                                        required
-                                        style={inputStyle}
-                                    />
+                                    <div className="flex flex-wrap gap-2">
+                                        {upcomingDates.map((d) => {
+                                            const label = new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                                            const isChosen = bookDate === d;
+                                            return (
+                                                <button
+                                                    key={d}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setBookDate(d);
+                                                        setBookTime(selectedSlot.startTime);
+                                                    }}
+                                                    className="px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
+                                                    style={{
+                                                        backgroundColor: isChosen ? "var(--brand)" : "var(--bg-muted)",
+                                                        color: isChosen ? "#ffffff" : "var(--text-secondary)",
+                                                    }}
+                                                >
+                                                    {label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Consultation type */}
                             <div>
@@ -772,10 +958,15 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                 <select
                                     value={bookType}
                                     onChange={(e) => setBookType(e.target.value)}
-                                    style={inputStyle}
+                                    disabled={!!selectedSlot && selectedSlot.consultationType !== "both"}
+                                    style={{ ...inputStyle, opacity: (selectedSlot && selectedSlot.consultationType !== "both") ? 0.7 : 1 }}
                                 >
-                                    <option value="telemedicine">Virtual (Video Call)</option>
-                                    <option value="in-person">In-Person (Clinic Visit)</option>
+                                    {(!selectedSlot || selectedSlot.consultationType === "both" || selectedSlot.consultationType === "telemedicine") && (
+                                        <option value="telemedicine">Virtual (Video Call)</option>
+                                    )}
+                                    {(!selectedSlot || selectedSlot.consultationType === "both" || selectedSlot.consultationType === "in-person") && (
+                                        <option value="in-person">In-Person (Clinic Visit)</option>
+                                    )}
                                 </select>
                             </div>
 
@@ -817,6 +1008,11 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                     onClick={() => {
                                         setShowBooking(false);
                                         setBookError("");
+                                        setSelectedDoctor("");
+                                        setSelectedSlot(null);
+                                        setAvailabilitySlots([]);
+                                        setUpcomingDates([]);
+                                        setBookDate("");
                                     }}
                                     className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                                     style={{

@@ -117,7 +117,18 @@ export default function AvailabilityPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setSlots(data.data.slots || []);
+        // Normalize slots: map Mongo `_id` to `id` and strip backend-only props
+        setSlots(
+          (data.data.slots || []).map((s: any) => ({
+            id: s.id ?? s._id,
+            dayOfWeek: s.dayOfWeek,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            isActive: !!s.isActive,
+            maxPatients: typeof s.maxPatients === "number" ? s.maxPatients : 1,
+            consultationType: s.consultationType || "both",
+          }))
+        );
       }
       setFetched(true);
     } catch {
@@ -157,17 +168,27 @@ export default function AvailabilityPage() {
     try {
       const token = await getToken();
       let res: Response;
+      // Build payload excluding backend-only fields like _id, doctorId, __v, id
+      const payload = {
+        dayOfWeek: editSlot.dayOfWeek,
+        startTime: editSlot.startTime,
+        endTime: editSlot.endTime,
+        isActive: editSlot.isActive,
+        maxPatients: editSlot.maxPatients,
+        consultationType: editSlot.consultationType,
+      };
+
       if (modalMode === "add") {
         res = await fetch(`${API_URL}/doctors/${doctorId}/availability`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(editSlot),
+          body: JSON.stringify(payload),
         });
       } else {
         res = await fetch(`${API_URL}/doctors/${doctorId}/availability/${editSlot.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(editSlot),
+          body: JSON.stringify(payload),
         });
       }
 

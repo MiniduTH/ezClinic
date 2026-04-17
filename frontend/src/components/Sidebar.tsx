@@ -237,6 +237,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   // Read persisted collapsed state from localStorage and apply CSS var
   useEffect(() => {
@@ -252,6 +253,25 @@ export default function Sidebar() {
       // localStorage unavailable (SSR safety)
     }
   }, []);
+
+  // Track whether the viewport is mobile-sized so we only render the FAB on small screens
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 639px)");
+    const update = () => setIsMobileViewport(mq.matches);
+    update();
+    if (mq.addEventListener) mq.addEventListener("change", update);
+    else mq.addListener(update);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", update);
+      else mq.removeListener(update);
+    };
+  }, []);
+
+  // Close mobile drawer when switching to desktop
+  useEffect(() => {
+    if (!isMobileViewport) setMobileOpen(false);
+  }, [isMobileViewport]);
 
   function toggleCollapsed() {
     const next = !collapsed;
@@ -504,31 +524,33 @@ export default function Sidebar() {
   return (
     <>
       {/* ── Mobile hamburger FAB — visible only on small screens ── */}
-      <button
-        onClick={() => setMobileOpen((v) => !v)}
-        aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
-        aria-expanded={mobileOpen}
-        style={{
-          position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          zIndex: 60,
-          width: "48px",
-          height: "48px",
-          borderRadius: "50%",
-          backgroundColor: "var(--brand)",
-          border: "none",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#ffffff",
-          cursor: "pointer",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
-        }}
-        className="sm:hidden"
-      >
-        {mobileOpen ? <IconClose /> : <IconMenu />}
-      </button>
+      {isMobileViewport && (
+        <button
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={mobileOpen}
+          style={{
+            position: "fixed",
+            bottom: "20px",
+            right: "20px",
+            zIndex: 60,
+            width: "48px",
+            height: "48px",
+            borderRadius: "50%",
+            backgroundColor: "var(--brand)",
+            border: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#ffffff",
+            cursor: "pointer",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+          }}
+          className="block sm:hidden"
+        >
+          {mobileOpen ? <IconClose /> : <IconMenu />}
+        </button>
+      )}
 
       {/* ── Mobile backdrop ── */}
       {mobileOpen && (
