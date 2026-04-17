@@ -3,7 +3,7 @@
 import { useUser } from "@/lib/session-context";
 import { usePathname } from "next/navigation";
 
-const AUTH_PATHS = ["/login", "/register", "/admin-login"];
+const AUTH_PATHS = ["/login", "/register", "/admin-login", "/"];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useUser();

@@ -117,11 +117,7 @@ export default function Navbar() {
   const [hasNotification] = useState(true); // placeholder — replace with real data
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const role = getUserRole(user);
-  const badge = ROLE_BADGE[role] ?? ROLE_BADGE.patient;
-  const breadcrumbs = buildBreadcrumbs(pathname);
-
-  // Close dropdown when clicking outside
+  // Must be called unconditionally before any early return
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -133,6 +129,13 @@ export default function Navbar() {
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownOpen]);
+
+  // Landing page has its own full-screen navbar
+  if (pathname === "/") return null;
+
+  const role = getUserRole(user);
+  const badge = ROLE_BADGE[role] ?? ROLE_BADGE.patient;
+  const breadcrumbs = buildBreadcrumbs(pathname);
 
   // Derive initials for avatar
   const initials = user
@@ -150,7 +153,7 @@ export default function Navbar() {
     } catch {
       // continue regardless
     }
-    window.location.href = "/login";
+    window.location.href = "/";
   }
 
   return (
@@ -498,7 +501,7 @@ export default function Navbar() {
         {/* Not logged in */}
         {!isLoading && !user && (
           <Link
-            href="/login"
+            href="/register"
             style={{
               padding: "6px 16px",
               borderRadius: "8px",

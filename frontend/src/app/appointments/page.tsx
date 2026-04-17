@@ -1256,7 +1256,7 @@ export default function AppointmentsPage() {
                 <p>
                     Please{" "}
                     <a
-                        href="/auth/login?returnTo=/appointments"
+                        href="/login"
                         className="underline"
                         style={{ color: "var(--brand)" }}
                     >

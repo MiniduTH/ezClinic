@@ -287,7 +287,9 @@ export default function Sidebar() {
     }
   }
 
-  if (isLoading || !user) return null;
+  // Public routes have their own layout — no sidebar needed
+  const isPublicRoute = pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/register") || pathname.startsWith("/admin-login");
+  if (isPublicRoute || isLoading || !user) return null;
 
   const role = getUserRole(user);
   const navItems = getNavItems(role);

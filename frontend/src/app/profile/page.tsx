@@ -894,7 +894,7 @@ export default function ProfilePage() {
   const { user, isLoading } = useUser();
 
   if (isLoading) return <ProfileSkeleton />;
-  if (!user) return <ErrorState message="You need to sign in to view your profile." href="/auth/login?returnTo=/profile" label="Sign In" />;
+  if (!user) return <ErrorState message="You need to sign in to view your profile." href="/login" label="Sign In" />;
 
   const role = getUserRole(user);
   if (role === "doctor") return <DoctorProfile />;
