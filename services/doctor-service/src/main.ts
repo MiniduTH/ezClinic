@@ -100,8 +100,8 @@ async function bootstrap() {
   // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
+      whitelist: true,          // strip fields not in the DTO
+      forbidNonWhitelisted: false, // don't 400 on extra fields — just strip them
       transform: true,
     }),
   );

@@ -750,9 +750,12 @@ function DoctorProfile() {
           if (doctorRes.status === 403) throw new Error("This profile is only available to doctor accounts.");
           throw new Error("Failed to fetch doctor data.");
         }
-        const data: Doctor = await doctorRes.json();
-        setDoctor(data);
-        setFormData(data);
+        const json = await doctorRes.json();
+        // Backend wraps response: { success: true, data: { _id, name, ... } }
+        const raw = json?.data ?? json;
+        const normalized: Doctor = { ...raw, id: raw.id ?? raw._id };
+        setDoctor(normalized);
+        setFormData(normalized);
       } catch (err) {
         setError(getErrorMessage(err, "An error occurred."));
       } finally {
@@ -775,21 +778,37 @@ function DoctorProfile() {
     setSaving(true);
     try {
       const token = await getToken();
-      const payload = {
-        ...formData,
-        name: formData.name || user?.name || "",
-        email: formData.email || user?.email || "",
-        auth0Id: formData.auth0Id || user?.sub,
+      // Only send fields accepted by UpdateDoctorDto — prevents 400 from extra keys
+      const payload: Record<string, unknown> = {
+        name:            formData.name           || user?.name  || "",
+        email:           formData.email          || user?.email || "",
+        specialization:  formData.specialization ?? undefined,
+        qualification:   formData.qualification  ?? undefined,
+        bio:             formData.bio            ?? undefined,
         consultationFee: formData.consultationFee == null ? 0 : Number(formData.consultationFee),
       };
-      const url = isNewDoctor ? `${DOCTOR_API}/doctors/register` : `${DOCTOR_API}/doctors/${doctor!.id}`;
+      // Remove undefined keys so existing values aren't overwritten
+      Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+      // New doctor registration needs auth0Id
+      if (isNewDoctor) payload.auth0Id = formData.auth0Id || user?.sub;
+
+      // encodeURIComponent handles the pipe in auth0|sub safely in URL
+      const url = isNewDoctor
+        ? `${DOCTOR_API}/doctors/register`
+        : `${DOCTOR_API}/doctors/${encodeURIComponent(doctor!.id)}`;
       const res = await fetch(url, {
         method: isNewDoctor ? "POST" : "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Failed to save doctor profile.");
-      const updated: Doctor = await res.json();
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        const msg = Array.isArray(errBody?.message) ? errBody.message.join(", ") : errBody?.message;
+        throw new Error(msg || "Failed to save doctor profile.");
+      }
+      const json = await res.json();
+      const raw = json?.data ?? json;
+      const updated: Doctor = { ...raw, id: raw.id ?? raw._id };
       setDoctor(updated);
       setFormData(updated);
       setIsEditing(false);
