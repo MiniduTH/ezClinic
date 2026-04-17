@@ -3,6 +3,19 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# NEXT_PUBLIC_* vars are baked into the JS bundle at build time.
+# Pass KONG_URL (or individual overrides) as build args so the browser
+# receives the correct public-facing URL without a rebuild per environment.
+ARG NEXT_PUBLIC_DOCTOR_API=http://localhost:8000/api/v1
+ARG NEXT_PUBLIC_PATIENT_API=http://localhost:8000/api/v1
+ARG NEXT_PUBLIC_APPOINTMENT_API=http://localhost:8000/api/v1
+ARG NEXT_PUBLIC_TELEMEDICINE_API=http://localhost:8000/api/v1
+
+ENV NEXT_PUBLIC_DOCTOR_API=$NEXT_PUBLIC_DOCTOR_API
+ENV NEXT_PUBLIC_PATIENT_API=$NEXT_PUBLIC_PATIENT_API
+ENV NEXT_PUBLIC_APPOINTMENT_API=$NEXT_PUBLIC_APPOINTMENT_API
+ENV NEXT_PUBLIC_TELEMEDICINE_API=$NEXT_PUBLIC_TELEMEDICINE_API
+
 COPY package*.json ./
 RUN npm ci
 

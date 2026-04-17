@@ -1,0 +1,101 @@
+_format_version: "3.0"
+_transform: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ezClinic — Kong DB-less Declarative Config
+#
+# Proxy port : 8000  (public — what browsers and clients call)
+# Admin port : 8001  (internal — do not expose in production)
+#
+# Auth routes (/api/v1/auth/*) are intentionally NOT routed here.
+# Login and registration go through Next.js API routes server-side,
+# which call the individual services directly on the internal Docker network.
+#
+# Inter-service calls (doctor → appointment, etc.) also bypass Kong and
+# use internal Docker DNS names directly.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── doctor-service (NestJS · MongoDB · port 3002) ──────────────────────────
+  - name: doctor-service
+    url: http://doctor-service:3002
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: doctor-api
+        paths:
+          - /api/v1/doctors
+        strip_path: false
+
+      # Credential documents uploaded via multipart — served as static files
+      - name: doctor-uploads
+        paths:
+          - /uploads
+        strip_path: false
+
+  # ── patient-admin-service (NestJS · PostgreSQL · port 3005) ───────────────
+  - name: patient-admin-service
+    url: http://patient-admin-service:3005
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: patient-api
+        paths:
+          - /api/v1/patients
+        strip_path: false
+
+      # @Controller('admin') — admin CRUD routes
+      - name: admin-api
+        paths:
+          - /api/v1/admin
+        strip_path: false
+
+      # @Controller('admins/platform') — legacy platform admin routes
+      - name: admins-platform-api
+        paths:
+          - /api/v1/admins
+        strip_path: false
+
+  # ── appointment-payment-service (Spring Boot · PostgreSQL · port 3004) ────
+  - name: appointment-payment-service
+    url: http://appointment-payment-service:3004
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: appointment-api
+        paths:
+          - /api/v1/appointments
+        strip_path: false
+
+      # Includes public PayHere webhook POST /api/v1/payments/notify
+      - name: payment-api
+        paths:
+          - /api/v1/payments
+        strip_path: false
+
+  # ── telemedicine-notification-service (Spring Boot · PostgreSQL · port 8090)
+  - name: telemedicine-notification-service
+    url: http://telemedicine-notification-service:8090
+    connect_timeout: 60000
+    write_timeout: 60000
+    read_timeout: 60000
+    routes:
+      - name: session-api
+        paths:
+          - /api/v1/sessions
+        strip_path: false
+
+      - name: notification-api
+        paths:
+          - /api/v1/notifications
+        strip_path: false
+
+      # SymptomCheckController is mapped to /symptom-checks (not /symptoms)
+      - name: symptom-check-api
+        paths:
+          - /api/v1/symptom-checks
+        strip_path: false

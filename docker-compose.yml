@@ -3,6 +3,14 @@ version: '3.9'
 # ─────────────────────────────────────────────────────────────────────────────
 # ezClinic — Local Development Stack
 # Usage: docker compose up -d
+#
+# Public entry point : http://localhost:8000  (Kong proxy)
+# Kong Admin API     : http://localhost:8001  (dev only — do not expose in prod)
+# Frontend           : http://localhost:3000
+# RabbitMQ UI        : http://localhost:15672  (guest / guest)
+#
+# Set KONG_URL in .env to change the public base URL baked into the frontend
+# build (default: http://localhost:8000).
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
@@ -165,12 +173,52 @@ services:
       retries: 3
     restart: unless-stopped
 
+  # ── API Gateway ─────────────────────────────────────────────────────────────
+
+  kong:
+    image: kong:3.9-ubuntu
+    container_name: ezclinic-kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      KONG_PROXY_LISTEN: "0.0.0.0:8000"
+    ports:
+      - "8000:8000"   # Public proxy — all client API calls go here
+      - "8001:8001"   # Admin API — expose only in dev / behind VPN in prod
+    volumes:
+      - ./kong/kong.yml:/kong/kong.yml:ro
+    depends_on:
+      - doctor-service
+      - patient-admin-service
+      - appointment-payment-service
+      - telemedicine-notification-service
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
   # ── Frontend ────────────────────────────────────────────────────────────────
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* vars are baked into the JS bundle at build time.
+        # KONG_URL must be reachable from the user's browser (not the container).
+        # Override KONG_URL in .env for staging / production deployments.
+        NEXT_PUBLIC_DOCTOR_API: ${KONG_URL:-http://localhost:8000}/api/v1
+        NEXT_PUBLIC_PATIENT_API: ${KONG_URL:-http://localhost:8000}/api/v1
+        NEXT_PUBLIC_APPOINTMENT_API: ${KONG_URL:-http://localhost:8000}/api/v1
+        NEXT_PUBLIC_TELEMEDICINE_API: ${KONG_URL:-http://localhost:8000}/api/v1
     container_name: ezclinic-frontend
     ports:
       - "3000:3000"
@@ -182,15 +230,15 @@ services:
       AUTH0_CLIENT_SECRET: ${AUTH0_CLIENT_SECRET}
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-https://api.ezclinic.com}
       APP_BASE_URL: ${FRONTEND_URL:-http://localhost:3000}
-      NEXT_PUBLIC_PATIENT_API: http://patient-admin-service:3005/api/v1
-      NEXT_PUBLIC_DOCTOR_API: http://doctor-service:3002/api/v1
-      NEXT_PUBLIC_APPOINTMENT_API: http://appointment-payment-service:3004/api/v1
-      NEXT_PUBLIC_TELEMEDICINE_API: http://telemedicine-notification-service:8090/api/v1
+      # Server-side calls from Next.js API routes use internal Docker DNS —
+      # these bypass Kong and hit services directly.
+      INTERNAL_DOCTOR_API: http://doctor-service:3002/api/v1
+      INTERNAL_PATIENT_API: http://patient-admin-service:3005/api/v1
+      INTERNAL_APPOINTMENT_API: http://appointment-payment-service:3004/api/v1
+      INTERNAL_TELEMEDICINE_API: http://telemedicine-notification-service:8090/api/v1
     depends_on:
-      - patient-admin-service
-      - doctor-service
-      - appointment-payment-service
-      - telemedicine-notification-service
+      kong:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
       interval: 30s
