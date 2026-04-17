@@ -217,8 +217,9 @@ services:
       AUTH0_CLIENT_SECRET: ${AUTH0_CLIENT_SECRET}
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-https://api.ezclinic.com}
       APP_BASE_URL: ${FRONTEND_URL:-http://localhost:3000}
-      # Server-side calls from Next.js API routes use internal Docker DNS —
-      # these bypass Kong and hit services directly.
+      # Used by server-side Next.js API routes to call Kong via internal Docker DNS
+      INTERNAL_KONG_URL: http://kong:8000
+      # Direct service URLs for non-auth server-side calls (bypass Kong)
       INTERNAL_DOCTOR_API: http://doctor-service:3002/api/v1
       INTERNAL_PATIENT_API: http://patient-admin-service:3005/api/v1
       INTERNAL_APPOINTMENT_API: http://appointment-booking-service:3004/api/v1

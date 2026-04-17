@@ -4,7 +4,7 @@ import { AuthService } from './auth.service';
 import { RegisterDoctorDto, LoginDto } from './dto/auth.dto';
 
 @ApiTags('auth')
-@Controller('auth')
+@Controller('doctors/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

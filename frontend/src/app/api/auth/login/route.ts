@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { setSessionCookie } from '@/lib/auth';
 
-const PATIENT_API =
-  process.env.NEXT_PUBLIC_PATIENT_API || 'http://localhost:3005/api/v1';
-const DOCTOR_API =
-  process.env.NEXT_PUBLIC_DOCTOR_API || 'http://localhost:3002/api/v1';
+const KONG_BASE = process.env.INTERNAL_KONG_URL || 'http://localhost:8000';
+const API_BASE = `${KONG_BASE}/api/v1`;
 
 export async function POST(request: Request) {
   try {
@@ -24,10 +22,10 @@ export async function POST(request: Request) {
 
     const serviceUrl =
       role === 'doctor'
-        ? `${DOCTOR_API}/auth/login`
+        ? `${API_BASE}/doctors/auth/login`
         : role === 'admin'
-        ? `${PATIENT_API}/auth/admin/login`
-        : `${PATIENT_API}/auth/login`;
+        ? `${API_BASE}/auth/admin/login`
+        : `${API_BASE}/auth/login`;
 
     const res = await fetch(serviceUrl, {
       method: 'POST',
