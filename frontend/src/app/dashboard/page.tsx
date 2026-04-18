@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useUser } from "@/lib/session-context";
+import FilePreviewModal from "@/components/FilePreviewModal";
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
@@ -116,6 +117,229 @@ function SkeletonAppointmentRow() {
   );
 }
 
+// ─── Patient Reports Modal ────────────────────────────────────────────────────
+
+type ReportType = "lab" | "imaging" | "prescription" | "other";
+
+interface Report {
+  id: string;
+  title: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number | null;
+  reportType: ReportType;
+  description: string | null;
+  reportDate: string | null;
+  uploadedAt: string;
+}
+
+const REPORT_TYPE_LABELS: Record<ReportType, string> = {
+  lab: "Lab Result",
+  imaging: "Imaging",
+  prescription: "Prescription",
+  other: "Other",
+};
+
+const TYPE_BADGE_STYLE: Record<ReportType, { bg: string; color: string }> = {
+  lab: { bg: "#dbeafe", color: "#1d4ed8" },
+  imaging: { bg: "#ede9fe", color: "#6d28d9" },
+  prescription: { bg: "#dcfce7", color: "#15803d" },
+  other: { bg: "var(--bg-muted)", color: "var(--text-secondary)" },
+};
+
+function PatientReportsModal({
+  patientId,
+  patientName,
+  onClose,
+}: {
+  patientId: string;
+  patientName: string;
+  onClose: () => void;
+}) {
+  const PATIENT_API =
+    process.env.NEXT_PUBLIC_PATIENT_API || "http://localhost:3005/api/v1";
+
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Report | null>(null);
+
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const tokenRes = await fetch("/api/auth/token");
+        if (!tokenRes.ok) throw new Error("Not authenticated");
+        const { accessToken } = await tokenRes.json();
+
+        const res = await fetch(`${PATIENT_API}/patients/${patientId}/reports`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!res.ok) throw new Error("Failed to fetch reports");
+        const json = await res.json();
+        const data: Report[] = Array.isArray(json)
+          ? json
+          : (json.data ?? json.reports ?? []);
+        setReports(data);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not load reports");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReports();
+  }, [patientId, PATIENT_API]);
+
+  if (preview) {
+    return (
+      <FilePreviewModal
+        title={preview.title}
+        url={preview.fileUrl}
+        fileType={preview.fileType}
+        onClose={() => setPreview(null)}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden"
+        style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-6 py-4 border-b"
+          style={{ borderColor: "var(--border)" }}
+        >
+          <div>
+            <h2 className="font-semibold text-base" style={{ color: "var(--text-primary)" }}>
+              Medical Reports
+            </h2>
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+              {patientName}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-2 transition-colors"
+            style={{ color: "var(--text-muted)" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-muted)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+            aria-label="Close"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 max-h-[70vh] overflow-y-auto">
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="animate-pulse rounded-xl border p-4 flex items-center gap-4"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  <div className="w-10 h-10 rounded-lg flex-shrink-0" style={{ background: "var(--bg-muted)" }} />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-40 rounded" style={{ background: "var(--bg-muted)" }} />
+                    <div className="h-2 w-24 rounded" style={{ background: "var(--bg-muted)" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-sm font-medium" style={{ color: "var(--danger-text)" }}>{error}</p>
+            </div>
+          ) : reports.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center mb-3"
+                style={{ background: "var(--bg-muted)" }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>No reports found</p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                This patient has not uploaded any medical reports yet.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {reports.map((report) => {
+                const badge = TYPE_BADGE_STYLE[report.reportType] ?? TYPE_BADGE_STYLE.other;
+                const date = report.reportDate
+                  ? new Date(report.reportDate).toLocaleDateString()
+                  : new Date(report.uploadedAt).toLocaleDateString();
+                return (
+                  <div
+                    key={report.id}
+                    className="rounded-xl border p-4 flex items-center gap-4 transition-colors"
+                    style={{ borderColor: "var(--border)", background: "var(--bg-surface)" }}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: badge.bg }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={badge.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
+                          {report.title}
+                        </span>
+                        <span
+                          className="text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+                          style={{ background: badge.bg, color: badge.color }}
+                        >
+                          {REPORT_TYPE_LABELS[report.reportType]}
+                        </span>
+                      </div>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                        {date}
+                        {report.description ? ` · ${report.description}` : ""}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setPreview(report)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex-shrink-0"
+                      style={{ background: "var(--brand-surface)", color: "var(--brand-text)" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.8"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                      View
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DoctorDashboard() {
@@ -123,6 +347,7 @@ export default function DoctorDashboard() {
 
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reportsModal, setReportsModal] = useState<{ patientId: string; patientName: string } | null>(null);
 
   const APPOINTMENT_API =
     process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:3004/api/v1";
@@ -243,8 +468,8 @@ export default function DoctorDashboard() {
     }
   };
 
-  const viewReports = (patientId: string) => {
-    alert(`Patient ID: ${patientId}\nFetching from Patient Service…`);
+  const viewReports = (patientId: string, patientName: string) => {
+    setReportsModal({ patientId, patientName });
   };
 
   const pendingCount = appointments.filter((a) => a.status === "PENDING").length;
@@ -578,7 +803,7 @@ export default function DoctorDashboard() {
                       ) : (
                         <>
                           <button
-                            onClick={() => viewReports(apt.patientId)}
+                            onClick={() => viewReports(apt.patientId, apt.patientName)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
                             style={{
                               borderColor: "var(--border)",
@@ -636,6 +861,14 @@ export default function DoctorDashboard() {
         </section>
 
       </div>
+
+      {reportsModal && (
+        <PatientReportsModal
+          patientId={reportsModal.patientId}
+          patientName={reportsModal.patientName}
+          onClose={() => setReportsModal(null)}
+        />
+      )}
     </div>
   );
 }
