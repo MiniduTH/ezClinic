@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTokenFromCookie } from '@/lib/auth';
+import { resolveServiceOrigin } from '@/lib/service-url';
 
-const DOCTOR_API = process.env.NEXT_PUBLIC_DOCTOR_API || 'http://localhost:3002/api/v1';
+const DOCTOR_ORIGIN = resolveServiceOrigin('doctor');
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,8 +17,7 @@ export async function GET(req: NextRequest) {
     if (!accessToken) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
     // Build full URL to doctor service static file endpoint
-    const base = DOCTOR_API.replace('/api/v1', '');
-    const fileUrl = `${base}${path}`;
+    const fileUrl = `${DOCTOR_ORIGIN}${path}`;
 
     // Fetch the file with authorization
     const res = await fetch(fileUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     if (contentType) headers['content-type'] = contentType;
     const body = await res.arrayBuffer();
     return new NextResponse(Buffer.from(body), { headers });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

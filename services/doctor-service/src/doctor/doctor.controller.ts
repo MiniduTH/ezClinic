@@ -40,7 +40,7 @@ export class DoctorController {
 
   @Post('register')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Register a new doctor (idempotent on Auth0 sub)' })
+  @ApiOperation({ summary: 'Register a new doctor (idempotent on user ID)' })
   @ApiResponse({
     status: 201,
     description: 'Doctor registered successfully. Awaiting admin verification.',
@@ -50,8 +50,7 @@ export class DoctorController {
     @Body() createDoctorDto: CreateDoctorDto,
     @CurrentUser() user: Record<string, unknown>,
   ) {
-    // Always use the Auth0 sub from the JWT, never from the request body
-    createDoctorDto.auth0Id = user['sub'] as string;
+    createDoctorDto.userId = user['sub'] as string;
     return this.doctorService.create(createDoctorDto);
   }
 
@@ -114,16 +113,14 @@ export class DoctorController {
   @ApiResponse({ status: 200, description: 'Profile found.' })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   getMe(@CurrentUser() user: Record<string, unknown>) {
-    const auth0Sub = user['sub'] as string;
-    return this.doctorService.findByAuth0Id(auth0Sub);
+    return this.doctorService.findByUserId(user['sub'] as string);
   }
 
   @Get('me/availability')
   @ApiBearerAuth()
   @ApiOperation({ summary: "Get authenticated doctor's availability slots" })
   getMyAvailability(@CurrentUser() user: Record<string, unknown>) {
-    const auth0Sub = user['sub'] as string;
-    return this.doctorService.getAvailability(auth0Sub);
+    return this.doctorService.getAvailability(user['sub'] as string);
   }
 
   @Get('pending')
@@ -147,8 +144,7 @@ export class DoctorController {
     if (!files || files.length === 0) {
       throw new BadRequestException('At least one file is required');
     }
-    const doctorId = user['sub'] as string;
-    return this.doctorService.uploadCredentials(doctorId, files);
+    return this.doctorService.uploadCredentials(user['sub'] as string, files);
   }
 
   @Get(':id')
@@ -166,8 +162,7 @@ export class DoctorController {
     @Param('id') id: string,
     @Body() updateDoctorDto: UpdateDoctorDto,
   ) {
-    // Prevent auth0Id override via body
-    delete updateDoctorDto['auth0Id'];
+    delete updateDoctorDto['userId'];
     return this.doctorService.update(id, updateDoctorDto);
   }
 

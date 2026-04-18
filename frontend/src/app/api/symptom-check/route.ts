@@ -1,14 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import { resolveServiceApiBase } from '@/lib/service-url';
 
-function resolveTelemedicineBaseUrl(): string {
-  const rawBaseUrl =
-    process.env.TELEMEDICINE_SERVICE_URL ||
-    process.env.NEXT_PUBLIC_TELEMEDICINE_API ||
-    'http://localhost:8090';
-  const normalized = rawBaseUrl.replace(/\/+$/, '');
-  return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
-}
+const TELEMEDICINE_API = resolveServiceApiBase('telemedicine');
 
 export async function POST(request: Request) {
   try {
@@ -26,9 +20,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    const backendUrl = resolveTelemedicineBaseUrl();
-    
-    const response = await fetch(`${backendUrl}/symptom-checks`, {
+    const response = await fetch(`${TELEMEDICINE_API}/symptom-checks`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

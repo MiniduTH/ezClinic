@@ -40,15 +40,15 @@ export default function PatientRegisterPage() {
   };
 
   return (
-    <div style={{ minHeight:"100vh", display:"flex", background:"linear-gradient(160deg,#f0fdf4 0%,#e0f2fe 45%,#f8fafc 100%)" }}>
+    <div style={{ minHeight:"100vh", display:"flex", background:"var(--bg-surface)" }}>
       {/* Left panel */}
-      <div style={{ flex:"0 0 420px", background:"linear-gradient(160deg,#0f6e56 0%,#1a9478 100%)", padding:"60px 48px", display:"flex", flexDirection:"column", justifyContent:"space-between", position:"relative", overflow:"hidden" }} className="hidden-mobile">
+      <div style={{ flex:"0 0 420px", background:"linear-gradient(160deg,#00796B 0%,#00897B 100%)", padding:"60px 48px", display:"flex", flexDirection:"column", justifyContent:"space-between", position:"relative", overflow:"hidden" }} className="hidden-mobile">
         <div style={{ position:"absolute", right:-60, top:-60, width:280, height:280, borderRadius:"50%", background:"rgba(255,255,255,0.06)", pointerEvents:"none" }} />
         <div style={{ position:"absolute", left:-40, bottom:-60, width:220, height:220, borderRadius:"50%", background:"rgba(255,255,255,0.04)", pointerEvents:"none" }} />
         <div>
           <Link href="/" style={{ display:"inline-flex", alignItems:"center", gap:10, textDecoration:"none", marginBottom:60 }}>
             <Image src="/ezClinicLogo.png" alt="ezClinic" width={36} height={36} style={{ objectFit:"contain", filter:"brightness(0) invert(1)" }} />
-            <span style={{ fontFamily:"ui-monospace,monospace", fontSize:"1.2rem", fontWeight:700, color:"white" }}>ezClinic</span>
+            <span style={{ fontFamily:"'Manrope', ui-sans-serif, sans-serif", fontSize:"1.2rem", fontWeight:800, color:"white", letterSpacing:"-0.02em" }}>ezClinic</span>
           </Link>
           <h2 style={{ fontSize:"2rem", fontWeight:800, color:"white", marginBottom:16, lineHeight:1.2 }}>Your health, your way.</h2>
           <p style={{ fontSize:"1rem", color:"rgba(255,255,255,0.75)", lineHeight:1.75 }}>Access top doctors from home, manage prescriptions, and keep your health records in one place.</p>
@@ -68,20 +68,20 @@ export default function PatientRegisterPage() {
       </div>
 
       {/* Right form */}
-      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:"40px 32px" }}>
+      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:"40px 32px", background:"var(--bg-surface)" }}>
         <div style={{ width:"100%", maxWidth:440 }} className="anim-fade-up">
           {/* Mobile logo */}
           <Link href="/" style={{ display:"flex", alignItems:"center", gap:8, textDecoration:"none", marginBottom:36 }}>
             <Image src="/ezClinicLogo.png" alt="ezClinic" width={30} height={30} style={{ objectFit:"contain" }} />
-            <span style={{ fontFamily:"ui-monospace,monospace", fontSize:"1.1rem", fontWeight:700 }}>
-              <span style={{ color:"#0f6e56" }}>ez</span><span style={{ color:"#0f172a" }}>Clinic</span>
+            <span style={{ fontFamily:"'Manrope', ui-sans-serif, sans-serif", fontSize:"1.1rem", fontWeight:800, letterSpacing:"-0.02em" }}>
+              <span style={{ color:"var(--brand)" }}>ez</span><span style={{ color:"var(--text-primary)" }}>Clinic</span>
             </span>
           </Link>
 
           <div style={{ marginBottom:32 }}>
-            <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"4px 12px", borderRadius:999, background:"#e1f5ee", fontSize:"0.75rem", fontWeight:600, color:"#0f6e56", marginBottom:12 }}>🧑‍⚕️ Patient Registration</div>
-            <h1 style={{ fontSize:"1.75rem", fontWeight:800, color:"#0f172a", letterSpacing:"-0.02em", marginBottom:6 }}>Create patient account</h1>
-            <p style={{ fontSize:"0.9rem", color:"#94a3b8" }}>Join thousands of patients on ezClinic.</p>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"4px 12px", borderRadius:999, background:"var(--brand-surface)", fontSize:"0.75rem", fontWeight:600, color:"var(--brand-text)", marginBottom:12 }}>🧑‍⚕️ Patient Registration</div>
+            <h1 style={{ fontSize:"1.75rem", fontWeight:800, color:"var(--text-primary)", letterSpacing:"-0.02em", marginBottom:6 }}>Create patient account</h1>
+            <p style={{ fontSize:"0.9rem", color:"var(--text-muted)" }}>Join thousands of patients on ezClinic.</p>
           </div>
 
           <form onSubmit={handleSubmit} style={{ display:"flex", flexDirection:"column", gap:16 }}>
@@ -106,13 +106,15 @@ export default function PatientRegisterPage() {
             </div>
 
             {error && (
-              <div style={{ padding:"10px 14px", borderRadius:10, background:"#fff1f2", border:"1px solid #fecdd3", color:"#e11d48", fontSize:"0.8125rem" }}>
+              <div style={{ padding:"10px 14px", borderRadius:10, background:"var(--danger-surface)", border:"1px solid var(--danger-border)", color:"var(--danger)", fontSize:"0.8125rem" }}>
                 {error}
               </div>
             )}
 
             <button type="submit" disabled={loading}
-              style={{ height:48, borderRadius:12, background:loading?"#0d5e49":"#0f6e56", color:"white", fontWeight:700, fontSize:"0.9375rem", border:"none", cursor:loading?"not-allowed":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:loading?0.8:1, transition:"background-color 0.2s" }}>
+              style={{ height:48, borderRadius:12, background:"var(--brand)", color:"white", fontWeight:700, fontSize:"0.9375rem", border:"none", cursor:loading?"not-allowed":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:loading?0.8:1, transition:"background-color 0.2s, opacity 0.2s" }}
+              onMouseEnter={e=>{if(!loading)(e.currentTarget as HTMLButtonElement).style.background="var(--brand-hover)";}}
+              onMouseLeave={e=>{(e.currentTarget as HTMLButtonElement).style.background="var(--brand)";}}>
               {loading ? (
                 <>
                   <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -122,11 +124,11 @@ export default function PatientRegisterPage() {
             </button>
           </form>
 
-          <p style={{ textAlign:"center", marginTop:24, fontSize:"0.875rem", color:"#94a3b8" }}>
+          <p style={{ textAlign:"center", marginTop:24, fontSize:"0.875rem", color:"var(--text-muted)" }}>
             Already have an account?{" "}
-            <Link href="/login" style={{ color:"#0f6e56", fontWeight:600, textDecoration:"none" }}>Sign in</Link>
+            <Link href="/login" style={{ color:"var(--brand-text)", fontWeight:600, textDecoration:"none" }}>Sign in</Link>
           </p>
-          <p style={{ textAlign:"center", marginTop:8, fontSize:"0.8125rem", color:"#94a3b8" }}>
+          <p style={{ textAlign:"center", marginTop:8, fontSize:"0.8125rem", color:"var(--text-muted)" }}>
             Are you a doctor?{" "}
             <Link href="/register/doctor" style={{ color:"#0369a1", fontWeight:600, textDecoration:"none" }}>Register as a doctor</Link>
           </p>

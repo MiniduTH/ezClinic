@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { setSessionCookie } from '@/lib/auth';
+import { resolveServiceApiBase } from '@/lib/service-url';
 
-const PATIENT_API =
-  process.env.NEXT_PUBLIC_PATIENT_API || 'http://localhost:3005/api/v1';
-const DOCTOR_API =
-  process.env.NEXT_PUBLIC_DOCTOR_API || 'http://localhost:3002/api/v1';
+const PATIENT_API = resolveServiceApiBase('patient');
+const DOCTOR_API = resolveServiceApiBase('doctor');
 
 export async function POST(request: Request) {
   try {

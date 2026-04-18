@@ -90,4 +90,37 @@ class NotificationControllerTest extends BaseApiTest {
         mockMvc.perform(get(BASE_URL + "/" + UUID.randomUUID()))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("GET /notifications/status/{appointmentId} - returns status for known appointment")
+    void getNotificationStatus_returnsStatusForKnownAppointment() throws Exception {
+        String appointmentId = UUID.randomUUID().toString();
+
+        // Send a notification with the appointment ID embedded in content
+        mockMvc.perform(post(BASE_URL + "/send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "userId": "%s",
+                                    "recipientEmail": "patient@example.com",
+                                    "type": "EMAIL",
+                                    "subject": "Appointment Confirmed",
+                                    "content": "Your appointment %s is confirmed."
+                                }
+                                """.formatted(UUID.randomUUID(), appointmentId)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(BASE_URL + "/status/" + appointmentId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.appointmentId").value(appointmentId))
+                .andExpect(jsonPath("$.emailSent").value(true));
+    }
+
+    @Test
+    @DisplayName("GET /notifications/status/{appointmentId} - returns not-sent for unknown appointment")
+    void getNotificationStatus_returnsNotSentForUnknownAppointment() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/status/" + UUID.randomUUID()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.emailSent").value(false));
+    }
 }

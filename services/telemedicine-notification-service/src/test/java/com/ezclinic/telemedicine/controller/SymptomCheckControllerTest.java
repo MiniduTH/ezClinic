@@ -88,4 +88,25 @@ class SymptomCheckControllerTest extends BaseApiTest {
         mockMvc.perform(get(BASE_URL + "/" + UUID.randomUUID()))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("POST /symptom-checks - works with Auth0 sub as patientId")
+    void submitSymptoms_worksWithAuth0Sub() throws Exception {
+        when(geminiService.analyzeSymptoms(anyString()))
+                .thenReturn("{\"recommendation\":\"Rest well.\",\"disclaimer\":\"AI only.\"}");
+
+        String auth0Sub = "auth0|abc123def456";
+
+        mockMvc.perform(post(BASE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "patientId": "%s",
+                                    "symptoms": "sore throat"
+                                }
+                                """.formatted(auth0Sub)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.patientId").value(auth0Sub))
+                .andExpect(jsonPath("$.aiSuggestion").exists());
+    }
 }

@@ -63,10 +63,6 @@ export async function getSession(): Promise<Session | null> {
   }
 }
 
-/**
- * Same as getSession but always returns Session (for backwards compatibility
- * with code that called getSessionWithRoles from @auth0).
- */
 export async function getSessionWithRoles(): Promise<Session | null> {
   return getSession();
 }

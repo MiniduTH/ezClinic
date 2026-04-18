@@ -46,7 +46,7 @@ export class PatientController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current patient profile' })
   findMe(@Req() req: any) {
-    return this.patientService.findByAuth0Id(req.user.sub);
+    return this.patientService.findByUserId(req.user.sub);
   }
 
   @Put('me')
@@ -136,7 +136,7 @@ export class PatientController {
     @Body() dto: UploadReportDto,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.patientService.uploadReportByAuth0Id(req.user.sub, dto, file);
+    return this.patientService.uploadReportByUserId(req.user.sub, dto, file);
   }
 
   @Get('me/reports')
@@ -162,7 +162,7 @@ export class PatientController {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? Math.min(parseInt(limit, 10), 100) : 20,
     };
-    return this.patientService.getReportsByAuth0Id(req.user.sub, filter);
+    return this.patientService.getReportsByUserId(req.user.sub, filter);
   }
 
   @Post(':id/reports')

@@ -13,7 +13,7 @@ export default async function PrescriptionsLayout({
   }
 
   const role = getUserRole(session);
-  if (role !== 'doctor') {
+  if (role !== 'doctor' && role !== 'patient') {
     redirect('/');
   }
 

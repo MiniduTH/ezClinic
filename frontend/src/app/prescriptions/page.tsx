@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useUser } from "@/lib/session-context";
+import { getUserRole } from "@/lib/roles";
 
 const DOCTOR_API = process.env.NEXT_PUBLIC_DOCTOR_SERVICE_URL || process.env.NEXT_PUBLIC_DOCTOR_API || "http://localhost:3002/api/v1";
 const APPOINTMENT_API = process.env.NEXT_PUBLIC_APPOINTMENT_API || "http://localhost:3004/api/v1";
@@ -10,7 +12,7 @@ interface Medication { name: string; dosage: string; frequency: string; duration
 interface PrescriptionForm { patientId: string; patientName: string; appointmentId: string; diagnosis: string; medications: Medication[]; notes: string; followUpDate: string; }
 interface Patient { id: string; name: string; email: string; phone?: string | null; dob?: string | null; bloodType?: string | null; allergies?: string | null; }
 interface Appointment { id: string; patientId: string; patient?: Patient; date: string; time: string; status: string; reason?: string; }
-interface Prescription { _id?: string; id?: string; doctorId: string; patientId: string; patientName?: string; appointmentId: string; diagnosis?: string; medications: Medication[]; notes?: string; followUpDate?: string; issuedAt?: string; }
+interface Prescription { _id?: string; id?: string; doctorId: string | { _id?: string; id?: string; name?: string }; patientId: string; patientName?: string; appointmentId: string; diagnosis?: string; medications: Medication[]; notes?: string; followUpDate?: string; issuedAt?: string; }
 
 const emptyMed = (): Medication => ({ name: "", dosage: "", frequency: "", duration: "" });
 const FREQ = ["Once daily", "Twice daily", "Three times daily", "Four times daily", "Every 6 hours", "Every 8 hours", "Every 12 hours", "As needed", "Before meals", "After meals", "At bedtime"];
@@ -21,7 +23,7 @@ async function fetchPatient(pid: string, token: string): Promise<Patient | null>
   try { const r = await fetch(`${PATIENT_API}/patients/${pid}`, { headers: { Authorization: `Bearer ${token}` } }); if (!r.ok) return null; const d = await r.json(); const p = d?.data ?? d; return { id: p.id || p._id, name: p.name, email: p.email, phone: p.phone, dob: p.dob, bloodType: p.bloodType, allergies: p.allergies }; } catch { return null; }
 }
 
-export default function PrescriptionPage() {
+function DoctorPrescriptions() {
   const [doctorId, setDoctorId] = useState<string | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -458,4 +460,433 @@ export default function PrescriptionPage() {
       </div>
     </div>
   );
+}
+
+// ─── Patient View ─────────────────────────────────────────────────────────────
+
+function getDoctorName(doctorId: Prescription["doctorId"]): string {
+  if (typeof doctorId === "object" && doctorId?.name) return doctorId.name;
+  return "Unknown Doctor";
+}
+
+function PatientPrescriptions() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [viewRx, setViewRx] = useState<Prescription | null>(null);
+
+  const fmtDate = (s?: string) =>
+    s ? new Date(s).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+  const printPrescription = (rx: Prescription) => {
+    const doctorName = getDoctorName(rx.doctorId);
+    const win = window.open("", "_blank", "width=800,height=900");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Prescription – ${rx.diagnosis || "ezClinic"}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #1a1a1a; background: #fff; padding: 32px 40px; }
+    .header { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 18px; border-bottom: 2px solid #0d9488; margin-bottom: 24px; }
+    .brand { font-size: 22px; font-weight: 800; color: #0d9488; letter-spacing: -0.5px; }
+    .brand span { color: #134e4a; }
+    .rx-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #6b7280; margin-top: 4px; }
+    .rx-id { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+    .meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .meta-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; }
+    .meta-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; margin-bottom: 4px; }
+    .meta-value { font-size: 13px; font-weight: 600; color: #111827; }
+    .meta-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+    .section-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #9ca3af; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #f3f4f6; }
+    .med-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .med-table th { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; text-align: left; padding: 6px 10px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+    .med-table td { padding: 9px 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px; color: #374151; }
+    .med-table tr:last-child td { border-bottom: none; }
+    .med-num { width: 28px; text-align: center; font-weight: 700; color: #0d9488; }
+    .med-name { font-weight: 600; color: #111827; }
+    .notes-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 14px; margin-bottom: 20px; }
+    .notes-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #d97706; margin-bottom: 6px; }
+    .notes-text { font-size: 13px; color: #92400e; line-height: 1.6; }
+    .followup-box { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 8px; padding: 12px 14px; margin-bottom: 20px; display: inline-block; }
+    .followup-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #0d9488; margin-bottom: 4px; }
+    .followup-date { font-size: 14px; font-weight: 700; color: #134e4a; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: flex-end; }
+    .sig-area { text-align: right; }
+    .sig-line { width: 160px; border-bottom: 1px solid #9ca3af; margin-bottom: 4px; height: 32px; }
+    .sig-label { font-size: 10px; color: #9ca3af; }
+    .disclaimer { font-size: 10px; color: #9ca3af; max-width: 320px; line-height: 1.5; }
+    @media print {
+      body { padding: 20px 24px; }
+      @page { margin: 1cm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="brand">ez<span>Clinic</span></div>
+      <div class="rx-title">Medical Prescription</div>
+    </div>
+    <div style="text-align:right">
+      <div class="rx-id">Issued: ${fmtDate(rx.issuedAt)}</div>
+      ${rx._id || rx.id ? `<div class="rx-id" style="font-size:10px;color:#d1d5db">Ref: ${(rx._id || rx.id || "").slice(-8).toUpperCase()}</div>` : ""}
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <div class="meta-box">
+      <div class="meta-label">Prescribed by</div>
+      <div class="meta-value">${doctorName}</div>
+    </div>
+    <div class="meta-box">
+      <div class="meta-label">Diagnosis / Condition</div>
+      <div class="meta-value">${rx.diagnosis || "—"}</div>
+    </div>
+  </div>
+
+  <div class="section-title">Medications</div>
+  <table class="med-table">
+    <thead>
+      <tr>
+        <th class="med-num">#</th>
+        <th>Drug Name</th>
+        <th>Dosage</th>
+        <th>Frequency</th>
+        <th>Duration</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rx.medications.map((m, i) => `
+      <tr>
+        <td class="med-num">${i + 1}</td>
+        <td class="med-name">${m.name}</td>
+        <td>${m.dosage}</td>
+        <td>${m.frequency}</td>
+        <td>${m.duration}</td>
+      </tr>`).join("")}
+    </tbody>
+  </table>
+
+  ${rx.notes ? `
+  <div class="section-title">Instructions / Notes</div>
+  <div class="notes-box">
+    <div class="notes-label">Clinical Notes</div>
+    <div class="notes-text">${rx.notes}</div>
+  </div>` : ""}
+
+  ${rx.followUpDate ? `
+  <div class="followup-box">
+    <div class="followup-label">Follow-up Appointment</div>
+    <div class="followup-date">${fmtDate(rx.followUpDate)}</div>
+  </div>` : ""}
+
+  <div class="footer">
+    <div class="disclaimer">
+      This is a digital prescription issued via ezClinic.<br/>
+      Present this document to your pharmacist or at your next visit.
+    </div>
+    <div class="sig-area">
+      <div class="sig-line"></div>
+      <div class="sig-label">Doctor's Signature</div>
+    </div>
+  </div>
+</body>
+</html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 400);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    (async () => {
+      try {
+        const token = await getToken();
+        const h = { Authorization: `Bearer ${token}` };
+
+        const meRes = await fetch(`${PATIENT_API}/patients/me`, { headers: h });
+        if (!meRes.ok) throw new Error("Could not load patient profile.");
+        const me = await meRes.json();
+        const patientId: string = me.id || me._id;
+
+        const rxRes = await fetch(
+          `${DOCTOR_API}/patients/${patientId}/prescriptions?page=${page}&limit=10`,
+          { headers: h }
+        );
+        if (!rxRes.ok) throw new Error("Could not load prescriptions.");
+        const rxData = await rxRes.json();
+
+        if (!cancelled) {
+          const items: Prescription[] = Array.isArray(rxData) ? rxData : rxData.data || [];
+          setPrescriptions(items);
+          if (rxData.pagination) {
+            setTotalPages(rxData.pagination.totalPages || 1);
+            setTotal(rxData.pagination.totalItems ?? items.length);
+          } else {
+            setTotal(items.length);
+          }
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load prescriptions.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [page]);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* View prescription modal */}
+      {viewRx && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={(e) => e.target === e.currentTarget && setViewRx(null)}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Prescription Details</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Issued by {getDoctorName(viewRx.doctorId)}</p>
+              </div>
+              <button
+                onClick={() => setViewRx(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 text-lg transition-colors"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              {/* Meta grid */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-400 mb-1">Doctor</p>
+                  <p className="font-semibold text-gray-900">{getDoctorName(viewRx.doctorId)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-400 mb-1">Diagnosis</p>
+                  <p className="font-semibold text-gray-900">{viewRx.diagnosis || "—"}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-400 mb-1">Issued</p>
+                  <p className="font-semibold text-gray-900">{fmtDate(viewRx.issuedAt)}</p>
+                </div>
+                {viewRx.followUpDate && (
+                  <div className="bg-teal-50 rounded-xl p-3">
+                    <p className="text-xs text-teal-500 mb-1">Follow-up</p>
+                    <p className="font-semibold text-teal-800">{fmtDate(viewRx.followUpDate)}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Medications */}
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Medications</p>
+                <div className="space-y-2">
+                  {viewRx.medications.map((m, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                      <span className="w-5 h-5 rounded-full bg-teal-100 text-teal-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        {i + 1}
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{m.name}</p>
+                        <p className="text-xs text-gray-500">{m.dosage} · {m.frequency} · {m.duration}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes */}
+              {viewRx.notes && (
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
+                  <p className="text-xs font-bold text-amber-600 mb-1">Notes</p>
+                  <p className="text-sm text-amber-900">{viewRx.notes}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-100">
+              <button
+                onClick={() => printPrescription(viewRx)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-white hover:border-gray-300 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.056 48.056 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+                </svg>
+                Print
+              </button>
+              <button
+                onClick={() => setViewRx(null)}
+                className="px-5 py-2 bg-teal-600 text-white text-sm font-semibold rounded-xl hover:bg-teal-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">My Prescriptions</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {loading ? "Loading…" : `${total} prescription${total !== 1 ? "s" : ""} issued to you`}
+          </p>
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="flex justify-center items-center h-48">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-teal-600" />
+          </div>
+        ) : error ? (
+          <div className="bg-white rounded-2xl border border-red-200 p-8 text-center space-y-3">
+            <p className="text-sm text-red-600 font-medium">{error}</p>
+            <button
+              onClick={() => setPage(1)}
+              className="px-4 py-2 bg-teal-600 text-white text-sm font-semibold rounded-xl hover:bg-teal-700"
+            >
+              Retry
+            </button>
+          </div>
+        ) : prescriptions.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-16 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center mx-auto mb-4 text-2xl">💊</div>
+            <p className="text-base font-semibold text-gray-900">No prescriptions yet</p>
+            <p className="text-sm text-gray-400 mt-1">Prescriptions issued by your doctor will appear here.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {prescriptions.map((rx) => {
+              const rxId = rx._id || rx.id || "";
+              const doctorName = getDoctorName(rx.doctorId);
+              return (
+                <div
+                  key={rxId}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:border-teal-200 transition-colors"
+                >
+                  {/* Left icon */}
+                  <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-xl shrink-0">
+                    💊
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-sm font-semibold text-gray-900">
+                        {rx.diagnosis || "Prescription"}
+                      </span>
+                      {rx.followUpDate && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 font-medium border border-teal-100">
+                          Follow-up: {fmtDate(rx.followUpDate)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mb-1.5">
+                      By <span className="font-medium text-gray-700">{doctorName}</span>
+                      {" · "}Issued {fmtDate(rx.issuedAt)}
+                    </p>
+                    {/* Medications preview */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {rx.medications.slice(0, 3).map((m, i) => (
+                        <span
+                          key={i}
+                          className="text-xs px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 font-medium"
+                        >
+                          {m.name} {m.dosage}
+                        </span>
+                      ))}
+                      {rx.medications.length > 3 && (
+                        <span className="text-xs px-2 py-0.5 rounded-md bg-gray-100 text-gray-400">
+                          +{rx.medications.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setViewRx(rx)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-teal-50 hover:border-teal-300 hover:text-teal-700 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      View
+                    </button>
+                    <button
+                      onClick={() => printPrescription(rx)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                      title="Print prescription"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.056 48.056 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+                      </svg>
+                      Print
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+            >
+              ← Prev
+            </button>
+            <span className="text-sm text-gray-500 px-2">
+              Page <span className="font-semibold text-gray-900">{page}</span> of {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+            >
+              Next →
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Entry Point ──────────────────────────────────────────────────────────────
+
+export default function PrescriptionPage() {
+  const { user, isLoading } = useUser();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-teal-600" />
+      </div>
+    );
+  }
+
+  const role = getUserRole(user);
+  if (role === "patient") return <PatientPrescriptions />;
+  return <DoctorPrescriptions />;
 }
