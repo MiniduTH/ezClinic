@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@/lib/session-context";
 import { getUserRole } from "@/lib/roles";
@@ -170,6 +170,8 @@ function PatientProfile() {
   const [formData, setFormData] = useState<Partial<Patient>>({});
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof Patient, string>>>({});
   const [saving, setSaving] = useState(false);
+  const [step, setStep] = useState(1);
+  const TOTAL_STEPS = 3;
 
   // Reports
   const [reports, setReports] = useState<Report[]>([]);
@@ -235,7 +237,7 @@ function PatientProfile() {
     }
   }, [isNewPatient, user]);
 
-  function validate(data: Partial<Patient>): boolean {
+function validate(data: Partial<Patient>): boolean {
     const errs: Partial<Record<keyof Patient, string>> = {};
     if (!data.name?.trim()) errs.name = "Full name is required";
     if (!data.email?.trim()) errs.email = "Email is required";
@@ -249,13 +251,12 @@ function PatientProfile() {
     setFormErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdate = async () => {
     if (!validate(formData)) return;
     setSaving(true);
     try {
-      // Strip server-managed / read-only fields that the DTO does not accept
-      const { id: _id, status: _status, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = formData as any;
+      // Strip server-managed / read-only fields and avatar (managed by its own endpoint)
+      const { id: _id, status: _status, createdAt: _createdAt, updatedAt: _updatedAt, avatarUrl: _avatarUrl, ...rest } = formData as any;
       const payload: Record<string, unknown> = { ...rest };
       // Coerce empty strings to null for optional fields
       (["dob", "phone", "gender", "address", "bloodType", "allergies", "emergencyContact"] as const).forEach((k) => {
@@ -280,11 +281,22 @@ function PatientProfile() {
       setFormData({ ...updated, dob: updated.dob ? updated.dob.split("T")[0] : "" });
       setIsEditing(false);
       setIsNewPatient(false);
+      setStep(1);
       push("Profile saved successfully!", "success");
     } catch (err) {
       push(getErrorMessage(err, "Failed to update."), "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (step < TOTAL_STEPS) {
+      if (step === 1 && !validate(formData)) return;
+      setStep((s) => s + 1);
+    } else {
+      handleUpdate();
     }
   };
 
@@ -310,6 +322,7 @@ function PatientProfile() {
       const updated: Patient = await res.json();
       setPatient(updated);
       setAvatarFile(null);
+      setAvatarPreview(null);
       push("Avatar updated!", "success");
     } catch (err) {
       push(getErrorMessage(err, "Avatar upload failed."), "error");
@@ -467,7 +480,7 @@ function PatientProfile() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Personal Information</h3>
               {!isEditing ? (
                 <button
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => { setIsEditing(true); setStep(1); }}
                   className="rounded-xl border border-teal-200 dark:border-teal-700 px-4 py-2 text-sm font-medium text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30"
                 >
                   Edit Profile
@@ -477,6 +490,7 @@ function PatientProfile() {
                   onClick={() => {
                     if (isNewPatient) return;
                     setIsEditing(false);
+                    setStep(1);
                     setFormErrors({});
                     setFormData({ ...patient, dob: patient?.dob ? patient.dob.split("T")[0] : "" });
                   }}
@@ -507,83 +521,130 @@ function PatientProfile() {
                 ))}
               </dl>
             ) : (
-              <form onSubmit={handleUpdate} className="space-y-5" noValidate>
-                {/* Name */}
-                <div>
-                  <label htmlFor="name" className={LABEL_CLS}>Full name</label>
-                  <input
-                    id="name" type="text" name="name"
-                    value={formData.name || ""}
-                    onChange={handleInputChange}
-                    required
-                    aria-describedby={formErrors.name ? "name-err" : undefined}
-                    className={INPUT_CLS}
-                  />
-                  {formErrors.name && <p id="name-err" className="mt-1 text-xs text-red-500">{formErrors.name}</p>}
+              <form onSubmit={handleFormSubmit} className="space-y-5" noValidate>
+                {/* Step indicator */}
+                <div className="flex items-center gap-1 pb-2">
+                  {[
+                    { label: "Personal", num: 1 },
+                    { label: "Health", num: 2 },
+                    { label: "Emergency", num: 3 },
+                  ].map(({ label, num }, i) => {
+                    const isActive = step === num;
+                    const isComplete = step > num;
+                    return (
+                      <Fragment key={label}>
+                        <div className={`flex items-center gap-2 ${isActive ? "text-teal-600 dark:text-teal-400" : isComplete ? "text-teal-500 dark:text-teal-500" : "text-gray-400 dark:text-gray-600"}`}>
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isActive ? "bg-teal-600 text-white" : isComplete ? "bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-400" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+                            {isComplete ? "✓" : num}
+                          </div>
+                          <span className="text-sm font-medium hidden sm:block">{label}</span>
+                        </div>
+                        {i < 2 && (
+                          <div className={`flex-1 h-px mx-1 ${step > num ? "bg-teal-400 dark:bg-teal-600" : "bg-gray-200 dark:bg-gray-700"}`} />
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </div>
-                {/* Email */}
-                <div>
-                  <label htmlFor="email" className={LABEL_CLS}>Email {!isNewPatient && "(cannot be changed)"}</label>
-                  <input
-                    id="email" type="email" name="email"
-                    value={formData.email || ""}
-                    onChange={handleInputChange}
-                    required
-                    disabled={!isNewPatient}
-                    aria-describedby={formErrors.email ? "email-err" : undefined}
-                    className={INPUT_CLS + (isNewPatient ? "" : " disabled:opacity-60 cursor-not-allowed")}
-                  />
-                  {formErrors.email && <p id="email-err" className="mt-1 text-xs text-red-500">{formErrors.email}</p>}
-                </div>
-                {/* Phone + Gender */}
-                <div className="grid gap-5 sm:grid-cols-2">
+
+                {/* Step 1 — Personal */}
+                {step === 1 && (
+                  <>
+                    <div>
+                      <label htmlFor="name" className={LABEL_CLS}>Full name</label>
+                      <input
+                        id="name" type="text" name="name"
+                        value={formData.name || ""}
+                        onChange={handleInputChange}
+                        required
+                        aria-describedby={formErrors.name ? "name-err" : undefined}
+                        className={INPUT_CLS}
+                      />
+                      {formErrors.name && <p id="name-err" className="mt-1 text-xs text-red-500">{formErrors.name}</p>}
+                    </div>
+                    <div>
+                      <label htmlFor="email" className={LABEL_CLS}>Email {!isNewPatient && "(cannot be changed)"}</label>
+                      <input
+                        id="email" type="email" name="email"
+                        value={formData.email || ""}
+                        onChange={handleInputChange}
+                        required
+                        disabled={!isNewPatient}
+                        aria-describedby={formErrors.email ? "email-err" : undefined}
+                        className={INPUT_CLS + (isNewPatient ? "" : " disabled:opacity-60 cursor-not-allowed")}
+                      />
+                      {formErrors.email && <p id="email-err" className="mt-1 text-xs text-red-500">{formErrors.email}</p>}
+                    </div>
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="phone" className={LABEL_CLS}>Phone</label>
+                        <input id="phone" type="text" name="phone" value={formData.phone || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                      </div>
+                      <div>
+                        <label htmlFor="gender" className={LABEL_CLS}>Gender</label>
+                        <select id="gender" name="gender" value={formData.gender || ""} onChange={handleInputChange} className={INPUT_CLS}>
+                          <option value="">Select…</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Step 2 — Health */}
+                {step === 2 && (
+                  <>
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="dob" className={LABEL_CLS}>Date of Birth</label>
+                        <input id="dob" type="date" name="dob" value={formData.dob || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                      </div>
+                      <div>
+                        <label htmlFor="bloodType" className={LABEL_CLS}>Blood Type</label>
+                        <input id="bloodType" type="text" name="bloodType" placeholder="e.g. O+" value={formData.bloodType || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="address" className={LABEL_CLS}>Address</label>
+                      <textarea id="address" name="address" rows={3} value={formData.address || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                    </div>
+                    <div>
+                      <label htmlFor="allergies" className={LABEL_CLS}>Allergies</label>
+                      <textarea id="allergies" name="allergies" rows={2} placeholder="e.g. Penicillin, pollen" value={formData.allergies || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                    </div>
+                  </>
+                )}
+
+                {/* Step 3 — Emergency Contact */}
+                {step === 3 && (
                   <div>
-                    <label htmlFor="phone" className={LABEL_CLS}>Phone</label>
-                    <input id="phone" type="text" name="phone" value={formData.phone || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                    <label htmlFor="emergencyContact" className={LABEL_CLS}>Emergency Contact</label>
+                    <input id="emergencyContact" type="text" name="emergencyContact" placeholder="Name — +94 77 123 4567" value={formData.emergencyContact || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Provide a name and phone number we can reach in case of emergency.</p>
                   </div>
-                  <div>
-                    <label htmlFor="gender" className={LABEL_CLS}>Gender</label>
-                    <select id="gender" name="gender" value={formData.gender || ""} onChange={handleInputChange} className={INPUT_CLS}>
-                      <option value="">Select…</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                </div>
-                {/* DOB + Blood Type */}
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="dob" className={LABEL_CLS}>Date of Birth</label>
-                    <input id="dob" type="date" name="dob" value={formData.dob || ""} onChange={handleInputChange} className={INPUT_CLS} />
-                  </div>
-                  <div>
-                    <label htmlFor="bloodType" className={LABEL_CLS}>Blood Type</label>
-                    <input id="bloodType" type="text" name="bloodType" placeholder="e.g. O+" value={formData.bloodType || ""} onChange={handleInputChange} className={INPUT_CLS} />
-                  </div>
-                </div>
-                {/* Address */}
-                <div>
-                  <label htmlFor="address" className={LABEL_CLS}>Address</label>
-                  <textarea id="address" name="address" rows={3} value={formData.address || ""} onChange={handleInputChange} className={INPUT_CLS} />
-                </div>
-                {/* Allergies */}
-                <div>
-                  <label htmlFor="allergies" className={LABEL_CLS}>Allergies</label>
-                  <textarea id="allergies" name="allergies" rows={2} placeholder="e.g. Penicillin, pollen" value={formData.allergies || ""} onChange={handleInputChange} className={INPUT_CLS} />
-                </div>
-                {/* Emergency Contact */}
-                <div>
-                  <label htmlFor="emergencyContact" className={LABEL_CLS}>Emergency Contact</label>
-                  <input id="emergencyContact" type="text" name="emergencyContact" placeholder="Name — +94 77 123 4567" value={formData.emergencyContact || ""} onChange={handleInputChange} className={INPUT_CLS} />
-                </div>
-                <div className="flex justify-end">
+                )}
+
+                {/* Navigation */}
+                <div className="flex items-center justify-between pt-2">
+                  {step > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => setStep((s) => s - 1)}
+                      className="rounded-xl border border-gray-200 dark:border-gray-600 px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      ← Back
+                    </button>
+                  ) : (
+                    <div />
+                  )}
                   <button
                     type="submit"
                     disabled={saving}
                     className="rounded-xl bg-teal-600 px-6 py-3 text-sm font-medium text-white hover:bg-teal-700 disabled:bg-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                   >
-                    {saving ? "Saving…" : "Save Changes"}
+                    {step < TOTAL_STEPS ? "Next →" : saving ? "Saving…" : "Save Changes"}
                   </button>
                 </div>
               </form>

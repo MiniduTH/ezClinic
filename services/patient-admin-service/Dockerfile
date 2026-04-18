@@ -23,6 +23,7 @@ COPY --from=builder /usr/src/app/dist ./dist
 # Run as non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
     && mkdir -p /usr/src/app/uploads/medical-reports \
+                /usr/src/app/uploads/avatars \
     && chown -R appuser:appgroup /usr/src/app/uploads
 USER appuser
 
