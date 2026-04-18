@@ -1122,6 +1122,11 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                             .join("")
                             .toUpperCase();
 
+                        const aptDoctor = doctors.find(
+                            (d) => d.id === apt.doctorId || d._id === apt.doctorId
+                        );
+                        const consultationFee = aptDoctor?.consultationFee;
+
                         return (
                             <div
                                 key={apt.id}
@@ -1161,8 +1166,8 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                             <span>📅 {apt.date}</span>
                                             {apt.time && <span>🕐 {apt.time}</span>}
                                             <span>{apt.type === "VIRTUAL" ? "📹 Virtual" : "🏥 In-Person"}</span>
-                                            {apt.amountPaid && (
-                                                <span>💳 LKR {apt.amountPaid.toLocaleString()}</span>
+                                            {consultationFee != null && consultationFee > 0 && (
+                                                <span>💳 LKR {Number(consultationFee).toLocaleString()}</span>
                                             )}
                                         </div>
                                         {apt.reason && (
