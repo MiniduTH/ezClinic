@@ -488,6 +488,7 @@ function PayNowButton({ appointmentId, accessToken }: { appointmentId: string; a
 // ─── Patient View ─────────────────────────────────────────────────────────────
 
 function PatientAppointments({ accessToken }: { accessToken: string }) {
+    const { user } = useUser();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [loading, setLoading] = useState(true);
@@ -563,16 +564,57 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
     const fetchAll = useCallback(async () => {
         setLoading(true);
         try {
-            const headers = { Authorization: `Bearer ${accessToken}` };
+            const headers: Record<string, string> = { Authorization: `Bearer ${accessToken}` };
 
             // Resolve patient identity
-            const meRes = await fetch(`${PATIENT_API}/patients/me`, { headers });
-            if (!meRes.ok) throw new Error("Could not load patient profile");
+            let meRes = await fetch(`${PATIENT_API}/patients/me`, { headers });
+
+            // Some accounts can authenticate before a patient profile row exists.
+            // Bootstrap the profile once, then re-fetch /patients/me.
+            if (meRes.status === 404) {
+                const email = typeof user?.email === "string" ? user.email.trim() : "";
+                const rawName = typeof user?.name === "string" ? user.name.trim() : "";
+                const name = rawName || (email ? email.split("@")[0] : "Patient");
+
+                if (!email) {
+                    throw new Error("Could not load patient profile");
+                }
+
+                const registerRes = await fetch(`${PATIENT_API}/patients/register`, {
+                    method: "POST",
+                    headers: {
+                        ...headers,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ name, email }),
+                });
+
+                if (!registerRes.ok && registerRes.status !== 409) {
+                    throw new Error("Could not load patient profile");
+                }
+
+                meRes = await fetch(`${PATIENT_API}/patients/me`, { headers });
+            }
+
+            if (!meRes.ok) {
+                if (meRes.status === 403) {
+                    throw new Error("This page is only available to patient accounts");
+                }
+                throw new Error("Could not load patient profile");
+            }
+
             const me = await meRes.json();
-            setPatientId(me.id);
+            const patientIdentity = me?.data ?? me;
+            const resolvedPatientId = typeof patientIdentity?.id === "string" ? patientIdentity.id : null;
+
+            if (!resolvedPatientId) {
+                throw new Error("Could not load patient profile");
+            }
+
+            setPatientId(resolvedPatientId);
 
             // Fetch appointments
-            const aptsRes = await fetch(`${APPOINTMENT_API}/appointments/patient/${me.id}`, { headers });
+            const aptsRes = await fetch(`${APPOINTMENT_API}/appointments/patient/${resolvedPatientId}`, { headers });
             if (aptsRes.ok) {
                 const data = await aptsRes.json();
                 const mapped = Array.isArray(data)
@@ -629,7 +671,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
         } finally {
             setLoading(false);
         }
-    }, [accessToken]);
+    }, [accessToken, user]);
 
     // Resolve doctor names after both appointments and doctors are loaded
     useEffect(() => {
