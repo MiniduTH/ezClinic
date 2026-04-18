@@ -809,7 +809,8 @@ function DoctorProfile() {
           if (doctorRes.status === 403) throw new Error("This profile is only available to doctor accounts.");
           throw new Error("Failed to fetch doctor data.");
         }
-        const data: Doctor = await doctorRes.json();
+        const json = await doctorRes.json();
+        const data: Doctor = json.data ?? json;
         setDoctor(data);
         setFormData(data);
       } catch (err) {
@@ -847,7 +848,8 @@ function DoctorProfile() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Failed to save doctor profile.");
-      const updated: Doctor = await res.json();
+      const resJson = await res.json();
+      const updated: Doctor = resJson.data ?? resJson;
       setDoctor(updated);
       setFormData(updated);
       setIsEditing(false);
