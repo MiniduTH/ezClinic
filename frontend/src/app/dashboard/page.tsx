@@ -138,20 +138,37 @@ export default function DoctorDashboard() {
         if (!tokenRes.ok) throw new Error("Not authenticated");
         const { accessToken } = await tokenRes.json();
 
-        const res = await fetch(`${APPOINTMENT_API}/appointments/doctor`, {
+        // Resolve the doctor's own ID from the doctor service
+        const doctorRes = await fetch(`${DOCTOR_API_URL}/doctors/me`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!doctorRes.ok) throw new Error("Could not resolve doctor profile");
+        const doctorData = await doctorRes.json();
+        const doctorId =
+          doctorData?.data?._id ?? doctorData?.data?.id ?? doctorData?._id ?? doctorData?.id;
+        if (!doctorId) throw new Error("Doctor ID not found");
+
+        const res = await fetch(`${APPOINTMENT_API}/appointments/doctor/${doctorId}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (!res.ok) throw new Error("Failed to fetch appointments");
         const json = await res.json();
 
-        const data = json.data?.content || json.data || [];
+        // API returns a plain array; guard against wrapped formats too
+        const data = Array.isArray(json) ? json : (json.data?.content || json.data || []);
         const liveAppointments = Array.isArray(data)
           ? data.map((apt: Record<string, unknown>) => ({
               id: apt.id || apt._id || "N/A",
               patientId: apt.patientId || "Unknown",
-              patientName: apt.patientName || apt.patientId || "Patient",
-              time: apt.startTime || apt.time || "TBD",
-              date: apt.appointmentDate || apt.date || "TBD",
+              patientName: apt.patientName || String(apt.patientId || "Patient"),
+              time: apt.startTime || apt.time
+                ? String(apt.startTime || apt.time)
+                : apt.appointmentDate
+                  ? new Date(apt.appointmentDate as string).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  : "",
+              date: apt.appointmentDate
+                ? new Date(apt.appointmentDate as string).toLocaleDateString()
+                : String(apt.date || "TBD"),
               type: apt.type || "IN_PERSON",
               status: apt.status || "PENDING",
               notes: apt.notes || "",
@@ -168,7 +185,7 @@ export default function DoctorDashboard() {
     };
 
     fetchAppointments();
-  }, [APPOINTMENT_API]);
+  }, [APPOINTMENT_API, DOCTOR_API_URL]);
 
   const updateStatus = async (id: string, status: string) => {
     try {
@@ -177,15 +194,22 @@ export default function DoctorDashboard() {
       const { accessToken } = await tokenRes.json();
 
       const res = await fetch(
-        `${APPOINTMENT_API}/appointments/${id}/status?status=${status}`,
+        `${APPOINTMENT_API}/appointments/${id}/status`,
         {
           method: "PATCH",
-          headers: { Authorization: `Bearer ${accessToken}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ status }),
         }
       );
       if (!res.ok) throw new Error("Failed");
+      const updated = await res.json().catch(() => null);
       setAppointments((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status } : a))
+        prev.map((a) =>
+          a.id === id ? { ...a, status: updated?.status ?? status } : a
+        )
       );
     } catch {
       alert("Failed to update appointment status.");

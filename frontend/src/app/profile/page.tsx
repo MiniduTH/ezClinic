@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@/lib/session-context";
 import { getUserRole } from "@/lib/roles";
@@ -170,6 +170,8 @@ function PatientProfile() {
   const [formData, setFormData] = useState<Partial<Patient>>({});
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof Patient, string>>>({});
   const [saving, setSaving] = useState(false);
+  const [step, setStep] = useState(1);
+  const TOTAL_STEPS = 3;
 
   // Reports
   const [reports, setReports] = useState<Report[]>([]);
@@ -235,7 +237,7 @@ function PatientProfile() {
     }
   }, [isNewPatient, user]);
 
-  function validate(data: Partial<Patient>): boolean {
+function validate(data: Partial<Patient>): boolean {
     const errs: Partial<Record<keyof Patient, string>> = {};
     if (!data.name?.trim()) errs.name = "Full name is required";
     if (!data.email?.trim()) errs.email = "Email is required";
@@ -249,13 +251,12 @@ function PatientProfile() {
     setFormErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdate = async () => {
     if (!validate(formData)) return;
     setSaving(true);
     try {
-      // Strip server-managed / read-only fields that the DTO does not accept
-      const { id: _id, status: _status, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = formData as any;
+      // Strip server-managed / read-only fields and avatar (managed by its own endpoint)
+      const { id: _id, status: _status, createdAt: _createdAt, updatedAt: _updatedAt, avatarUrl: _avatarUrl, ...rest } = formData as any;
       const payload: Record<string, unknown> = { ...rest };
       // Coerce empty strings to null for optional fields
       (["dob", "phone", "gender", "address", "bloodType", "allergies", "emergencyContact"] as const).forEach((k) => {
@@ -280,11 +281,22 @@ function PatientProfile() {
       setFormData({ ...updated, dob: updated.dob ? updated.dob.split("T")[0] : "" });
       setIsEditing(false);
       setIsNewPatient(false);
+      setStep(1);
       push("Profile saved successfully!", "success");
     } catch (err) {
       push(getErrorMessage(err, "Failed to update."), "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (step < TOTAL_STEPS) {
+      if (step === 1 && !validate(formData)) return;
+      setStep((s) => s + 1);
+    } else {
+      handleUpdate();
     }
   };
 
@@ -310,6 +322,7 @@ function PatientProfile() {
       const updated: Patient = await res.json();
       setPatient(updated);
       setAvatarFile(null);
+      setAvatarPreview(null);
       push("Avatar updated!", "success");
     } catch (err) {
       push(getErrorMessage(err, "Avatar upload failed."), "error");
@@ -467,7 +480,7 @@ function PatientProfile() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Personal Information</h3>
               {!isEditing ? (
                 <button
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => { setIsEditing(true); setStep(1); }}
                   className="rounded-xl border border-teal-200 dark:border-teal-700 px-4 py-2 text-sm font-medium text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30"
                 >
                   Edit Profile
@@ -477,6 +490,7 @@ function PatientProfile() {
                   onClick={() => {
                     if (isNewPatient) return;
                     setIsEditing(false);
+                    setStep(1);
                     setFormErrors({});
                     setFormData({ ...patient, dob: patient?.dob ? patient.dob.split("T")[0] : "" });
                   }}
@@ -507,83 +521,130 @@ function PatientProfile() {
                 ))}
               </dl>
             ) : (
-              <form onSubmit={handleUpdate} className="space-y-5" noValidate>
-                {/* Name */}
-                <div>
-                  <label htmlFor="name" className={LABEL_CLS}>Full name</label>
-                  <input
-                    id="name" type="text" name="name"
-                    value={formData.name || ""}
-                    onChange={handleInputChange}
-                    required
-                    aria-describedby={formErrors.name ? "name-err" : undefined}
-                    className={INPUT_CLS}
-                  />
-                  {formErrors.name && <p id="name-err" className="mt-1 text-xs text-red-500">{formErrors.name}</p>}
+              <form onSubmit={handleFormSubmit} className="space-y-5" noValidate>
+                {/* Step indicator */}
+                <div className="flex items-center gap-1 pb-2">
+                  {[
+                    { label: "Personal", num: 1 },
+                    { label: "Health", num: 2 },
+                    { label: "Emergency", num: 3 },
+                  ].map(({ label, num }, i) => {
+                    const isActive = step === num;
+                    const isComplete = step > num;
+                    return (
+                      <Fragment key={label}>
+                        <div className={`flex items-center gap-2 ${isActive ? "text-teal-600 dark:text-teal-400" : isComplete ? "text-teal-500 dark:text-teal-500" : "text-gray-400 dark:text-gray-600"}`}>
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isActive ? "bg-teal-600 text-white" : isComplete ? "bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-400" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+                            {isComplete ? "✓" : num}
+                          </div>
+                          <span className="text-sm font-medium hidden sm:block">{label}</span>
+                        </div>
+                        {i < 2 && (
+                          <div className={`flex-1 h-px mx-1 ${step > num ? "bg-teal-400 dark:bg-teal-600" : "bg-gray-200 dark:bg-gray-700"}`} />
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </div>
-                {/* Email */}
-                <div>
-                  <label htmlFor="email" className={LABEL_CLS}>Email {!isNewPatient && "(cannot be changed)"}</label>
-                  <input
-                    id="email" type="email" name="email"
-                    value={formData.email || ""}
-                    onChange={handleInputChange}
-                    required
-                    disabled={!isNewPatient}
-                    aria-describedby={formErrors.email ? "email-err" : undefined}
-                    className={INPUT_CLS + (isNewPatient ? "" : " disabled:opacity-60 cursor-not-allowed")}
-                  />
-                  {formErrors.email && <p id="email-err" className="mt-1 text-xs text-red-500">{formErrors.email}</p>}
-                </div>
-                {/* Phone + Gender */}
-                <div className="grid gap-5 sm:grid-cols-2">
+
+                {/* Step 1 — Personal */}
+                {step === 1 && (
+                  <>
+                    <div>
+                      <label htmlFor="name" className={LABEL_CLS}>Full name</label>
+                      <input
+                        id="name" type="text" name="name"
+                        value={formData.name || ""}
+                        onChange={handleInputChange}
+                        required
+                        aria-describedby={formErrors.name ? "name-err" : undefined}
+                        className={INPUT_CLS}
+                      />
+                      {formErrors.name && <p id="name-err" className="mt-1 text-xs text-red-500">{formErrors.name}</p>}
+                    </div>
+                    <div>
+                      <label htmlFor="email" className={LABEL_CLS}>Email {!isNewPatient && "(cannot be changed)"}</label>
+                      <input
+                        id="email" type="email" name="email"
+                        value={formData.email || ""}
+                        onChange={handleInputChange}
+                        required
+                        disabled={!isNewPatient}
+                        aria-describedby={formErrors.email ? "email-err" : undefined}
+                        className={INPUT_CLS + (isNewPatient ? "" : " disabled:opacity-60 cursor-not-allowed")}
+                      />
+                      {formErrors.email && <p id="email-err" className="mt-1 text-xs text-red-500">{formErrors.email}</p>}
+                    </div>
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="phone" className={LABEL_CLS}>Phone</label>
+                        <input id="phone" type="text" name="phone" value={formData.phone || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                      </div>
+                      <div>
+                        <label htmlFor="gender" className={LABEL_CLS}>Gender</label>
+                        <select id="gender" name="gender" value={formData.gender || ""} onChange={handleInputChange} className={INPUT_CLS}>
+                          <option value="">Select…</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Step 2 — Health */}
+                {step === 2 && (
+                  <>
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="dob" className={LABEL_CLS}>Date of Birth</label>
+                        <input id="dob" type="date" name="dob" value={formData.dob || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                      </div>
+                      <div>
+                        <label htmlFor="bloodType" className={LABEL_CLS}>Blood Type</label>
+                        <input id="bloodType" type="text" name="bloodType" placeholder="e.g. O+" value={formData.bloodType || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="address" className={LABEL_CLS}>Address</label>
+                      <textarea id="address" name="address" rows={3} value={formData.address || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                    </div>
+                    <div>
+                      <label htmlFor="allergies" className={LABEL_CLS}>Allergies</label>
+                      <textarea id="allergies" name="allergies" rows={2} placeholder="e.g. Penicillin, pollen" value={formData.allergies || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                    </div>
+                  </>
+                )}
+
+                {/* Step 3 — Emergency Contact */}
+                {step === 3 && (
                   <div>
-                    <label htmlFor="phone" className={LABEL_CLS}>Phone</label>
-                    <input id="phone" type="text" name="phone" value={formData.phone || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                    <label htmlFor="emergencyContact" className={LABEL_CLS}>Emergency Contact</label>
+                    <input id="emergencyContact" type="text" name="emergencyContact" placeholder="Name — +94 77 123 4567" value={formData.emergencyContact || ""} onChange={handleInputChange} className={INPUT_CLS} />
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Provide a name and phone number we can reach in case of emergency.</p>
                   </div>
-                  <div>
-                    <label htmlFor="gender" className={LABEL_CLS}>Gender</label>
-                    <select id="gender" name="gender" value={formData.gender || ""} onChange={handleInputChange} className={INPUT_CLS}>
-                      <option value="">Select…</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                </div>
-                {/* DOB + Blood Type */}
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="dob" className={LABEL_CLS}>Date of Birth</label>
-                    <input id="dob" type="date" name="dob" value={formData.dob || ""} onChange={handleInputChange} className={INPUT_CLS} />
-                  </div>
-                  <div>
-                    <label htmlFor="bloodType" className={LABEL_CLS}>Blood Type</label>
-                    <input id="bloodType" type="text" name="bloodType" placeholder="e.g. O+" value={formData.bloodType || ""} onChange={handleInputChange} className={INPUT_CLS} />
-                  </div>
-                </div>
-                {/* Address */}
-                <div>
-                  <label htmlFor="address" className={LABEL_CLS}>Address</label>
-                  <textarea id="address" name="address" rows={3} value={formData.address || ""} onChange={handleInputChange} className={INPUT_CLS} />
-                </div>
-                {/* Allergies */}
-                <div>
-                  <label htmlFor="allergies" className={LABEL_CLS}>Allergies</label>
-                  <textarea id="allergies" name="allergies" rows={2} placeholder="e.g. Penicillin, pollen" value={formData.allergies || ""} onChange={handleInputChange} className={INPUT_CLS} />
-                </div>
-                {/* Emergency Contact */}
-                <div>
-                  <label htmlFor="emergencyContact" className={LABEL_CLS}>Emergency Contact</label>
-                  <input id="emergencyContact" type="text" name="emergencyContact" placeholder="Name — +94 77 123 4567" value={formData.emergencyContact || ""} onChange={handleInputChange} className={INPUT_CLS} />
-                </div>
-                <div className="flex justify-end">
+                )}
+
+                {/* Navigation */}
+                <div className="flex items-center justify-between pt-2">
+                  {step > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => setStep((s) => s - 1)}
+                      className="rounded-xl border border-gray-200 dark:border-gray-600 px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      ← Back
+                    </button>
+                  ) : (
+                    <div />
+                  )}
                   <button
                     type="submit"
                     disabled={saving}
                     className="rounded-xl bg-teal-600 px-6 py-3 text-sm font-medium text-white hover:bg-teal-700 disabled:bg-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                   >
-                    {saving ? "Saving…" : "Save Changes"}
+                    {step < TOTAL_STEPS ? "Next →" : saving ? "Saving…" : "Save Changes"}
                   </button>
                 </div>
               </form>
@@ -804,83 +865,240 @@ function DoctorProfile() {
     return <ErrorState message={error || "Doctor not found"} href="/dashboard" label="Return to Dashboard" />;
   }
 
+  const displayName = doctor?.name || user?.name || "New Doctor";
+  const initials = displayName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
     <>
       <ToastContainer toasts={toasts} dismiss={dismiss} />
-      <PageShell title="Doctor Profile" subtitle="Manage your professional details shown across the clinic platform.">
-        <div className="space-y-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{doctor?.name || user?.name || "New Doctor"}</h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 break-all">{doctor?.email || user?.email || ""}</p>
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+          {/* Banner */}
+          <div className="relative h-28 bg-gradient-to-r from-teal-800 to-teal-600">
+            <div className="absolute -bottom-10 left-8">
+              <div className="h-20 w-20 rounded-2xl bg-white border-4 border-white shadow-md flex items-center justify-center">
+                <span className="text-2xl font-bold text-teal-700">{initials}</span>
+              </div>
             </div>
-            {!isEditing ? (
-              <button onClick={() => setIsEditing(true)} className="rounded-xl border border-teal-200 dark:border-teal-700 px-4 py-2 text-sm font-medium text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30">
-                Edit Profile
-              </button>
-            ) : (
-              <button
-                onClick={() => { if (isNewDoctor) return; setIsEditing(false); setFormData(doctor || {}); }}
-                className={`rounded-xl border px-4 py-2 text-sm font-medium ${isNewDoctor ? "hidden" : "border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"}`}
-                disabled={isNewDoctor}
-              >
-                Cancel
-              </button>
+            {!isEditing && (
+              <div className="absolute top-4 right-4">
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="rounded-lg bg-white/15 hover:bg-white/25 text-white border border-white/30 px-3 py-1.5 text-sm font-medium backdrop-blur-sm transition-all"
+                >
+                  Edit Profile
+                </button>
+              </div>
             )}
           </div>
 
-          {!isEditing && doctor ? (
-            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {[
-                { label: "Specialization", value: doctor.specialization || "Not specified" },
-                { label: "Consultation Fee", value: `LKR ${Number(doctor.consultationFee || 0).toFixed(2)}` },
-                { label: "Qualification", value: doctor.qualification || "Not specified" },
-                { label: "Verification", value: doctor.isVerified ? "Verified ✓" : "Pending verification" },
-                { label: "Biography", value: doctor.bio || "No biography provided", wide: true },
-              ].map(({ label, value, wide }) => (
-                <div key={label} className={`rounded-2xl bg-gray-50 dark:bg-gray-700/50 p-4 ${wide ? "sm:col-span-2" : ""}`}>
-                  <dt className="text-sm text-gray-500 dark:text-gray-400">{label}</dt>
-                  <dd className="mt-1 font-medium text-gray-900 dark:text-white">{value}</dd>
+          {/* Identity */}
+          <div className="pt-14 pb-5 px-8 border-b border-gray-100">
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
+                <p className="mt-1 text-sm text-gray-500 break-all">{doctor?.email || user?.email || ""}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {doctor?.specialization && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-teal-50 border border-teal-100 text-teal-700 text-sm font-medium">
+                      {doctor.specialization}
+                    </span>
+                  )}
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${
+                      doctor?.isVerified
+                        ? "bg-emerald-50 border border-emerald-100 text-emerald-700"
+                        : "bg-amber-50 border border-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {doctor?.isVerified ? (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        Verified
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Pending Verification
+                      </>
+                    )}
+                  </span>
+                  {doctor?.createdAt && (
+                    <span className="text-xs text-gray-400">
+                      Member since{" "}
+                      {new Date(doctor.createdAt).toLocaleDateString("en-US", {
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                  )}
                 </div>
-              ))}
-            </dl>
-          ) : (
-            <form onSubmit={handleUpdate} className="space-y-5">
-              <div>
-                <label htmlFor="d-name" className={LABEL_CLS}>Full name</label>
-                <input id="d-name" type="text" name="name" value={formData.name || ""} onChange={handleInputChange} required className={INPUT_CLS} />
               </div>
-              <div>
-                <label htmlFor="d-email" className={LABEL_CLS}>Email {!isNewDoctor && "(cannot be changed)"}</label>
-                <input id="d-email" type="email" name="email" value={formData.email || ""} onChange={handleInputChange} required disabled={!isNewDoctor} className={INPUT_CLS + (!isNewDoctor ? " disabled:opacity-60 cursor-not-allowed" : "")} />
-              </div>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="d-spec" className={LABEL_CLS}>Specialization</label>
-                  <input id="d-spec" type="text" name="specialization" value={formData.specialization || ""} onChange={handleInputChange} className={INPUT_CLS} />
-                </div>
-                <div>
-                  <label htmlFor="d-fee" className={LABEL_CLS}>Consultation Fee (LKR)</label>
-                  <input id="d-fee" type="number" min="0" step="0.01" name="consultationFee" value={formData.consultationFee ?? ""} onChange={handleInputChange} className={INPUT_CLS} />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="d-qual" className={LABEL_CLS}>Qualification</label>
-                <input id="d-qual" type="text" name="qualification" value={formData.qualification || ""} onChange={handleInputChange} className={INPUT_CLS} />
-              </div>
-              <div>
-                <label htmlFor="d-bio" className={LABEL_CLS}>Biography</label>
-                <textarea id="d-bio" name="bio" rows={5} value={formData.bio || ""} onChange={handleInputChange} className={INPUT_CLS} />
-              </div>
-              <div className="flex justify-end">
-                <button type="submit" disabled={saving} className="rounded-xl bg-teal-600 px-6 py-3 text-sm font-medium text-white hover:bg-teal-700 disabled:bg-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                  {saving ? "Saving…" : "Save Changes"}
+              {isEditing && !isNewDoctor && (
+                <button
+                  onClick={() => { setIsEditing(false); setFormData(doctor || {}); }}
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all"
+                >
+                  Cancel
                 </button>
+              )}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-8">
+            {!isEditing && doctor ? (
+              <div className="space-y-6">
+                {/* Credentials grid */}
+                <div>
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
+                    Professional Details
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Qualification</p>
+                      <p className="mt-1.5 font-semibold text-gray-900">{doctor.qualification || "—"}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-teal-50 border border-teal-100">
+                      <p className="text-xs font-medium text-teal-600 uppercase tracking-wide">Consultation Fee</p>
+                      <p className="mt-1.5 text-lg font-bold text-teal-800">
+                        LKR{" "}
+                        {Number(doctor.consultationFee || 0).toLocaleString("en-LK", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Specialization</p>
+                      <p className="mt-1.5 font-semibold text-gray-900">{doctor.specialization || "—"}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Verification Status</p>
+                      <p className={`mt-1.5 font-semibold ${doctor.isVerified ? "text-emerald-700" : "text-amber-700"}`}>
+                        {doctor.isVerified ? "Verified" : "Awaiting Verification"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Biography */}
+                <div>
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">About</h2>
+                  {doctor.bio ? (
+                    <div className="p-5 rounded-xl bg-gray-50 border border-gray-100">
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{doctor.bio}</p>
+                    </div>
+                  ) : (
+                    <div className="p-5 rounded-xl bg-gray-50 border border-dashed border-gray-200 text-center">
+                      <p className="text-sm text-gray-500">
+                        No biography added.{" "}
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="text-teal-600 hover:underline font-medium"
+                        >
+                          Add one now
+                        </button>
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </form>
-          )}
+            ) : (
+              /* Edit Form */
+              <form onSubmit={handleUpdate} className="space-y-6">
+                <div>
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
+                    Personal Information
+                  </h2>
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="d-name" className={LABEL_CLS}>Full Name</label>
+                      <input
+                        id="d-name" type="text" name="name"
+                        value={formData.name || ""}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="Dr. John Smith"
+                        className={INPUT_CLS}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-100 pt-6">
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
+                    Professional Details
+                  </h2>
+                  <div className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="d-spec" className={LABEL_CLS}>Specialization</label>
+                        <input
+                          id="d-spec" type="text" name="specialization"
+                          value={formData.specialization || ""}
+                          onChange={handleInputChange}
+                          placeholder="e.g. Cardiology"
+                          className={INPUT_CLS}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="d-fee" className={LABEL_CLS}>Consultation Fee (LKR)</label>
+                        <input
+                          id="d-fee" type="number" min="0" step="0.01" name="consultationFee"
+                          value={formData.consultationFee ?? ""}
+                          onChange={handleInputChange}
+                          placeholder="0.00"
+                          className={INPUT_CLS}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="d-qual" className={LABEL_CLS}>Qualification</label>
+                      <input
+                        id="d-qual" type="text" name="qualification"
+                        value={formData.qualification || ""}
+                        onChange={handleInputChange}
+                        placeholder="e.g. MBBS, MD"
+                        className={INPUT_CLS}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="d-bio" className={LABEL_CLS}>Biography</label>
+                      <textarea
+                        id="d-bio" name="bio" rows={5}
+                        value={formData.bio || ""}
+                        onChange={handleInputChange}
+                        placeholder="Brief professional background, experience, and areas of expertise..."
+                        className={INPUT_CLS}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-xl bg-teal-600 px-6 py-3 text-sm font-medium text-white hover:bg-teal-700 disabled:bg-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition-colors"
+                  >
+                    {saving ? "Saving…" : "Save Profile"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
-      </PageShell>
+      </div>
     </>
   );
 }

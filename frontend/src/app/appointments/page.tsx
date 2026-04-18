@@ -39,6 +39,23 @@ interface Doctor {
     isVerified?: boolean;
 }
 
+interface PatientProfile {
+    id?: string;
+    _id?: string;
+    name?: string;
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    dob?: string;
+    gender?: string;
+    address?: string;
+    avatarUrl?: string;
+    bloodType?: string;
+    allergies?: string | string[];
+    emergencyContact?: { name?: string; phone?: string; relationship?: string };
+    status?: string;
+}
+
 interface AvailabilitySlot {
     _id: string;
     dayOfWeek: string;
@@ -106,6 +123,26 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
 
     // Resolve doctorId by calling doctor-service /doctors/me (more reliable than JWT claims)
     const [doctorId, setDoctorId] = useState<string | null>(null);
+
+    const [viewPatient, setViewPatient] = useState<PatientProfile | null>(null);
+    const [patientLoading, setPatientLoading] = useState(false);
+
+    const fetchPatientProfile = async (patientId: string) => {
+        setPatientLoading(true);
+        setViewPatient(null);
+        try {
+            const res = await fetch(`${PATIENT_API}/patients/${patientId}`, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            if (!res.ok) throw new Error("Could not load patient profile");
+            const data = await res.json();
+            setViewPatient(data?.data ?? data);
+        } catch {
+            setViewPatient({});
+        } finally {
+            setPatientLoading(false);
+        }
+    };
 
     useEffect(() => {
         (async () => {
@@ -321,13 +358,16 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
                             >
                                 {/* Left: avatar + info */}
                                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                                    {/* Avatar */}
+                                    {/* Avatar — clickable for confirmed appointments */}
                                     <div
-                                        className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
+                                        className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${apt.status === "CONFIRMED" ? "cursor-pointer hover:ring-2 hover:ring-offset-1 transition-all" : ""}`}
                                         style={{
                                             backgroundColor: "var(--brand-surface)",
                                             color: "var(--brand-text)",
+                                            ...(apt.status === "CONFIRMED" ? { ringColor: "var(--brand)" } : {}),
                                         }}
+                                        onClick={() => apt.status === "CONFIRMED" && fetchPatientProfile(apt.patientId)}
+                                        title={apt.status === "CONFIRMED" ? "View patient profile" : undefined}
                                     >
                                         {initials}
                                     </div>
@@ -404,6 +444,114 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Patient Profile Modal */}
+            {(patientLoading || viewPatient !== null) && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+                    onClick={() => setViewPatient(null)}
+                >
+                    <div
+                        className="relative w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden"
+                        style={{ backgroundColor: "var(--bg-elevated)", border: "1px solid var(--border)" }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Modal header */}
+                        <div
+                            className="flex items-center justify-between px-6 py-4"
+                            style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--bg-surface)" }}
+                        >
+                            <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+                                Patient Profile
+                            </h2>
+                            <button
+                                onClick={() => setViewPatient(null)}
+                                className="p-1 rounded-lg transition-colors"
+                                style={{ color: "var(--text-muted)" }}
+                            >
+                                <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Modal body */}
+                        <div className="p-6">
+                            {patientLoading ? (
+                                <div className="flex justify-center items-center h-32">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2" style={{ borderColor: "var(--brand)" }} />
+                                </div>
+                            ) : !viewPatient || Object.keys(viewPatient).length === 0 ? (
+                                <p className="text-center text-sm py-8" style={{ color: "var(--text-muted)" }}>Could not load patient profile.</p>
+                            ) : (() => {
+                                const p = viewPatient;
+                                const displayName = p.name || p.fullName || "Unknown Patient";
+                                const initials2 = displayName.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase();
+                                const allergiesList = Array.isArray(p.allergies) ? p.allergies.join(", ") : p.allergies;
+                                const dob = p.dob ? new Date(p.dob).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : null;
+                                return (
+                                    <div className="space-y-5">
+                                        {/* Avatar + name */}
+                                        <div className="flex items-center gap-4">
+                                            {p.avatarUrl ? (
+                                                <img src={p.avatarUrl} alt={displayName} className="h-16 w-16 rounded-full object-cover" />
+                                            ) : (
+                                                <div className="h-16 w-16 rounded-full flex items-center justify-center text-lg font-bold" style={{ backgroundColor: "var(--brand-surface)", color: "var(--brand-text)" }}>
+                                                    {initials2}
+                                                </div>
+                                            )}
+                                            <div>
+                                                <p className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>{displayName}</p>
+                                                {p.status && (
+                                                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "var(--brand-surface)", color: "var(--brand-text)" }}>{p.status}</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Details grid */}
+                                        <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                                            {[
+                                                { label: "Email", value: p.email },
+                                                { label: "Phone", value: p.phone },
+                                                { label: "Date of Birth", value: dob },
+                                                { label: "Gender", value: p.gender },
+                                                { label: "Blood Type", value: p.bloodType },
+                                                { label: "Address", value: p.address },
+                                            ].filter(f => f.value).map(({ label, value }) => (
+                                                <div key={label}>
+                                                    <p className="text-xs font-medium mb-0.5" style={{ color: "var(--text-muted)" }}>{label}</p>
+                                                    <p style={{ color: "var(--text-primary)" }}>{value}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Allergies */}
+                                        {allergiesList && (
+                                            <div className="text-sm">
+                                                <p className="text-xs font-medium mb-1" style={{ color: "var(--text-muted)" }}>Allergies</p>
+                                                <p className="px-3 py-2 rounded-lg text-sm" style={{ backgroundColor: "var(--bg-muted)", color: "var(--text-primary)" }}>{allergiesList}</p>
+                                            </div>
+                                        )}
+
+                                        {/* Emergency contact */}
+                                        {p.emergencyContact && (p.emergencyContact.name || p.emergencyContact.phone) && (
+                                            <div className="text-sm rounded-xl p-3" style={{ backgroundColor: "var(--bg-muted)", border: "1px solid var(--border)" }}>
+                                                <p className="text-xs font-medium mb-2" style={{ color: "var(--text-muted)" }}>Emergency Contact</p>
+                                                <div className="flex flex-wrap gap-x-5 gap-y-1">
+                                                    {p.emergencyContact.name && <span style={{ color: "var(--text-primary)" }}>{p.emergencyContact.name}</span>}
+                                                    {p.emergencyContact.relationship && <span style={{ color: "var(--text-secondary)" }}>({p.emergencyContact.relationship})</span>}
+                                                    {p.emergencyContact.phone && <span style={{ color: "var(--text-secondary)" }}>📞 {p.emergencyContact.phone}</span>}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
@@ -1123,6 +1271,11 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                             .slice(0, 2)
                             .join("")
                             .toUpperCase();
+
+                        const aptDoctor = doctors.find(
+                            (d) => d.id === apt.doctorId || d._id === apt.doctorId
+                        );
+                        const consultationFee = aptDoctor?.consultationFee;
 
                         return (
                             <div

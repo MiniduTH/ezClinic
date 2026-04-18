@@ -2,7 +2,20 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Stethoscope, Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
+import Link from "next/link";
+import {
+  Search,
+  Stethoscope,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Lock,
+  BadgeCheck,
+  Clock,
+  Banknote,
+} from "lucide-react";
+import { useUser } from "@/lib/session-context";
 
 const DOCTOR_API =
   process.env.NEXT_PUBLIC_DOCTOR_API || "http://localhost:3002/api/v1";
@@ -112,76 +125,57 @@ function BookingModal({
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "8px 12px",
-    border: "1px solid var(--border)",
-    borderRadius: "8px",
-    background: "var(--bg-surface)",
-    color: "var(--text-primary)",
-    fontSize: "0.875rem",
-    outline: "none",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: "block",
-    fontSize: "0.8125rem",
-    fontWeight: 500,
-    color: "var(--text-secondary)",
-    marginBottom: "6px",
-  };
-
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border"
+        className="w-full sm:max-w-md max-h-[92vh] sm:max-h-[88vh] overflow-y-auto sm:rounded-2xl rounded-t-2xl"
         style={{
           background: "var(--bg-elevated)",
-          borderColor: "var(--border)",
+          border: "1px solid var(--border)",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
         }}
       >
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-start justify-between mb-5">
-            <div>
-              <h2
-                className="text-base font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {doctor.name}
-              </h2>
-              <p
-                className="text-sm mt-0.5"
-                style={{ color: "var(--text-muted)" }}
-              >
-                {doctor.specialization || "General Practitioner"}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg transition-colors"
-              style={{ color: "var(--text-muted)" }}
-              aria-label="Close"
-              onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLButtonElement).style.background =
-                  "var(--bg-muted)")
-              }
-              onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLButtonElement).style.background =
-                  "transparent")
-              }
-            >
-              <X size={18} />
-            </button>
+        {/* Modal header */}
+        <div
+          className="sticky top-0 flex items-center justify-between px-6 py-4 border-b"
+          style={{
+            background: "var(--bg-elevated)",
+            borderColor: "var(--border)",
+          }}
+        >
+          <div>
+            <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              Book Appointment
+            </h2>
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+              {doctor.name} · {doctor.specialization || "General Practitioner"}
+            </p>
           </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+            style={{ color: "var(--text-muted)" }}
+            onMouseEnter={(e) =>
+              ((e.currentTarget as HTMLButtonElement).style.background = "var(--bg-muted)")
+            }
+            onMouseLeave={(e) =>
+              ((e.currentTarget as HTMLButtonElement).style.background = "transparent")
+            }
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
 
+        <div className="px-6 py-5 space-y-5">
           {/* Error */}
           {error && (
             <div
-              className="mb-4 px-3 py-2 rounded-lg text-sm"
+              className="px-3 py-2.5 rounded-xl text-sm"
               style={{
                 background: "var(--danger-surface)",
                 color: "var(--danger-text)",
@@ -193,13 +187,15 @@ function BookingModal({
           )}
 
           {/* Slot Selection */}
-          <div className="mb-4">
-            <label style={labelStyle}>Available Slot</label>
+          <div>
+            <label
+              className="block text-xs font-semibold uppercase tracking-wider mb-3"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Available Slots
+            </label>
             {slots.length === 0 ? (
-              <p
-                className="text-sm italic"
-                style={{ color: "var(--text-muted)" }}
-              >
+              <p className="text-sm italic" style={{ color: "var(--text-muted)" }}>
                 No available slots.
               </p>
             ) : (
@@ -210,24 +206,15 @@ function BookingModal({
                     <button
                       key={slot._id}
                       onClick={() => setSelectedSlot(slot)}
-                      className="text-left px-3 py-2 rounded-lg border text-sm transition-colors"
+                      className="text-left px-3 py-2.5 rounded-xl border text-sm transition-all"
                       style={{
-                        borderColor: isSelected
-                          ? "var(--brand)"
-                          : "var(--border)",
-                        background: isSelected
-                          ? "var(--brand-surface)"
-                          : "transparent",
-                        color: isSelected
-                          ? "var(--brand-text)"
-                          : "var(--text-secondary)",
+                        borderColor: isSelected ? "var(--brand)" : "var(--border)",
+                        background: isSelected ? "var(--brand-surface)" : "transparent",
+                        color: isSelected ? "var(--brand-text)" : "var(--text-secondary)",
                       }}
                     >
-                      <div className="font-medium">{slot.dayOfWeek}</div>
-                      <div
-                        className="text-xs mt-0.5"
-                        style={{ color: "var(--text-muted)" }}
-                      >
+                      <div className="font-medium text-xs">{slot.dayOfWeek}</div>
+                      <div className="text-xs mt-0.5 opacity-70">
                         {slot.startTime} – {slot.endTime}
                       </div>
                     </button>
@@ -238,36 +225,47 @@ function BookingModal({
           </div>
 
           {/* Date */}
-          <div className="mb-4">
-            <label style={labelStyle}>Appointment Date</label>
+          <div>
+            <label
+              className="block text-xs font-semibold uppercase tracking-wider mb-2"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Appointment Date
+            </label>
             <input
               type="date"
               value={appointmentDate}
               min={new Date().toISOString().split("T")[0]}
               onChange={(e) => setAppointmentDate(e.target.value)}
-              style={inputStyle}
+              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+              style={{
+                border: "1px solid var(--border)",
+                background: "var(--bg-surface)",
+                color: "var(--text-primary)",
+              }}
             />
           </div>
 
-          {/* Type */}
-          <div className="mb-4">
-            <label style={labelStyle}>Consultation Type</label>
-            <div className="flex gap-2">
+          {/* Consultation Type */}
+          <div>
+            <label
+              className="block text-xs font-semibold uppercase tracking-wider mb-2"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Consultation Type
+            </label>
+            <div className="grid grid-cols-2 gap-2">
               {(["IN_PERSON", "VIRTUAL"] as const).map((t) => {
                 const isActive = type === t;
                 return (
                   <button
                     key={t}
                     onClick={() => setType(t)}
-                    className="flex-1 py-2 rounded-lg border text-sm font-medium transition-colors"
+                    className="py-2.5 rounded-xl border text-sm font-medium transition-all"
                     style={{
                       borderColor: isActive ? "var(--brand)" : "var(--border)",
-                      background: isActive
-                        ? "var(--brand-surface)"
-                        : "transparent",
-                      color: isActive
-                        ? "var(--brand-text)"
-                        : "var(--text-secondary)",
+                      background: isActive ? "var(--brand-surface)" : "transparent",
+                      color: isActive ? "var(--brand-text)" : "var(--text-secondary)",
                     }}
                   >
                     {t === "IN_PERSON" ? "In-Person" : "Virtual"}
@@ -278,31 +276,36 @@ function BookingModal({
           </div>
 
           {/* Notes */}
-          <div className="mb-5">
-            <label style={labelStyle}>Notes (optional)</label>
+          <div>
+            <label
+              className="block text-xs font-semibold uppercase tracking-wider mb-2"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Notes <span className="normal-case font-normal">(optional)</span>
+            </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="Describe your symptoms or reason for visit..."
+              placeholder="Describe your symptoms or reason for visit…"
+              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
               style={{
-                ...inputStyle,
-                resize: "none",
-                lineHeight: "1.5",
+                border: "1px solid var(--border)",
+                background: "var(--bg-surface)",
+                color: "var(--text-primary)",
+                lineHeight: "1.6",
               }}
             />
           </div>
 
           {/* Fee */}
-          {doctor.consultationFee && (
+          {doctor.consultationFee !== undefined && (
             <div
-              className="mb-4 px-3 py-2 rounded-lg"
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
               style={{ background: "var(--brand-surface)" }}
             >
-              <span
-                className="text-sm font-medium"
-                style={{ color: "var(--brand-text)" }}
-              >
+              <Banknote size={15} style={{ color: "var(--brand-text)" }} className="flex-shrink-0" />
+              <span className="text-sm font-medium" style={{ color: "var(--brand-text)" }}>
                 Consultation Fee: LKR {doctor.consultationFee}
               </span>
             </div>
@@ -312,26 +315,19 @@ function BookingModal({
           <button
             onClick={handleBook}
             disabled={loading || slots.length === 0}
-            className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-colors"
+            className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
             style={{
-              background:
-                loading || slots.length === 0
-                  ? "var(--bg-muted)"
-                  : "var(--brand)",
-              color:
-                loading || slots.length === 0
-                  ? "var(--text-muted)"
-                  : "white",
+              background: loading || slots.length === 0 ? "var(--bg-muted)" : "var(--brand)",
+              color: loading || slots.length === 0 ? "var(--text-muted)" : "white",
+              cursor: loading || slots.length === 0 ? "not-allowed" : "pointer",
             }}
             onMouseEnter={(e) => {
               if (!loading && slots.length > 0)
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "var(--brand-hover)";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--brand-hover)";
             }}
             onMouseLeave={(e) => {
               if (!loading && slots.length > 0)
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "var(--brand)";
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--brand)";
             }}
           >
             {loading ? "Booking…" : "Confirm Appointment"}
@@ -344,13 +340,24 @@ function BookingModal({
 
 // ─── Doctor Card ──────────────────────────────────────────────────────────────
 
+const AVATAR_GRADIENTS = [
+  "linear-gradient(135deg, #0d9488 0%, #0891b2 100%)",
+  "linear-gradient(135deg, #0891b2 0%, #6366f1 100%)",
+  "linear-gradient(135deg, #0d9488 0%, #059669 100%)",
+  "linear-gradient(135deg, #0369a1 0%, #0d9488 100%)",
+  "linear-gradient(135deg, #7c3aed 0%, #0d9488 100%)",
+];
+
 function DoctorCard({
   doctor,
+  isLoggedIn,
   onBook,
 }: {
   doctor: Doctor;
+  isLoggedIn: boolean;
   onBook: (doctor: Doctor) => void;
 }) {
+  const router = useRouter();
   const slotCount = (doctor.availability || []).filter((s) => s.isActive).length;
   const initials = doctor.name
     .split(" ")
@@ -359,127 +366,214 @@ function DoctorCard({
     .join("")
     .toUpperCase();
 
-  const [hovered, setHovered] = useState(false);
+  const gradientIndex =
+    doctor.name.charCodeAt(0) % AVATAR_GRADIENTS.length;
+
+  const handleBookClick = () => {
+    if (!isLoggedIn) {
+      router.push("/login?redirect=/doctors");
+      return;
+    }
+    onBook(doctor);
+  };
+
+  const ctaDisabled = isLoggedIn && slotCount === 0;
 
   return (
     <div
-      className="rounded-xl border p-5 flex flex-col transition-colors"
+      className="group rounded-2xl border flex flex-col overflow-hidden transition-all duration-200"
       style={{
         background: "var(--bg-elevated)",
-        borderColor: hovered ? "var(--brand)" : "var(--border)",
+        borderColor: "var(--border)",
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = "var(--brand)";
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow =
+          "0 8px 24px rgba(0,0,0,0.08)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)";
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+      }}
     >
-      {/* Avatar + Name */}
-      <div className="flex items-start gap-3 mb-3">
-        <div
-          className="flex-shrink-0 flex items-center justify-center rounded-full text-white text-base font-semibold"
-          style={{
-            width: 52,
-            height: 52,
-            background:
-              "linear-gradient(135deg, var(--brand) 0%, #14b8a6 100%)",
-          }}
-        >
-          {initials}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3
-            className="font-medium text-sm truncate"
-            style={{ color: "var(--text-primary)" }}
+      {/* Card body */}
+      <div className="p-5 flex-1 flex flex-col">
+        {/* Avatar + identity */}
+        <div className="flex items-start gap-3.5 mb-4">
+          <div
+            className="flex-shrink-0 flex items-center justify-center rounded-2xl text-white text-lg font-bold"
+            style={{
+              width: 56,
+              height: 56,
+              background: AVATAR_GRADIENTS[gradientIndex],
+            }}
           >
-            {doctor.name}
-          </h3>
-          {doctor.specialization && (
-            <span
-              className="inline-block text-xs font-medium px-2 py-0.5 rounded-full mt-1"
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0 pt-0.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3
+                className="font-semibold text-sm leading-tight"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {doctor.name}
+              </h3>
+              {doctor.isVerified && (
+                <BadgeCheck
+                  size={14}
+                  style={{ color: "var(--brand)", flexShrink: 0 }}
+                />
+              )}
+            </div>
+            {doctor.specialization && (
+              <span
+                className="inline-block text-xs font-medium px-2 py-0.5 rounded-full mt-1.5"
+                style={{
+                  background: "var(--brand-surface)",
+                  color: "var(--brand-text)",
+                }}
+              >
+                {doctor.specialization}
+              </span>
+            )}
+            {doctor.qualification && (
+              <p
+                className="text-xs mt-1 truncate"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {doctor.qualification}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Bio */}
+        {doctor.bio ? (
+          <p
+            className="text-xs leading-relaxed mb-4 flex-1"
+            style={{
+              color: "var(--text-secondary)",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {doctor.bio}
+          </p>
+        ) : (
+          <div className="flex-1" />
+        )}
+
+        {/* Stats row */}
+        <div
+          className="flex items-center justify-between py-3 border-t border-b mb-4 text-xs"
+          style={{ borderColor: "var(--border)" }}
+        >
+          <div className="flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
+            <div
+              className="w-2 h-2 rounded-full flex-shrink-0"
               style={{
-                background: "var(--brand-surface)",
-                color: "var(--brand-text)",
+                background: slotCount > 0 ? "var(--success)" : "var(--text-muted)",
+                opacity: slotCount > 0 ? 1 : 0.4,
               }}
+            />
+            <Clock size={11} />
+            <span>
+              {slotCount} slot{slotCount !== 1 ? "s" : ""} available
+            </span>
+          </div>
+          {doctor.consultationFee !== undefined && (
+            <span
+              className="font-semibold text-xs"
+              style={{ color: "var(--text-secondary)" }}
             >
-              {doctor.specialization}
+              LKR {doctor.consultationFee}
             </span>
           )}
-          {doctor.qualification && (
-            <p
-              className="text-xs truncate mt-1"
-              style={{ color: "var(--text-muted)" }}
-            >
-              {doctor.qualification}
-            </p>
-          )}
         </div>
-      </div>
 
-      {/* Bio */}
-      {doctor.bio && (
-        <p
-          className="text-sm mb-3 line-clamp-2 flex-1"
-          style={{ color: "var(--text-secondary)" }}
+        {/* CTA */}
+        <button
+          onClick={handleBookClick}
+          disabled={ctaDisabled}
+          className="w-full flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all"
+          style={{
+            height: 40,
+            background: ctaDisabled
+              ? "var(--bg-muted)"
+              : !isLoggedIn
+              ? "transparent"
+              : "var(--brand)",
+            color: ctaDisabled
+              ? "var(--text-muted)"
+              : !isLoggedIn
+              ? "var(--brand-text)"
+              : "white",
+            border: !isLoggedIn && !ctaDisabled ? "1.5px solid var(--brand)" : "none",
+            cursor: ctaDisabled ? "not-allowed" : "pointer",
+          }}
+          onMouseEnter={(e) => {
+            if (ctaDisabled) return;
+            const btn = e.currentTarget as HTMLButtonElement;
+            btn.style.background = isLoggedIn ? "var(--brand-hover)" : "var(--brand-surface)";
+          }}
+          onMouseLeave={(e) => {
+            if (ctaDisabled) return;
+            const btn = e.currentTarget as HTMLButtonElement;
+            btn.style.background = isLoggedIn ? "var(--brand)" : "transparent";
+          }}
         >
-          {doctor.bio}
-        </p>
-      )}
-
-      {/* Stats */}
-      <div
-        className="flex items-center gap-4 mb-4 text-xs"
-        style={{ color: "var(--text-muted)" }}
-      >
-        <span className="flex items-center gap-1.5">
-          <span
-            className="rounded-full flex-shrink-0"
-            style={{
-              width: 10,
-              height: 10,
-              background: slotCount > 0 ? "var(--success)" : "var(--text-muted)",
-              opacity: slotCount > 0 ? 1 : 0.4,
-            }}
-          />
-          <Calendar size={11} />
-          {slotCount} slot{slotCount !== 1 ? "s" : ""}
-        </span>
-        {doctor.consultationFee !== undefined && (
-          <span
-            className="font-medium"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            LKR {doctor.consultationFee}
-          </span>
-        )}
+          {!isLoggedIn ? (
+            <>
+              <Lock size={13} />
+              Sign in to Book
+            </>
+          ) : ctaDisabled ? (
+            "Fully Booked"
+          ) : (
+            <>
+              <Calendar size={13} />
+              Book Appointment
+            </>
+          )}
+        </button>
       </div>
-
-      {/* Book Button */}
-      <button
-        onClick={() => onBook(doctor)}
-        disabled={slotCount === 0}
-        className="w-full rounded-lg text-sm font-medium transition-colors"
-        style={{
-          height: 40,
-          background: slotCount === 0 ? "var(--bg-muted)" : "var(--brand)",
-          color: slotCount === 0 ? "var(--text-muted)" : "white",
-          cursor: slotCount === 0 ? "not-allowed" : "pointer",
-        }}
-        onMouseEnter={(e) => {
-          if (slotCount > 0)
-            (e.currentTarget as HTMLButtonElement).style.background =
-              "var(--brand-hover)";
-        }}
-        onMouseLeave={(e) => {
-          if (slotCount > 0)
-            (e.currentTarget as HTMLButtonElement).style.background =
-              "var(--brand)";
-        }}
-      >
-        {slotCount === 0 ? "Not Available" : "Book Appointment"}
-      </button>
     </div>
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Skeleton Card ─────────────────────────────────────────────────────────────
+
+function SkeletonCard() {
+  return (
+    <div
+      className="rounded-2xl border p-5 animate-pulse"
+      style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
+    >
+      <div className="flex gap-3.5 mb-4">
+        <div
+          className="w-14 h-14 rounded-2xl flex-shrink-0"
+          style={{ background: "var(--bg-muted)" }}
+        />
+        <div className="flex-1 pt-1 space-y-2">
+          <div className="h-3.5 rounded w-3/4" style={{ background: "var(--bg-muted)" }} />
+          <div className="h-3 rounded w-1/2" style={{ background: "var(--bg-muted)" }} />
+        </div>
+      </div>
+      <div className="space-y-2 mb-4">
+        <div className="h-2.5 rounded" style={{ background: "var(--bg-muted)" }} />
+        <div className="h-2.5 rounded w-4/5" style={{ background: "var(--bg-muted)" }} />
+      </div>
+      <div className="h-px mb-4" style={{ background: "var(--bg-muted)" }} />
+      <div className="h-10 rounded-xl" style={{ background: "var(--bg-muted)" }} />
+    </div>
+  );
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const SPECIALTIES = [
   "All",
@@ -494,8 +588,13 @@ const SPECIALTIES = [
   "Radiologist",
 ];
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function DoctorsPage() {
   const router = useRouter();
+  const { user, isLoading: authLoading } = useUser();
+  const isLoggedIn = !authLoading && !!user;
+
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
@@ -505,6 +604,7 @@ export default function DoctorsPage() {
   const [page, setPage] = useState(1);
   const [bookingDoctor, setBookingDoctor] = useState<Doctor | null>(null);
   const [booked, setBooked] = useState(false);
+  const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
 
   const fetchDoctors = useCallback(async () => {
     setLoading(true);
@@ -530,7 +630,6 @@ export default function DoctorsPage() {
     fetchDoctors();
   }, [fetchDoctors]);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
   }, [search, specialty]);
@@ -539,45 +638,49 @@ export default function DoctorsPage() {
     e.preventDefault();
   }
 
-  const inputStyle: React.CSSProperties = {
-    border: "1px solid var(--border)",
-    borderRadius: "8px",
-    background: "var(--bg-elevated)",
-    color: "var(--text-primary)",
-    fontSize: "0.875rem",
-    outline: "none",
-    padding: "0 12px",
-    height: 40,
-    width: "100%",
-  };
+  const showGuestBanner = !authLoading && !isLoggedIn && !guestBannerDismissed;
 
   return (
     <div
       className="min-h-screen"
       style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}
     >
-      <div className="max-w-[1200px] mx-auto px-4 py-8">
+      <div className="max-w-[1200px] mx-auto px-4 py-8 space-y-5">
 
-        {/* ── Header ── */}
-        <div className="mb-6">
-          <h1
-            className="text-2xl font-medium"
-            style={{ color: "var(--text-primary)" }}
+        {/* ── Guest Banner ── */}
+        {showGuestBanner && (
+          <div
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl border text-sm"
+            style={{
+              background: "var(--brand-surface)",
+              borderColor: "var(--brand)",
+              color: "var(--brand-text)",
+            }}
           >
-            Find a Doctor
-          </h1>
-          <p
-            className="mt-1 text-sm"
-            style={{ color: "var(--text-muted)" }}
-          >
-            Browse our verified healthcare professionals
-          </p>
-        </div>
+            <Lock size={15} className="flex-shrink-0" />
+            <span className="flex-1">
+              <Link
+                href="/login?redirect=/doctors"
+                className="font-semibold underline underline-offset-2"
+              >
+                Sign in
+              </Link>{" "}
+              to book appointments with our verified doctors.
+            </span>
+            <button
+              onClick={() => setGuestBannerDismissed(true)}
+              aria-label="Dismiss"
+              className="p-1 rounded-lg transition-opacity opacity-60 hover:opacity-100"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         {/* ── Success Banner ── */}
         {booked && (
           <div
-            className="mb-5 px-4 py-3 rounded-xl border flex items-center gap-3 text-sm"
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl border text-sm"
             style={{
               background: "var(--brand-surface)",
               borderColor: "var(--brand)",
@@ -585,8 +688,8 @@ export default function DoctorsPage() {
             }}
           >
             <svg
-              width="16"
-              height="16"
+              width="15"
+              height="15"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -601,34 +704,47 @@ export default function DoctorsPage() {
               Appointment booked!{" "}
               <button
                 onClick={() => router.push("/appointments")}
-                className="underline font-medium"
+                className="underline font-semibold underline-offset-2"
               >
-                View appointments
+                View appointments →
               </button>
             </span>
             <button
               onClick={() => setBooked(false)}
               aria-label="Dismiss"
-              style={{ color: "var(--brand-text)" }}
+              className="p-1 rounded-lg transition-opacity opacity-60 hover:opacity-100"
             >
               <X size={14} />
             </button>
           </div>
         )}
 
+        {/* ── Page Header ── */}
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              Find a Doctor
+            </h1>
+            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+              Browse our verified healthcare professionals
+            </p>
+          </div>
+          {pagination && !loading && (
+            <span
+              className="text-sm font-medium tabular-nums"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {pagination.totalItems} doctor{pagination.totalItems !== 1 ? "s" : ""} available
+            </span>
+          )}
+        </div>
+
         {/* ── Filter Bar ── */}
         <div
-          className="rounded-xl border p-4 mb-6"
-          style={{
-            background: "var(--bg-elevated)",
-            borderColor: "var(--border)",
-          }}
+          className="rounded-2xl border p-3"
+          style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
         >
-          <form
-            onSubmit={handleSearchSubmit}
-            className="flex flex-col sm:flex-row gap-3"
-          >
-            {/* Search */}
+          <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1 relative">
               <Search
                 size={15}
@@ -640,18 +756,23 @@ export default function DoctorsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or keyword…"
-                style={{ ...inputStyle, paddingLeft: 36 }}
+                className="w-full h-10 rounded-xl pl-9 pr-3 text-sm outline-none"
+                style={{
+                  border: "1px solid var(--border)",
+                  background: "var(--bg-surface)",
+                  color: "var(--text-primary)",
+                }}
               />
             </div>
-            {/* Specialty */}
             <select
               value={specialty}
               onChange={(e) => setSpecialty(e.target.value)}
+              className="h-10 rounded-xl px-3 text-sm outline-none cursor-pointer"
               style={{
-                ...inputStyle,
-                width: "auto",
+                border: "1px solid var(--border)",
+                background: "var(--bg-surface)",
+                color: "var(--text-primary)",
                 minWidth: 180,
-                cursor: "pointer",
               }}
             >
               {SPECIALTIES.map((s) => (
@@ -667,91 +788,46 @@ export default function DoctorsPage() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="rounded-xl border p-5 animate-pulse"
-                style={{
-                  background: "var(--bg-elevated)",
-                  borderColor: "var(--border)",
-                }}
-              >
-                <div className="flex gap-3 mb-4">
-                  <div
-                    className="w-[52px] h-[52px] rounded-full flex-shrink-0"
-                    style={{ background: "var(--bg-muted)" }}
-                  />
-                  <div className="flex-1 space-y-2 pt-1">
-                    <div
-                      className="h-3.5 rounded w-3/4"
-                      style={{ background: "var(--bg-muted)" }}
-                    />
-                    <div
-                      className="h-3 rounded w-1/2"
-                      style={{ background: "var(--bg-muted)" }}
-                    />
-                  </div>
-                </div>
-                <div
-                  className="h-3 rounded mb-2"
-                  style={{ background: "var(--bg-muted)" }}
-                />
-                <div
-                  className="h-3 rounded w-4/5 mb-4"
-                  style={{ background: "var(--bg-muted)" }}
-                />
-                <div
-                  className="h-10 rounded-lg"
-                  style={{ background: "var(--bg-muted)" }}
-                />
-              </div>
+              <SkeletonCard key={i} />
             ))}
           </div>
         ) : error ? (
-          <div className="text-center py-16">
+          <div
+            className="rounded-2xl border py-16 text-center"
+            style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
+          >
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
               style={{ background: "var(--bg-muted)" }}
             >
-              <Stethoscope
-                size={24}
-                style={{ color: "var(--text-muted)" }}
-              />
+              <Stethoscope size={24} style={{ color: "var(--text-muted)" }} />
             </div>
-            <p
-              className="text-sm font-medium"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <p className="text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
               {error}
             </p>
             <button
               onClick={fetchDoctors}
-              className="mt-3 text-sm underline"
+              className="text-sm underline underline-offset-2 mt-1"
               style={{ color: "var(--brand-text)" }}
             >
               Try again
             </button>
           </div>
         ) : doctors.length === 0 ? (
-          <div className="text-center py-16">
+          <div
+            className="rounded-2xl border py-16 text-center"
+            style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
+          >
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
               style={{ background: "var(--bg-muted)" }}
             >
-              <Stethoscope
-                size={24}
-                style={{ color: "var(--text-muted)" }}
-              />
+              <Stethoscope size={24} style={{ color: "var(--text-muted)" }} />
             </div>
-            <p
-              className="text-sm font-medium"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
               No doctors found
             </p>
-            <p
-              className="text-xs mt-1"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
               Try adjusting your search or filters.
             </p>
           </div>
@@ -761,6 +837,7 @@ export default function DoctorsPage() {
               <DoctorCard
                 key={doctor._id || doctor.id}
                 doctor={doctor}
+                isLoggedIn={isLoggedIn}
                 onBook={setBookingDoctor}
               />
             ))}
@@ -769,36 +846,44 @@ export default function DoctorsPage() {
 
         {/* ── Pagination ── */}
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-center gap-3 mt-8">
+          <div className="flex items-center justify-center gap-2 pt-2">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="p-2 rounded-lg border transition-colors disabled:opacity-40"
+              className="w-9 h-9 rounded-xl border flex items-center justify-center transition-all disabled:opacity-35"
               style={{
                 borderColor: "var(--border)",
                 color: "var(--text-secondary)",
-                background: "transparent",
+                background: "var(--bg-elevated)",
               }}
               aria-label="Previous page"
             >
               <ChevronLeft size={16} />
             </button>
-            <span
-              className="text-sm px-2"
-              style={{ color: "var(--text-secondary)" }}
+
+            <div
+              className="flex items-center gap-1 px-3 h-9 rounded-xl border text-sm"
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--bg-elevated)",
+                color: "var(--text-secondary)",
+              }}
             >
-              Page {page} of {pagination.totalPages}
-            </span>
+              <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
+                {page}
+              </span>
+              <span className="opacity-40">/</span>
+              <span>{pagination.totalPages}</span>
+            </div>
+
             <button
-              onClick={() =>
-                setPage((p) => Math.min(pagination.totalPages, p + 1))
-              }
+              onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
               disabled={page === pagination.totalPages}
-              className="p-2 rounded-lg border transition-colors disabled:opacity-40"
+              className="w-9 h-9 rounded-xl border flex items-center justify-center transition-all disabled:opacity-35"
               style={{
                 borderColor: "var(--border)",
                 color: "var(--text-secondary)",
-                background: "transparent",
+                background: "var(--bg-elevated)",
               }}
               aria-label="Next page"
             >

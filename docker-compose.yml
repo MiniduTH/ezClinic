@@ -58,6 +58,8 @@ services:
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3005}
       UPLOAD_DIR: uploads/medical-reports
       DOCTOR_SERVICE_URL: http://doctor-service:3002/api/v1
+    volumes:
+      - patient_uploads:/usr/src/app/uploads
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -231,3 +233,4 @@ services:
 
 volumes:
   rabbitmq_data:
+  patient_uploads:

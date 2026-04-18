@@ -1,7 +1,9 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { join } from 'path';
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const payload = token.split('.')[1];
@@ -19,7 +21,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.use((req, res, next) => {
     if (req.method === 'OPTIONS') {
@@ -28,10 +30,11 @@ async function bootstrap() {
     }
 
     const path = req.path || req.originalUrl.split('?')[0];
-    // Public routes: auth endpoints and docs
+    // Public routes: auth endpoints, docs, and static uploads
     if (
       path.startsWith('/api/v1/auth/') ||
-      path.startsWith('/api/docs')
+      path.startsWith('/api/docs') ||
+      path.startsWith('/uploads/')
     ) {
       next();
       return;
@@ -68,6 +71,9 @@ async function bootstrap() {
 
     next();
   });
+
+  // Serve uploaded files (avatars, reports) publicly — UUID filenames provide obscurity
+  app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
 
   // Global prefix
   app.setGlobalPrefix('api/v1');
