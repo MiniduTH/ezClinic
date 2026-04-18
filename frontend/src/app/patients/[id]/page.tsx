@@ -13,7 +13,6 @@ interface Patient {
   gender: string | null;
   address: string | null;
   createdAt: string;
-  auth0Id?: string | null;
   avatarUrl?: string | null;
 }
 

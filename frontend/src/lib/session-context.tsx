@@ -62,9 +62,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Client-side hook replacing useUser from @auth0/nextjs-auth0/client.
- */
 export function useSession(): SessionContextValue {
   return useContext(SessionContext);
 }

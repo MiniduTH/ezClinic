@@ -12,7 +12,6 @@ export type PatientStatus = 'active' | 'inactive' | 'suspended';
 
 @Entity('patients')
 export class Patient {
-  /** Auth0 sub — e.g. "auth0|69dbd034853a0d3ffe6c8ff1" */
   @PrimaryColumn({ name: 'id' })
   id: string;
 

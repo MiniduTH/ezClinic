@@ -9,12 +9,9 @@ import {
 } from 'class-validator';
 
 export class CreateDoctorDto {
-  @ApiPropertyOptional({
-    description: 'Auth0 user identifier (obtained after Auth0 registration)',
-  })
   @IsOptional()
   @IsString()
-  auth0Id?: string;
+  userId?: string;
 
   @ApiProperty({
     description: 'Full name of the doctor',

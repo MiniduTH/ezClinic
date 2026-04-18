@@ -20,21 +20,21 @@ interface DashboardStats {
 
 function StatSkeleton() {
   return (
-    <div className="animate-pulse">
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-8">
+    <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:20 }}>
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="rounded-2xl bg-gray-200 dark:bg-gray-700 h-28" />
+          <div key={i} style={{ borderRadius:16, background:"var(--bg-muted)", height:112, animation:"pulse 1.5s ease-in-out infinite" }} />
         ))}
       </div>
-      <div className="rounded-2xl bg-gray-200 dark:bg-gray-700 h-64" />
+      <div style={{ borderRadius:16, background:"var(--bg-muted)", height:256 }} />
     </div>
   );
 }
 
-const STATUS_BADGE: Record<string, string> = {
-  active: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-  inactive: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
-  suspended: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  active:    { bg:"var(--success-surface)", color:"var(--success-text)" },
+  inactive:  { bg:"var(--bg-muted)",        color:"var(--text-secondary)" },
+  suspended: { bg:"var(--danger-surface)",  color:"var(--danger-text)" },
 };
 
 export default function AdminDashboard() {
@@ -67,93 +67,87 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
 
-  const metricCards = stats
-    ? [
-        { label: "Total Patients", value: stats.totalPatients, color: "text-teal-600 dark:text-teal-400", bg: "bg-teal-50 dark:bg-teal-900/20" },
-        { label: "Active Patients", value: stats.activePatients, color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-900/20" },
-        { label: "Suspended", value: stats.suspendedPatients, color: "text-red-600 dark:text-red-400", bg: "bg-red-50 dark:bg-red-900/20" },
-        { label: "New This Week", value: stats.newPatientsThisWeek, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/20" },
-        { label: "Admins", value: stats.totalAdmins, color: "text-gray-700 dark:text-gray-300", bg: "bg-gray-50 dark:bg-gray-700/40" },
-      ]
-    : [];
+  const metricCards = stats ? [
+    { label:"Total Patients",    value:stats.totalPatients,       color:"var(--brand)",   bg:"var(--brand-surface)" },
+    { label:"Active Patients",   value:stats.activePatients,      color:"var(--success)", bg:"var(--success-surface)" },
+    { label:"Suspended",         value:stats.suspendedPatients,   color:"var(--danger)",  bg:"var(--danger-surface)" },
+    { label:"New This Week",     value:stats.newPatientsThisWeek, color:"#0369a1",        bg:"#e0f2fe" },
+    { label:"Admins",            value:stats.totalAdmins,         color:"var(--text-secondary)", bg:"var(--bg-muted)" },
+  ] : [];
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Admin Dashboard</h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Platform-wide statistics and recent activity.</p>
+    <div style={{ maxWidth:1100, margin:"0 auto", padding:"32px 24px", display:"flex", flexDirection:"column", gap:32 }}>
+      <div>
+        <h1 style={{ fontSize:"1.75rem", fontWeight:800, color:"var(--text-primary)", letterSpacing:"-0.02em", marginBottom:4 }}>Admin Dashboard</h1>
+        <p style={{ fontSize:"0.875rem", color:"var(--text-muted)" }}>Platform-wide statistics and recent activity.</p>
       </div>
 
       {loading ? (
         <StatSkeleton />
       ) : error ? (
-        <div className="p-8 text-center text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-200 dark:border-red-800">
+        <div style={{ padding:32, textAlign:"center", color:"var(--danger)", background:"var(--danger-surface)", borderRadius:16, border:"1px solid var(--danger-border)" }}>
           {error}
         </div>
       ) : stats ? (
-        <div className="space-y-8">
+        <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
           {/* Metrics */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:16 }}>
             {metricCards.map(({ label, value, color, bg }) => (
-              <div key={label} className={`rounded-2xl ${bg} border border-transparent p-6 shadow-sm`}>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</p>
-                <p className={`mt-2 text-4xl font-extrabold ${color}`}>{value}</p>
+              <div key={label} style={{ borderRadius:16, background:"var(--bg-elevated)", border:"1px solid var(--border)", padding:"20px 24px", boxShadow:"var(--shadow-sm)" }}>
+                <p style={{ fontSize:"0.75rem", fontWeight:600, color:"var(--text-muted)", marginBottom:8, textTransform:"uppercase", letterSpacing:"0.05em" }}>{label}</p>
+                <p style={{ fontSize:"2.5rem", fontWeight:800, color, lineHeight:1 }}>{value}</p>
+                <div style={{ marginTop:12, height:3, borderRadius:2, background:bg }} />
               </div>
             ))}
           </div>
 
           {/* Quick actions */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Link
-              href="/admin/patients"
-              className="flex items-center justify-between rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 hover:border-teal-300 dark:hover:border-teal-700 transition-colors group shadow-sm"
-            >
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-white">Manage Patients</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">View, search, and update patient accounts</p>
-              </div>
-              <svg className="h-5 w-5 text-gray-400 dark:text-gray-500 group-hover:text-teal-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-            <Link
-              href="/admin/doctors"
-              className="flex items-center justify-between rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 hover:border-teal-300 dark:hover:border-teal-700 transition-colors group shadow-sm"
-            >
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-white">Doctor Verification</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Review and approve / reject pending doctors</p>
-              </div>
-              <svg className="h-5 w-5 text-gray-400 dark:text-gray-500 group-hover:text-teal-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+            {[
+              { href:"/admin/patients", title:"Manage Patients",       desc:"View, search, and update patient accounts" },
+              { href:"/admin/doctors",  title:"Doctor Verification",   desc:"Review and approve / reject pending doctors" },
+            ].map(({ href, title, desc }) => (
+              <Link key={href} href={href}
+                style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderRadius:16, border:"1px solid var(--border)", background:"var(--bg-elevated)", padding:20, textDecoration:"none", boxShadow:"var(--shadow-sm)", transition:"border-color 0.15s, box-shadow 0.15s" }}
+                onMouseEnter={e=>{(e.currentTarget as HTMLAnchorElement).style.borderColor="var(--brand)";(e.currentTarget as HTMLAnchorElement).style.boxShadow="var(--shadow-brand)";}}
+                onMouseLeave={e=>{(e.currentTarget as HTMLAnchorElement).style.borderColor="var(--border)";(e.currentTarget as HTMLAnchorElement).style.boxShadow="var(--shadow-sm)";}}>
+                <div>
+                  <p style={{ fontWeight:600, fontSize:"0.9375rem", color:"var(--text-primary)", marginBottom:4 }}>{title}</p>
+                  <p style={{ fontSize:"0.8125rem", color:"var(--text-muted)" }}>{desc}</p>
+                </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><path d="M9 5l7 7-7 7"/></svg>
+              </Link>
+            ))}
           </div>
 
           {/* Recent patients */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Patients</h2>
-              <Link href="/admin/patients" className="text-sm font-medium text-teal-600 dark:text-teal-400 hover:underline">
+          <div style={{ borderRadius:16, background:"var(--bg-elevated)", border:"1px solid var(--border)", boxShadow:"var(--shadow-sm)", overflow:"hidden" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 24px", borderBottom:"1px solid var(--border)" }}>
+              <h2 style={{ fontSize:"1rem", fontWeight:700, color:"var(--text-primary)" }}>Recent Patients</h2>
+              <Link href="/admin/patients" style={{ fontSize:"0.8125rem", fontWeight:600, color:"var(--brand-text)", textDecoration:"none" }}>
                 View All →
               </Link>
             </div>
             {stats.recentPatients.length > 0 ? (
-              <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-                {stats.recentPatients.map((patient) => (
-                  <li key={patient.id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+              <ul style={{ listStyle:"none", margin:0, padding:0 }}>
+                {stats.recentPatients.map((patient, i) => (
+                  <li key={patient.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 24px", borderTop: i > 0 ? "1px solid var(--border-subtle)" : "none", transition:"background-color 0.15s" }}
+                    onMouseEnter={e=>{(e.currentTarget as HTMLLIElement).style.background="var(--bg-surface)";}}
+                    onMouseLeave={e=>{(e.currentTarget as HTMLLIElement).style.background="transparent";}}>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{patient.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{patient.email}</p>
+                      <p style={{ fontSize:"0.875rem", fontWeight:600, color:"var(--text-primary)", marginBottom:2 }}>{patient.name}</p>
+                      <p style={{ fontSize:"0.75rem", color:"var(--text-muted)" }}>{patient.email}</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE[patient.status] ?? STATUS_BADGE["active"]}`}>
+                    <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                      <span style={{
+                        background:(STATUS_COLORS[patient.status] ?? STATUS_COLORS["active"]).bg,
+                        color:(STATUS_COLORS[patient.status] ?? STATUS_COLORS["active"]).color,
+                        fontSize:"0.6875rem", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em",
+                        padding:"3px 10px", borderRadius:999,
+                      }}>
                         {patient.status ?? "active"}
                       </span>
-                      <Link
-                        href={`/admin/patients`}
-                        className="text-xs font-medium text-teal-600 dark:text-teal-400 hover:underline"
-                      >
+                      <Link href="/admin/patients" style={{ fontSize:"0.8125rem", fontWeight:600, color:"var(--brand-text)", textDecoration:"none" }}>
                         View
                       </Link>
                     </div>
@@ -161,7 +155,7 @@ export default function AdminDashboard() {
                 ))}
               </ul>
             ) : (
-              <p className="px-6 py-8 text-sm text-gray-500 dark:text-gray-400">No recent patients found.</p>
+              <p style={{ padding:"32px 24px", fontSize:"0.875rem", color:"var(--text-muted)" }}>No recent patients found.</p>
             )}
           </div>
         </div>

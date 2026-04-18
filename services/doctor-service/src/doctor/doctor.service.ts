@@ -42,9 +42,8 @@ export class DoctorService {
   // ─── Doctor Profile ────────────────────────────────────────────────
 
   async create(dto: CreateDoctorDto) {
-    // Idempotent on Auth0 sub: return existing profile if already registered
-    if (dto.auth0Id) {
-      const existing = await this.doctorModel.findById(dto.auth0Id).lean();
+    if (dto.userId) {
+      const existing = await this.doctorModel.findById(dto.userId).lean();
       if (existing) return this.wrap(existing, 'Doctor already registered.');
     }
 
@@ -57,7 +56,7 @@ export class DoctorService {
         'Email is already associated with another account',
       );
 
-    const doctor = await this.doctorModel.create({ ...dto, _id: dto.auth0Id });
+    const doctor = await this.doctorModel.create({ ...dto, _id: dto.userId });
     return this.wrap(
       doctor,
       'Doctor registered successfully. Awaiting admin verification.',
@@ -136,9 +135,8 @@ export class DoctorService {
     });
   }
 
-  async findByAuth0Id(auth0Id: string) {
-    // Since _id IS the auth0 sub, this is just a findById
-    return this.findOne(auth0Id);
+  async findByUserId(userId: string) {
+    return this.findOne(userId);
   }
 
   async findPending() {

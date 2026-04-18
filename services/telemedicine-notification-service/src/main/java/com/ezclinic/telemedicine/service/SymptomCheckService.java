@@ -40,7 +40,7 @@ public class SymptomCheckService {
         return SymptomCheckResponse.fromEntity(saved);
     }
 
-    public List<SymptomCheckResponse> getPatientHistory(UUID patientId) {
+    public List<SymptomCheckResponse> getPatientHistory(String patientId) {
         return repository.findByPatientIdOrderByCreatedAtDesc(patientId).stream()
                 .map(SymptomCheckResponse::fromEntity)
                 .collect(Collectors.toList());

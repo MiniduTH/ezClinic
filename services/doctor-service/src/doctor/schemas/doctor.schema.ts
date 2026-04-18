@@ -8,7 +8,6 @@ export type DoctorDocument = HydratedDocument<Doctor>;
   _id: false,
 })
 export class Doctor {
-  /** Auth0 sub used as the document _id (e.g. "auth0|abc123") */
   @Prop({ type: String, required: true })
   _id: string;
 
