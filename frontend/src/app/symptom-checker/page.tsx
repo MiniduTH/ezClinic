@@ -7,10 +7,22 @@ type Severity = "LOW" | "MEDIUM" | "HIGH";
 
 interface RawSymptomResult {
     aiSuggestion?: unknown;
+    data?: unknown;
+    output?: unknown;
+    response?: unknown;
+    result?: unknown;
+    recommendationText?: unknown;
     recommendation?: string;
     recommendedAction?: string;
+    recommended_action?: unknown;
     severity?: string;
+    riskLevel?: unknown;
+    risk_level?: unknown;
     possibleConditions?: unknown;
+    possible_conditions?: unknown;
+    conditions?: unknown;
+    potentialConditions?: unknown;
+    potential_conditions?: unknown;
     disclaimer?: string;
 }
 
@@ -27,6 +39,146 @@ type Message = {
     result?: SymptomResult;
 };
 
+function asObject(value: unknown): Record<string, unknown> {
+    return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function getField(input: object, keys: string[]): unknown {
+    const record = input as Record<string, unknown>;
+
+    for (const key of keys) {
+        if (key in record) return record[key];
+    }
+
+    const byLower = new Map<string, unknown>();
+    for (const [k, v] of Object.entries(record)) {
+        byLower.set(k.toLowerCase(), v);
+    }
+
+    for (const key of keys) {
+        const hit = byLower.get(key.toLowerCase());
+        if (hit !== undefined) return hit;
+    }
+
+    return undefined;
+}
+
+function coerceString(value: unknown): string {
+    if (typeof value === "string") return value.trim();
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    return "";
+}
+
+function extractRecommendation(value: unknown): string {
+    if (typeof value === "string") return value.trim();
+
+    if (Array.isArray(value)) {
+        const flattened = value.map((entry) => extractRecommendation(entry)).filter(Boolean);
+        return flattened.join(" ").trim();
+    }
+
+    const obj = asObject(value);
+    if (Object.keys(obj).length === 0) return "";
+
+    const preferred = [
+        "recommendation",
+        "recommendations",
+        "recommendedAction",
+        "recommended_action",
+        "recommendationText",
+        "action",
+        "advice",
+        "summary",
+        "guidance",
+        "nextSteps",
+        "next_steps",
+        "message",
+        "text",
+        "result",
+        "output",
+        "response",
+        "analysis",
+    ];
+
+    for (const key of preferred) {
+        const candidate = getField(obj, [key]);
+        const extracted = extractRecommendation(candidate);
+        if (extracted) return extracted;
+    }
+
+    const generic = Object.values(obj)
+        .map((entry) => extractRecommendation(entry))
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+    return generic;
+}
+
+function tryParseEscapedJson(raw: string): unknown | undefined {
+    const trimmed = raw.includes("```json")
+        ? raw.split("```json")[1].split("```")[0].trim()
+        : raw.includes("```")
+          ? raw.split("```")[1].split("```")[0].trim()
+          : raw.trim();
+    const attempts = new Set<string>();
+
+    attempts.add(trimmed);
+
+    const maybeUnquoted =
+        (trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'")) ? trimmed.slice(1, -1) : trimmed;
+    attempts.add(maybeUnquoted);
+
+    const slashDecoded = maybeUnquoted
+        .replace(/\\r\\n/g, "\n")
+        .replace(/\\n/g, "\n")
+        .replace(/\\t/g, "\t")
+        .replace(/\\\//g, "/")
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, "\\");
+    attempts.add(slashDecoded);
+
+    for (const attempt of attempts) {
+        if (!attempt) continue;
+        try {
+            return JSON.parse(attempt);
+        } catch {
+            // Try next transform
+        }
+    }
+
+    return undefined;
+}
+
+function normalizeSeverity(value: unknown): Severity | undefined {
+    const raw = coerceString(value).toUpperCase();
+    if (!raw) return undefined;
+
+    if (["LOW", "MILD", "MINOR"].includes(raw)) return "LOW";
+    if (["MEDIUM", "MODERATE"].includes(raw)) return "MEDIUM";
+    if (["HIGH", "SEVERE", "URGENT", "CRITICAL"].includes(raw)) return "HIGH";
+
+    return undefined;
+}
+
+function normalizeConditions(value: unknown): string[] {
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => coerceString(item))
+            .map((item) => item.replace(/^[-*\d.)\s]+/, "").trim())
+            .filter(Boolean);
+    }
+
+    if (typeof value === "string") {
+        return value
+            .split(/\n|,|\u2022|;/)
+            .map((item) => item.replace(/^[-*\d.)\s]+/, "").trim())
+            .filter(Boolean);
+    }
+
+    return [];
+}
+
 export default function SymptomCheckerPage() {
     const [symptoms, setSymptoms] = useState("");
     const [loading, setLoading] = useState(false);
@@ -39,19 +191,38 @@ export default function SymptomCheckerPage() {
     }, [messages, loading]);
 
     const normalizeResult = (input: unknown): SymptomResult => {
-        const parsed = (input && typeof input === "object" ? input : {}) as RawSymptomResult;
-        const possibleConditions = Array.isArray(parsed.possibleConditions)
-            ? parsed.possibleConditions.filter((condition): condition is string => typeof condition === "string")
-            : [];
-        const severity = parsed.severity === "LOW" || parsed.severity === "MEDIUM" || parsed.severity === "HIGH" ? parsed.severity : undefined;
+        const parsed = asObject(input) as RawSymptomResult;
+
+        const recommendation =
+            extractRecommendation(
+                getField(parsed, [
+                    "recommendation",
+                    "recommendedAction",
+                    "recommended_action",
+                    "recommendationText",
+                    "result",
+                    "output",
+                    "response",
+                    "data",
+                    "aiSuggestion",
+                ]),
+            ) || "No recommendation provided.";
+
+        const severity = normalizeSeverity(getField(parsed, ["severity", "riskLevel", "risk_level", "urgency", "priority"])) || undefined;
+
+        const possibleConditions = normalizeConditions(
+            getField(parsed, ["possibleConditions", "possible_conditions", "conditions", "potentialConditions", "potential_conditions"]),
+        );
+
+        const disclaimer =
+            coerceString(getField(parsed, ["disclaimer", "medicalDisclaimer", "medical_disclaimer", "note"])) ||
+            "This is an AI-generated assessment and does not constitute medical advice. Please consult a healthcare professional for an accurate diagnosis.";
 
         return {
             severity,
-            recommendation: parsed.recommendation || parsed.recommendedAction || "No recommendation provided.",
+            recommendation,
             possibleConditions,
-            disclaimer:
-                parsed.disclaimer ||
-                "This is an AI-generated assessment and does not constitute medical advice. Please consult a healthcare professional for an accurate diagnosis.",
+            disclaimer,
         };
     };
 
@@ -69,22 +240,28 @@ export default function SymptomCheckerPage() {
         let current: unknown = payload;
 
         // Unwrap nested encoded structures (stringified JSON, wrapped aiSuggestion object)
-        for (let i = 0; i < 3; i += 1) {
+        for (let i = 0; i < 6; i += 1) {
             if (typeof current === "string") {
                 const raw = stripCodeFences(current);
-                try {
-                    current = JSON.parse(raw);
+                const parsed = tryParseEscapedJson(raw);
+                if (parsed !== undefined) {
+                    current = parsed;
                     continue;
-                } catch {
-                    return {
-                        recommendation: raw,
-                    };
                 }
+
+                return {
+                    recommendation: raw,
+                };
             }
 
-            if (current && typeof current === "object" && "aiSuggestion" in (current as RawSymptomResult)) {
-                current = (current as RawSymptomResult).aiSuggestion;
-                continue;
+            if (current && typeof current === "object") {
+                const obj = current as RawSymptomResult;
+                const nested = obj.aiSuggestion ?? obj.data ?? obj.output ?? obj.response ?? obj.result;
+
+                if (nested !== undefined && nested !== current) {
+                    current = nested;
+                    continue;
+                }
             }
 
             break;
@@ -124,10 +301,7 @@ export default function SymptomCheckerPage() {
                 throw new Error("Could not parse AI response. Please try again.");
             }
 
-            setMessages((prev) => [
-                ...prev,
-                { role: "ai", content: parsedResult.recommendation, result: parsedResult },
-            ]);
+            setMessages((prev) => [...prev, { role: "ai", content: parsedResult.recommendation, result: parsedResult }]);
         } catch (err) {
             setError(err instanceof Error ? err.message : "An unexpected error occurred. Please try again.");
             // Remove the typing indicator by not adding an AI message
@@ -183,23 +357,14 @@ export default function SymptomCheckerPage() {
     };
 
     return (
-        <div
-            className="min-h-screen"
-            style={{ background: "var(--bg-surface)" }}
-        >
+        <div className="min-h-screen" style={{ background: "var(--bg-surface)" }}>
             <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-4">
                 {/* Header */}
                 <div className="text-center mb-2">
-                    <h1
-                        className="text-2xl font-medium"
-                        style={{ color: "var(--text-primary)" }}
-                    >
+                    <h1 className="text-2xl font-medium" style={{ color: "var(--text-primary)" }}>
                         AI Symptom Checker
                     </h1>
-                    <p
-                        className="mt-1 text-sm"
-                        style={{ color: "var(--text-muted)" }}
-                    >
+                    <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
                         Describe your symptoms and our AI will provide initial guidance
                     </p>
                 </div>
@@ -215,10 +380,7 @@ export default function SymptomCheckerPage() {
                     }}
                 >
                     {messages.length === 0 && !loading && (
-                        <div
-                            className="flex-1 flex items-center justify-center text-sm text-center"
-                            style={{ color: "var(--text-muted)" }}
-                        >
+                        <div className="flex-1 flex items-center justify-center text-sm text-center" style={{ color: "var(--text-muted)" }}>
                             <div>
                                 <div
                                     className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
@@ -283,9 +445,7 @@ export default function SymptomCheckerPage() {
                                         borderRadius: "4px 18px 18px 18px",
                                     }}
                                 >
-                                    {result?.severity && (
-                                        <div>{getSeverityBadge(result.severity)}</div>
-                                    )}
+                                    {result?.severity && <div>{getSeverityBadge(result.severity)}</div>}
                                     <p style={{ lineHeight: "1.6" }}>{msg.content}</p>
 
                                     {result?.possibleConditions && result.possibleConditions.length > 0 && (
@@ -378,18 +538,9 @@ export default function SymptomCheckerPage() {
                                     minWidth: 60,
                                 }}
                             >
-                                <span
-                                    className="typing-dot w-2 h-2 rounded-full inline-block"
-                                    style={{ background: "var(--text-muted)" }}
-                                />
-                                <span
-                                    className="typing-dot w-2 h-2 rounded-full inline-block"
-                                    style={{ background: "var(--text-muted)" }}
-                                />
-                                <span
-                                    className="typing-dot w-2 h-2 rounded-full inline-block"
-                                    style={{ background: "var(--text-muted)" }}
-                                />
+                                <span className="typing-dot w-2 h-2 rounded-full inline-block" style={{ background: "var(--text-muted)" }} />
+                                <span className="typing-dot w-2 h-2 rounded-full inline-block" style={{ background: "var(--text-muted)" }} />
+                                <span className="typing-dot w-2 h-2 rounded-full inline-block" style={{ background: "var(--text-muted)" }} />
                             </div>
                         </div>
                     )}
@@ -455,10 +606,7 @@ export default function SymptomCheckerPage() {
                 </form>
 
                 {/* Disclaimer */}
-                <p
-                    className="text-xs text-center"
-                    style={{ color: "var(--text-muted)" }}
-                >
+                <p className="text-xs text-center" style={{ color: "var(--text-muted)" }}>
                     AI-generated guidance only — not a substitute for professional medical advice.
                 </p>
             </div>
