@@ -24,6 +24,24 @@ function extractMessage(payload: unknown): string {
     return "";
 }
 
+function escapeHtml(value: string): string {
+    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function formatDateTime(value: string): string {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+
+    return new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+    }).format(parsed);
+}
+
 function asObject(value: unknown): Record<string, unknown> | null {
     return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
 }
@@ -220,12 +238,58 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ s
         const appointment = asObject(appointmentPayload) ?? {};
         const patientId = typeof appointment.patientId === "string" ? appointment.patientId : "";
         const doctorId = typeof appointment.doctorId === "string" ? appointment.doctorId : "";
+        const patientNameRaw = typeof lookup.data.patientName === "string" ? lookup.data.patientName : "Patient";
+        const doctorNameRaw = typeof lookup.data.doctorName === "string" ? lookup.data.doctorName : "your doctor";
+        const appointmentDateRaw =
+            (typeof appointment.appointmentDate === "string" && appointment.appointmentDate) ||
+            (typeof appointment.date === "string" && appointment.date) ||
+            "";
+        const appointmentTimeRaw =
+            (typeof appointment.appointmentTime === "string" && appointment.appointmentTime) ||
+            (typeof appointment.time === "string" && appointment.time) ||
+            "";
+        const consultationTypeRaw =
+            (typeof appointment.type === "string" && appointment.type) ||
+            (typeof appointment.consultationType === "string" && appointment.consultationType) ||
+            "Telemedicine";
+
+        const patientName = escapeHtml(patientNameRaw.trim() || "Patient");
+        const doctorName = escapeHtml(doctorNameRaw.trim() || "your doctor");
+        const consultationType = escapeHtml(consultationTypeRaw.toUpperCase());
+        const appointmentDateLabel = appointmentDateRaw ? escapeHtml(formatDateTime(appointmentDateRaw)) : "Not available";
+        const appointmentTimeLabel = appointmentTimeRaw ? escapeHtml(appointmentTimeRaw) : "Not available";
+        const completedAtLabel = escapeHtml(formatDateTime(new Date().toISOString()));
+        const safeAppointmentId = escapeHtml(appointmentId);
+
         // Mailtrap demo setup: force all completion emails to the verified inbox recipient.
         const recipientEmail = MAILTRAP_DEMO_RECIPIENT;
 
-        const mailContent =
-            `<p>Your telemedicine session for appointment <strong>${appointmentId}</strong> has ended.</p>` +
-            `<p>The appointment status is now <strong>COMPLETED</strong>.</p>`;
+        const mailContent = `
+            <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;">
+                <h2 style="margin: 0 0 12px; color: #0f766e;">Your telemedicine session is complete</h2>
+                <p style="margin: 0 0 12px;">Hi ${patientName},</p>
+                <p style="margin: 0 0 12px;">
+                    Your consultation with <strong>${doctorName}</strong> has ended successfully.
+                    The appointment is now marked as <strong>COMPLETED</strong>.
+                </p>
+
+                <div style="margin: 16px 0; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <p style="margin: 0 0 6px;"><strong>Appointment ID:</strong> ${safeAppointmentId}</p>
+                    <p style="margin: 0 0 6px;"><strong>Consultation type:</strong> ${consultationType}</p>
+                    <p style="margin: 0 0 6px;"><strong>Appointment date:</strong> ${appointmentDateLabel}</p>
+                    <p style="margin: 0 0 6px;"><strong>Appointment time:</strong> ${appointmentTimeLabel}</p>
+                    <p style="margin: 0;"><strong>Completed at:</strong> ${completedAtLabel}</p>
+                </div>
+
+                <p style="margin: 0 0 8px;">
+                    You can sign in to ezClinic to review your appointment history and continue your care journey.
+                </p>
+                <p style="margin: 0 0 12px;">
+                    If your symptoms worsen, please book a follow-up appointment or seek urgent medical care.
+                </p>
+                <p style="margin: 0;">Thank you for using ezClinic.</p>
+            </div>
+        `;
 
         const sendResponse = await fetch(`${TELEMEDICINE_API}/notifications/send`, {
             method: "POST",
