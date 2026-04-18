@@ -6,10 +6,10 @@ import { Heart, Stethoscope, ShieldCheck, CheckCircle2, Gift, LogIn, UserPlus } 
 
 export default function RegisterPage() {
   return (
-    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"32px 16px", background:"linear-gradient(160deg,#E0F2F1 0%,#e0f2fe 45%,var(--bg-surface) 100%)" }}>
+    <div className="register-chooser-bg" style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"32px 16px" }}>
       {/* Decorative blobs */}
-      <div style={{ position:"fixed", top:"-10%", right:"-5%", width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle,rgba(0,121,107,0.07) 0%,transparent 70%)", pointerEvents:"none", zIndex:0 }} />
-      <div style={{ position:"fixed", bottom:"-8%", left:"-4%", width:400, height:400, borderRadius:"50%", background:"radial-gradient(circle,rgba(3,105,161,0.05) 0%,transparent 70%)", pointerEvents:"none", zIndex:0 }} />
+      <div className="register-chooser-blob-1" style={{ position:"fixed", top:"-10%", right:"-5%", width:500, height:500, borderRadius:"50%", pointerEvents:"none", zIndex:0 }} />
+      <div className="register-chooser-blob-2" style={{ position:"fixed", bottom:"-8%", left:"-4%", width:400, height:400, borderRadius:"50%", pointerEvents:"none", zIndex:0 }} />
 
       <div style={{ width:"100%", maxWidth:620, position:"relative", zIndex:1 }} className="anim-fade-up">
         {/* Logo */}
