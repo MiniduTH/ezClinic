@@ -1,83 +1,87 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { Mail, Clock } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { Mail } from "lucide-react";
 
 interface NotificationStatus {
-  appointmentId: string;
-  emailSent: boolean;
-  emailSentAt: string | null;
+    appointmentId: string;
+    emailSent: boolean;
+    emailSentAt: string | null;
 }
 
 export default function NotificationBanner({ appointmentId }: { appointmentId: string }) {
-  const [status, setStatus] = useState<NotificationStatus | null>(null);
+    const [status, setStatus] = useState<NotificationStatus | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
+    useEffect(() => {
+        let isMounted = true;
 
-    async function fetchStatus() {
-      if (!appointmentId) return;
+        async function fetchStatus() {
+            if (!appointmentId) return;
 
-      try {
-        const res = await fetch(`/api/notifications/status/${appointmentId}`);
-        if (!res.ok) {
-          // Fail silently as per rules for non-critical UI element
-          console.warn(`Failed to fetch notification status: ${res.status}`);
-          return;
+            try {
+                const res = await fetch(`/api/notifications/status/${appointmentId}`);
+                if (!res.ok) {
+                    // Fail silently as per rules for non-critical UI element
+                    console.warn(`Failed to fetch notification status: ${res.status}`);
+                    return;
+                }
+
+                const data = await res.json();
+                if (isMounted) {
+                    setStatus(data);
+                }
+            } catch (error) {
+                // Silent fail
+                console.warn("Error fetching notification status:", error);
+            }
         }
 
-        const data = await res.json();
-        if (isMounted) {
-          setStatus(data);
-        }
-      } catch (error) {
-        // Silent fail
-        console.warn('Error fetching notification status:', error);
-      }
+        fetchStatus();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [appointmentId]);
+
+    if (!status) {
+        return null; // Do not break DOM bounds, render nothing if no status
     }
 
-    fetchStatus();
+    const { emailSent, emailSentAt } = status;
 
-    return () => {
-      isMounted = false;
-    };
-  }, [appointmentId]);
+    if (!emailSent || !emailSentAt) {
+        return null;
+    }
 
-  if (!status) {
-    return null; // Do not break DOM bounds, render nothing if no status
-  }
-
-  const { emailSent, emailSentAt } = status;
-
-  if (emailSent && emailSentAt) {
-    const formattedDate = new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true,
+    const formattedDate = new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
     }).format(new Date(emailSentAt));
 
     return (
-      <div className="w-full bg-green-50 border border-green-200 rounded-md p-3 flex items-center justify-between text-sm shadow-sm animate-in fade-in duration-500">
-        <div className="flex items-center gap-2">
-          <Mail className="w-4 h-4 text-green-600" />
-          <span className="font-medium text-green-800">
-            Confirmation email sent at {formattedDate}.
-          </span>
+        <div
+            className="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full px-3 py-1.5 text-xs sm:text-sm shadow-sm animate-in fade-in duration-500"
+            style={{
+                backgroundColor: "var(--success-surface)",
+                border: "1px solid var(--success-border)",
+                color: "var(--success-text)",
+                boxShadow: "var(--shadow-sm)",
+            }}
+            role="status"
+            aria-live="polite"
+        >
+            <span
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full"
+                style={{ backgroundColor: "color-mix(in srgb, var(--success) 22%, transparent)" }}
+            >
+                <Mail className="h-3 w-3" />
+            </span>
+            <span className="font-medium">Completion email sent</span>
+            <span className="opacity-80">•</span>
+            <span className="opacity-90">{formattedDate}</span>
         </div>
-      </div>
     );
-  }
-
-  return (
-    <div className="w-full bg-amber-50 border border-amber-200 rounded-md p-3 flex items-center justify-between text-sm shadow-sm animate-in fade-in duration-500">
-      <div className="flex items-center gap-2">
-         <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
-         <span className="font-medium text-amber-800">
-           Confirmation email is being processed.
-         </span>
-      </div>
-    </div>
-  );
 }
