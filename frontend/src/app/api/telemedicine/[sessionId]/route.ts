@@ -223,35 +223,24 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ s
         // Mailtrap demo setup: force all completion emails to the verified inbox recipient.
         const recipientEmail = MAILTRAP_DEMO_RECIPIENT;
 
-        const statusResponse = await fetch(`${TELEMEDICINE_API}/notifications/status/${appointmentId}`, {
-            method: "GET",
+        const mailContent =
+            `<p>Your telemedicine session for appointment <strong>${appointmentId}</strong> has ended.</p>` +
+            `<p>The appointment status is now <strong>COMPLETED</strong>.</p>`;
+
+        const sendResponse = await fetch(`${TELEMEDICINE_API}/notifications/send`, {
+            method: "POST",
             headers,
+            body: JSON.stringify({
+                userId: patientId || doctorId || session.user.sub || "unknown-user",
+                recipientEmail,
+                type: "EMAIL",
+                subject: "Telemedicine Session Completed — ezClinic",
+                content: mailContent,
+            }),
         });
-        const statusPayload = await readJsonSafely(statusResponse);
-        const statusObject = asObject(statusPayload);
-        const emailAlreadySent = statusResponse.ok && statusObject?.emailSent === true;
-
-        let notificationPayload: unknown = statusPayload;
-        if (!emailAlreadySent) {
-            const mailContent =
-                `<p>Your telemedicine session for appointment <strong>${appointmentId}</strong> has ended.</p>` +
-                `<p>The appointment status is now <strong>COMPLETED</strong>.</p>`;
-
-            const sendResponse = await fetch(`${TELEMEDICINE_API}/notifications/send`, {
-                method: "POST",
-                headers,
-                body: JSON.stringify({
-                    userId: patientId || doctorId || session.user.sub || "unknown-user",
-                    recipientEmail,
-                    type: "EMAIL",
-                    subject: "Telemedicine Session Completed — ezClinic",
-                    content: mailContent,
-                }),
-            });
-            notificationPayload = await readJsonSafely(sendResponse);
-            if (!sendResponse.ok) {
-                return NextResponse.json(notificationPayload, { status: sendResponse.status });
-            }
+        const notificationPayload = await readJsonSafely(sendResponse);
+        if (!sendResponse.ok) {
+            return NextResponse.json(notificationPayload, { status: sendResponse.status });
         }
 
         return NextResponse.json(
@@ -261,7 +250,7 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ s
                 appointmentId,
                 appointmentStatus: appointment.status ?? "COMPLETED",
                 emailTriggered: true,
-                emailAlreadySent,
+                emailAlreadySent: false,
                 notification: notificationPayload,
             },
             { status: 200 },

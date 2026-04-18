@@ -89,10 +89,7 @@ function statusBadge(status: string) {
     };
 
     return (
-        <span
-            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-            style={style}
-        >
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" style={style}>
             {status}
         </span>
     );
@@ -162,11 +159,15 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
 
             // If any appointments lack a patientName, try to resolve names from patient-admin service
             try {
-                const idsToResolve = Array.from(new Set(mapped.filter((m) => !m.patientName || m.patientName === "Unknown Patient").map((m) => m.patientId))).filter(Boolean);
+                const idsToResolve = Array.from(
+                    new Set(mapped.filter((m) => !m.patientName || m.patientName === "Unknown Patient").map((m) => m.patientId)),
+                ).filter(Boolean);
                 if (idsToResolve.length > 0 && accessToken) {
                     const responses = await Promise.all(
                         idsToResolve.map((id) =>
-                            fetch(`${PATIENT_API}/patients/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } }).then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
+                            fetch(`${PATIENT_API}/patients/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+                                .then((r) => (r.ok ? r.json().catch(() => null) : null))
+                                .catch(() => null),
                         ),
                     );
                     const nameById: Record<string, string> = {};
@@ -174,7 +175,11 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
                         const id = idsToResolve[idx];
                         if (!res) return;
                         const raw = (res.data ?? res) as any;
-                        const resolved = (raw.name || raw.fullName || (raw.firstName && raw.lastName && `${raw.firstName} ${raw.lastName}`) || raw.displayName || raw.username) as string | undefined;
+                        const resolved = (raw.name ||
+                            raw.fullName ||
+                            (raw.firstName && raw.lastName && `${raw.firstName} ${raw.lastName}`) ||
+                            raw.displayName ||
+                            raw.username) as string | undefined;
                         if (resolved) nameById[id] = resolved;
                     });
                     if (Object.keys(nameById).length > 0) {
@@ -227,10 +232,7 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
     const filtered = filter === "ALL" ? appointments : appointments.filter((a) => a.status === filter);
 
     return (
-        <div
-            className="max-w-[1200px] mx-auto py-8 px-4 space-y-6"
-            style={{ backgroundColor: "var(--bg-surface)" }}
-        >
+        <div className="max-w-[1200px] mx-auto py-8 px-4 space-y-6" style={{ backgroundColor: "var(--bg-surface)" }}>
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
                 <div>
@@ -241,11 +243,7 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
                         Manage your upcoming patient appointments
                     </p>
                 </div>
-                <Link
-                    href="/dashboard"
-                    className="text-sm font-medium shrink-0 transition-colors"
-                    style={{ color: "var(--brand)" }}
-                >
+                <Link href="/dashboard" className="text-sm font-medium shrink-0 transition-colors" style={{ color: "var(--brand)" }}>
                     ← Back to Dashboard
                 </Link>
             </div>
@@ -271,10 +269,7 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
             {/* Content */}
             {loading ? (
                 <div className="flex justify-center items-center h-48">
-                    <div
-                        className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2"
-                        style={{ borderColor: "var(--brand)" }}
-                    />
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2" style={{ borderColor: "var(--brand)" }} />
                 </div>
             ) : error ? (
                 <div
@@ -296,13 +291,7 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
                         color: "var(--text-muted)",
                     }}
                 >
-                    <svg
-                        className="mx-auto mb-4 h-12 w-12 opacity-40"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={1.5}
-                    >
+                    <svg className="mx-auto mb-4 h-12 w-12 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -345,31 +334,22 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
 
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                            <span
-                                                className="font-semibold truncate"
-                                                style={{ color: "var(--text-primary)" }}
-                                            >
+                                            <span className="font-semibold truncate" style={{ color: "var(--text-primary)" }}>
                                                 {apt.patientName}
                                             </span>
                                             {statusBadge(apt.status)}
                                         </div>
-                                        <div
-                                            className="text-sm flex flex-wrap gap-x-3 gap-y-0.5"
-                                            style={{ color: "var(--text-muted)" }}
-                                        >
+                                        <div className="text-sm flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: "var(--text-muted)" }}>
                                             <span>📅 {apt.date}</span>
                                             <span>🕐 {apt.time}</span>
                                             <span>📍 {apt.type}</span>
                                         </div>
                                         {apt.reason && (
-                                            <p
-                                                className="mt-1 text-sm truncate"
-                                                style={{ color: "var(--text-secondary)" }}
-                                            >
+                                            <p className="mt-1 text-sm truncate" style={{ color: "var(--text-secondary)" }}>
                                                 Reason: {apt.reason}
                                             </p>
                                         )}
-                                        {apt.type.toLowerCase() === "telemedicine" && (
+                                        {apt.type.toLowerCase() === "telemedicine" && apt.status === "COMPLETED" && (
                                             <div className="mt-4">
                                                 <NotificationBanner appointmentId={apt.id} />
                                             </div>
@@ -411,13 +391,7 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
                                             color: "#ffffff",
                                         }}
                                     >
-                                        <svg
-                                            className="w-4 h-4"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                            strokeWidth={2}
-                                        >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                             <path
                                                 strokeLinecap="round"
                                                 strokeLinejoin="round"
@@ -444,10 +418,9 @@ function PayNowButton({ appointmentId, accessToken }: { appointmentId: string; a
     const handlePay = async () => {
         setLoading(true);
         try {
-            const res = await fetch(
-                `${APPOINTMENT_API.replace("/api/v1", "")}/api/payments/checkout-params/${appointmentId}`,
-                { headers: { Authorization: `Bearer ${accessToken}` } }
-            );
+            const res = await fetch(`${APPOINTMENT_API.replace("/api/v1", "")}/api/payments/checkout-params/${appointmentId}`, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
             if (!res.ok) throw new Error("Could not fetch payment details");
             const params: Record<string, string> = await res.json();
 
@@ -533,7 +506,10 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
         setUpcomingDates([]);
         setBookDate("");
         setBookTime("");
-        if (!selectedDoctor) { setAvailabilitySlots([]); return; }
+        if (!selectedDoctor) {
+            setAvailabilitySlots([]);
+            return;
+        }
         (async () => {
             setSlotsLoading(true);
             try {
@@ -558,7 +534,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                 setSlotsLoading(false);
             }
         })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedDoctor, accessToken]);
 
     const fetchAll = useCallback(async () => {
@@ -651,7 +627,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
             if (docsRes.ok) {
                 const docsData = await docsRes.json();
                 const rawDoctors = Array.isArray(docsData) ? docsData : docsData.data || [];
-                            const normalizedDoctors: Doctor[] = rawDoctors
+                const normalizedDoctors: Doctor[] = rawDoctors
                     .map((d: Record<string, unknown>) => ({
                         _id: (d._id as string) || undefined,
                         id: ((d.id as string) || (d._id as string) || "") as string,
@@ -660,11 +636,11 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                         specialization: (d.specialization as string) || (d.specialty as string) || "General",
                         consultationFee: Number(d.consultationFee ?? 0),
                         consultationType: (d.consultationType as string) || undefined,
-                                    availability: Array.isArray(d.availability) ? (d.availability as Array<{ isActive?: boolean }>) : [],
-                                    isVerified: !!(d as any).isVerified,
+                        availability: Array.isArray(d.availability) ? (d.availability as Array<{ isActive?: boolean }>) : [],
+                        isVerified: !!(d as any).isVerified,
                     }))
                     .filter((d: Doctor) => Boolean(d.id));
-                            setDoctors(normalizedDoctors);
+                setDoctors(normalizedDoctors);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : "An error occurred");
@@ -681,7 +657,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                 if (apt.doctorName) return apt;
                 const doc = doctors.find((d) => d.id === apt.doctorId || d._id === apt.doctorId);
                 return doc ? { ...apt, doctorName: doc.name } : { ...apt, doctorName: "Dr. (ID: " + apt.doctorId.slice(0, 8) + "…)" };
-            })
+            }),
         );
     }, [doctors]);
 
@@ -770,10 +746,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
     };
 
     return (
-        <div
-            className="max-w-[1200px] mx-auto py-8 px-4 space-y-6"
-            style={{ backgroundColor: "var(--bg-surface)" }}
-        >
+        <div className="max-w-[1200px] mx-auto py-8 px-4 space-y-6" style={{ backgroundColor: "var(--bg-surface)" }}>
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
                 <div>
@@ -849,10 +822,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                         <form onSubmit={handleBook} className="space-y-4">
                             {/* Specialty filter */}
                             <div>
-                                <label
-                                    className="block text-sm font-medium mb-1"
-                                    style={{ color: "var(--text-secondary)" }}
-                                >
+                                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
                                     Filter by Specialty
                                 </label>
                                 <select
@@ -874,32 +844,22 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
 
                             {/* Doctor select */}
                             <div>
-                                <label
-                                    className="block text-sm font-medium mb-1"
-                                    style={{ color: "var(--text-secondary)" }}
-                                >
-                                    Select Doctor{" "}
-                                    <span style={{ color: "var(--danger)" }}>*</span>
+                                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
+                                    Select Doctor <span style={{ color: "var(--danger)" }}>*</span>
                                 </label>
                                 {filteredDoctors.length === 0 ? (
-                                    <p
-                                        className="text-sm italic"
-                                        style={{ color: "var(--text-muted)" }}
-                                    >
+                                    <p className="text-sm italic" style={{ color: "var(--text-muted)" }}>
                                         No doctors available.
                                     </p>
                                 ) : (
-                                    <select
-                                        value={selectedDoctor}
-                                        onChange={(e) => setSelectedDoctor(e.target.value)}
-                                        required
-                                        style={inputStyle}
-                                    >
+                                    <select value={selectedDoctor} onChange={(e) => setSelectedDoctor(e.target.value)} required style={inputStyle}>
                                         <option value="">Choose a doctor…</option>
                                         {filteredDoctors.map((d) => (
                                             <option key={d.id} value={d.id}>
                                                 {d.name} — {d.specialization || d.specialty || "General"}
-                                                {d.consultationFee ? ` (LKR ${Number(d.consultationFee).toFixed(2)} → LKR ${Number((d.consultationFee * 1.25)).toFixed(2)})` : ""}
+                                                {d.consultationFee
+                                                    ? ` (LKR ${Number(d.consultationFee).toFixed(2)} → LKR ${Number(d.consultationFee * 1.25).toFixed(2)})`
+                                                    : ""}
                                             </option>
                                         ))}
                                     </select>
@@ -907,18 +867,18 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                             </div>
 
                             {/* Display fee with 25% markup when a doctor is chosen */}
-                            {selectedDoctor && (
+                            {selectedDoctor &&
                                 (() => {
                                     const doc = doctors.find((dd) => dd.id === selectedDoctor || dd._id === selectedDoctor);
                                     const base = doc?.consultationFee ?? 0;
                                     const total = Number((base * 1.25).toFixed(2));
                                     return (
                                         <div className="mt-3 text-sm" style={{ color: "var(--text-secondary)" }}>
-                                            <strong>Fee:</strong> LKR {base ? base.toLocaleString() : "0.00"} &nbsp;→&nbsp; <strong>LKR {total.toLocaleString()}</strong> (including 25% service)
+                                            <strong>Fee:</strong> LKR {base ? base.toLocaleString() : "0.00"} &nbsp;→&nbsp;{" "}
+                                            <strong>LKR {total.toLocaleString()}</strong> (including 25% service)
                                         </div>
                                     );
-                                })()
-                            )}
+                                })()}
 
                             {/* Availability Slots */}
                             {selectedDoctor && (
@@ -927,14 +887,23 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                         Available Time Slots <span style={{ color: "var(--danger)" }}>*</span>
                                     </label>
                                     {slotsLoading ? (
-                                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading slots…</p>
+                                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                                            Loading slots…
+                                        </p>
                                     ) : availabilitySlots.length === 0 ? (
-                                        <p className="text-sm italic" style={{ color: "var(--text-muted)" }}>No active slots for this doctor.</p>
+                                        <p className="text-sm italic" style={{ color: "var(--text-muted)" }}>
+                                            No active slots for this doctor.
+                                        </p>
                                     ) : (
                                         <div className="grid grid-cols-2 gap-2">
                                             {availabilitySlots.map((slot) => {
                                                 const isSelected = selectedSlot?._id === slot._id;
-                                                const typeLabel = slot.consultationType === "both" ? "In-Person & Virtual" : slot.consultationType === "in-person" ? "In-Person" : "Virtual";
+                                                const typeLabel =
+                                                    slot.consultationType === "both"
+                                                        ? "In-Person & Virtual"
+                                                        : slot.consultationType === "in-person"
+                                                          ? "In-Person"
+                                                          : "Virtual";
                                                 return (
                                                     <button
                                                         key={slot._id}
@@ -957,9 +926,14 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                                                         }}
                                                     >
                                                         <div className="font-semibold">{slot.dayOfWeek}</div>
-                                                        <div style={{ color: "var(--text-secondary)" }}>{slot.startTime} – {slot.endTime}</div>
+                                                        <div style={{ color: "var(--text-secondary)" }}>
+                                                            {slot.startTime} – {slot.endTime}
+                                                        </div>
                                                         <div className="mt-1">
-                                                            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "var(--bg-muted)", color: "var(--text-muted)" }}>
+                                                            <span
+                                                                className="text-xs px-1.5 py-0.5 rounded-full"
+                                                                style={{ backgroundColor: "var(--bg-muted)", color: "var(--text-muted)" }}
+                                                            >
                                                                 {typeLabel}
                                                             </span>
                                                         </div>
@@ -1005,19 +979,18 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
 
                             {/* Consultation type */}
                             <div>
-                                <label
-                                    className="block text-sm font-medium mb-1"
-                                    style={{ color: "var(--text-secondary)" }}
-                                >
+                                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
                                     Consultation Type
                                 </label>
                                 <select
                                     value={bookType}
                                     onChange={(e) => setBookType(e.target.value)}
                                     disabled={!!selectedSlot && selectedSlot.consultationType !== "both"}
-                                    style={{ ...inputStyle, opacity: (selectedSlot && selectedSlot.consultationType !== "both") ? 0.7 : 1 }}
+                                    style={{ ...inputStyle, opacity: selectedSlot && selectedSlot.consultationType !== "both" ? 0.7 : 1 }}
                                 >
-                                    {(!selectedSlot || selectedSlot.consultationType === "both" || selectedSlot.consultationType === "telemedicine") && (
+                                    {(!selectedSlot ||
+                                        selectedSlot.consultationType === "both" ||
+                                        selectedSlot.consultationType === "telemedicine") && (
                                         <option value="telemedicine">Virtual (Video Call)</option>
                                     )}
                                     {(!selectedSlot || selectedSlot.consultationType === "both" || selectedSlot.consultationType === "in-person") && (
@@ -1028,10 +1001,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
 
                             {/* Reason */}
                             <div>
-                                <label
-                                    className="block text-sm font-medium mb-1"
-                                    style={{ color: "var(--text-secondary)" }}
-                                >
+                                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
                                     Reason / Symptoms
                                 </label>
                                 <textarea
@@ -1098,10 +1068,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
             {/* Appointments list */}
             {loading ? (
                 <div className="flex justify-center items-center h-48">
-                    <div
-                        className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2"
-                        style={{ borderColor: "var(--brand)" }}
-                    />
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2" style={{ borderColor: "var(--brand)" }} />
                 </div>
             ) : error ? (
                 <div
@@ -1136,19 +1103,12 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                             d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5"
                         />
                     </svg>
-                    <p
-                        className="text-base font-medium"
-                        style={{ color: "var(--text-secondary)" }}
-                    >
+                    <p className="text-base font-medium" style={{ color: "var(--text-secondary)" }}>
                         No appointments yet
                     </p>
                     <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
                         Click{" "}
-                        <button
-                            onClick={() => setShowBooking(true)}
-                            className="underline"
-                            style={{ color: "var(--brand)" }}
-                        >
+                        <button onClick={() => setShowBooking(true)} className="underline" style={{ color: "var(--brand)" }}>
                             Book Appointment
                         </button>{" "}
                         to get started.
@@ -1188,34 +1148,23 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
 
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                            <span
-                                                className="font-semibold truncate"
-                                                style={{ color: "var(--text-primary)" }}
-                                            >
+                                            <span className="font-semibold truncate" style={{ color: "var(--text-primary)" }}>
                                                 {apt.doctorName}
                                             </span>
                                             {statusBadge(apt.status)}
                                         </div>
-                                        <div
-                                            className="text-sm flex flex-wrap gap-x-3 gap-y-0.5"
-                                            style={{ color: "var(--text-muted)" }}
-                                        >
+                                        <div className="text-sm flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: "var(--text-muted)" }}>
                                             <span>📅 {apt.date}</span>
                                             {apt.time && <span>🕐 {apt.time}</span>}
                                             <span>{apt.type === "VIRTUAL" ? "📹 Virtual" : "🏥 In-Person"}</span>
-                                            {apt.amountPaid && (
-                                                <span>💳 LKR {apt.amountPaid.toLocaleString()}</span>
-                                            )}
+                                            {apt.amountPaid && <span>💳 LKR {apt.amountPaid.toLocaleString()}</span>}
                                         </div>
                                         {apt.reason && (
-                                            <p
-                                                className="mt-1 text-sm truncate"
-                                                style={{ color: "var(--text-secondary)" }}
-                                            >
+                                            <p className="mt-1 text-sm truncate" style={{ color: "var(--text-secondary)" }}>
                                                 {apt.reason}
                                             </p>
                                         )}
-                                        {apt.type === "VIRTUAL" && (
+                                        {apt.type === "VIRTUAL" && apt.status === "COMPLETED" && (
                                             <div className="mt-4">
                                                 <NotificationBanner appointmentId={apt.id} />
                                             </div>
@@ -1281,27 +1230,17 @@ export default function AppointmentsPage() {
     if (isLoading || tokenLoading) {
         return (
             <div className="flex justify-center items-center min-h-[50vh]">
-                <div
-                    className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2"
-                    style={{ borderColor: "var(--brand)" }}
-                />
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2" style={{ borderColor: "var(--brand)" }} />
             </div>
         );
     }
 
     if (!user || !accessToken) {
         return (
-            <div
-                className="flex justify-center items-center min-h-[50vh]"
-                style={{ color: "var(--text-secondary)" }}
-            >
+            <div className="flex justify-center items-center min-h-[50vh]" style={{ color: "var(--text-secondary)" }}>
                 <p>
                     Please{" "}
-                    <a
-                        href="/login"
-                        className="underline"
-                        style={{ color: "var(--brand)" }}
-                    >
+                    <a href="/login" className="underline" style={{ color: "var(--brand)" }}>
                         log in
                     </a>{" "}
                     to view appointments.
