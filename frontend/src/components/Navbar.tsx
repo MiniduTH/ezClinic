@@ -27,23 +27,15 @@ const PATH_LABELS: Record<string, string> = {
   "/doctor/verify": "Doctor Verification",
 };
 
-// ---------------------------------------------------------------------------
-// Breadcrumb segments derived from the current pathname
-// ---------------------------------------------------------------------------
 function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
-  // Exact match first
   if (PATH_LABELS[pathname]) {
     const crumbs: { label: string; href: string }[] = [];
     if (pathname !== "/") crumbs.push({ label: PATH_LABELS["/"], href: "/" });
     crumbs.push({ label: PATH_LABELS[pathname], href: pathname });
     return crumbs;
   }
-
-  // Walk up segments to build a trail
   const parts = pathname.split("/").filter(Boolean);
-  const crumbs: { label: string; href: string }[] = [
-    { label: PATH_LABELS["/"], href: "/" },
-  ];
+  const crumbs: { label: string; href: string }[] = [{ label: PATH_LABELS["/"], href: "/" }];
   let accumulated = "";
   for (const part of parts) {
     accumulated += "/" + part;
@@ -54,11 +46,11 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
 }
 
 // ---------------------------------------------------------------------------
-// Inline SVG icons
+// Icons
 // ---------------------------------------------------------------------------
 function BellIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
     </svg>
@@ -67,23 +59,19 @@ function BellIcon() {
 
 function SunIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="5" />
-      <line x1="12" y1="1" x2="12" y2="3" />
-      <line x1="12" y1="21" x2="12" y2="23" />
-      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-      <line x1="1" y1="12" x2="3" y2="12" />
-      <line x1="21" y1="12" x2="23" y2="12" />
-      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+      <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
     </svg>
   );
 }
 
 function MoonIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </svg>
   );
@@ -91,70 +79,72 @@ function MoonIcon() {
 
 function ChevronRightIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="9 18 15 12 9 6" />
     </svg>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Role badge colours
+// Role badge
 // ---------------------------------------------------------------------------
 const ROLE_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  admin: { bg: "var(--danger-surface)", text: "var(--danger-text)", label: "Admin" },
-  doctor: { bg: "var(--brand-surface)", text: "var(--brand-text)", label: "Doctor" },
-  patient: { bg: "var(--accent-surface)", text: "var(--accent)", label: "Patient" },
+  admin:   { bg: "var(--danger-surface)",  text: "var(--danger-text)",  label: "Admin"   },
+  doctor:  { bg: "var(--brand-surface)",   text: "var(--brand-text)",   label: "Doctor"  },
+  patient: { bg: "var(--accent-surface)",  text: "var(--accent)",       label: "Patient" },
 };
 
 // ---------------------------------------------------------------------------
-// Main Navbar component
+// Navbar
 // ---------------------------------------------------------------------------
 export default function Navbar() {
   const { user, isLoading } = useUser();
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [hasNotification] = useState(true); // placeholder — replace with real data
+  const [hasNotification] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Must be called unconditionally before any early return
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
       }
     }
-    if (dropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+    if (dropdownOpen) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownOpen]);
 
-  // Landing page has its own full-screen navbar
   if (pathname === "/") return null;
 
   const role = getUserRole(user);
   const badge = ROLE_BADGE[role] ?? ROLE_BADGE.patient;
   const breadcrumbs = buildBreadcrumbs(pathname);
 
-  // Derive initials for avatar
   const initials = user
-    ? (user.name || user.email || "U")
-        .split(" ")
-        .map((w) => w[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
+    ? (user.name || user.email || "U").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
     : "U";
 
   async function handleLogout() {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } catch {
-      // continue regardless
-    }
+    try { await fetch("/api/auth/logout", { method: "POST" }); } catch { /* continue */ }
     window.location.href = "/";
   }
+
+  const iconBtnStyle: React.CSSProperties = {
+    position: "relative",
+    width: "36px",
+    height: "36px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "8px",
+    border: "none",
+    background: "transparent",
+    color: "var(--text-secondary)",
+    cursor: "pointer",
+    transition: "background-color 150ms, color 150ms, transform 100ms",
+    flexShrink: 0,
+  };
 
   return (
     <nav
@@ -167,10 +157,13 @@ export default function Navbar() {
         height: "64px",
         display: "flex",
         alignItems: "center",
-        backgroundColor: "var(--bg-elevated)",
-        borderBottom: "1px solid var(--border)",
-        paddingLeft: "16px",
-        paddingRight: "16px",
+        background: "var(--bg-glass)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: "1px solid color-mix(in srgb, var(--border) 70%, transparent)",
+        paddingLeft: "20px",
+        paddingRight: "20px",
+        boxShadow: "var(--shadow-sm)",
       }}
     >
       {/* ── Logo ── */}
@@ -181,24 +174,31 @@ export default function Navbar() {
           alignItems: "center",
           textDecoration: "none",
           flexShrink: 0,
-          fontFamily: "ui-monospace, 'Cascadia Code', monospace",
-          fontSize: "1.25rem",
-          fontWeight: 700,
-          letterSpacing: "-0.02em",
           marginRight: "24px",
+          gap: "8px",
         }}
       >
-        <span style={{ color: "var(--brand)" }}>ez</span>
-        <span style={{ color: "var(--text-primary)" }}>Clinic</span>
+        <span
+          style={{
+            fontFamily: "'Manrope', ui-sans-serif, sans-serif",
+            fontSize: "1.2rem",
+            fontWeight: 800,
+            letterSpacing: "-0.03em",
+            lineHeight: 1,
+          }}
+        >
+          <span style={{ color: "var(--brand)" }}>ez</span>
+          <span style={{ color: "var(--text-primary)" }}>Clinic</span>
+        </span>
       </Link>
 
-      {/* ── Breadcrumb (center, grows to fill space) ── */}
+      {/* ── Breadcrumb ── */}
       <div
         style={{
           flex: 1,
           display: "flex",
           alignItems: "center",
-          gap: "6px",
+          gap: "4px",
           overflow: "hidden",
           minWidth: 0,
         }}
@@ -208,18 +208,19 @@ export default function Navbar() {
           return (
             <span
               key={crumb.href}
-              style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}
+              style={{ display: "flex", alignItems: "center", gap: "4px", minWidth: 0 }}
             >
               {index > 0 && (
-                <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>
+                <span style={{ color: "var(--text-muted)", flexShrink: 0, display: "flex" }}>
                   <ChevronRightIcon />
                 </span>
               )}
               {isLast ? (
                 <span
                   style={{
-                    fontSize: "0.875rem",
+                    fontSize: "0.8125rem",
                     fontWeight: 600,
+                    fontFamily: "'Manrope', sans-serif",
                     color: "var(--text-primary)",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
@@ -232,13 +233,16 @@ export default function Navbar() {
                 <Link
                   href={crumb.href}
                   style={{
-                    fontSize: "0.875rem",
+                    fontSize: "0.8125rem",
                     color: "var(--text-muted)",
                     textDecoration: "none",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
+                    transition: "color 150ms",
                   }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-secondary)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "var(--text-muted)"; }}
                 >
                   {crumb.label}
                 </Link>
@@ -249,36 +253,29 @@ export default function Navbar() {
       </div>
 
       {/* ── Right actions ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+
         {/* Notification bell */}
         <button
           aria-label="Notifications"
-          style={{
-            position: "relative",
-            width: "36px",
-            height: "36px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "8px",
-            border: "none",
-            background: "transparent",
-            color: "var(--text-secondary)",
-            cursor: "pointer",
-          }}
+          style={iconBtnStyle}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-muted)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)"; }}
+          onMouseDown={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.92)"; }}
+          onMouseUp={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"; }}
         >
           <BellIcon />
           {hasNotification && (
             <span
               style={{
                 position: "absolute",
-                top: "6px",
-                right: "6px",
-                width: "8px",
-                height: "8px",
+                top: "7px",
+                right: "7px",
+                width: "7px",
+                height: "7px",
                 borderRadius: "50%",
-                backgroundColor: "#f59e0b",
-                border: "2px solid var(--bg-elevated)",
+                backgroundColor: "var(--accent)",
+                border: "1.5px solid var(--bg-glass)",
               }}
             />
           )}
@@ -288,23 +285,19 @@ export default function Navbar() {
         <button
           onClick={toggleTheme}
           aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          style={{
-            width: "36px",
-            height: "36px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "8px",
-            border: "none",
-            background: "transparent",
-            color: "var(--text-secondary)",
-            cursor: "pointer",
-          }}
+          style={iconBtnStyle}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-muted)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)"; }}
+          onMouseDown={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.92)"; }}
+          onMouseUp={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"; }}
         >
           {theme === "dark" ? <SunIcon /> : <MoonIcon />}
         </button>
 
-        {/* Avatar / dropdown — only shown when user is loaded */}
+        {/* Separator */}
+        <div style={{ width: "1px", height: "22px", background: "var(--border)", margin: "0 4px", flexShrink: 0 }} />
+
+        {/* Avatar / dropdown */}
         {!isLoading && user && (
           <div ref={dropdownRef} style={{ position: "relative" }}>
             <button
@@ -313,68 +306,63 @@ export default function Navbar() {
               aria-expanded={dropdownOpen}
               aria-label="Open user menu"
               style={{
-                width: "36px",
-                height: "36px",
+                width: "34px",
+                height: "34px",
                 borderRadius: "50%",
-                backgroundColor: "var(--brand)",
-                border: "none",
+                background: "var(--brand)",
+                border: "2px solid transparent",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: "pointer",
-                fontFamily: "ui-monospace, 'Cascadia Code', monospace",
+                fontFamily: "'Manrope', sans-serif",
                 fontWeight: 700,
-                fontSize: "0.8125rem",
+                fontSize: "0.75rem",
                 color: "#ffffff",
                 letterSpacing: "0.02em",
+                transition: "box-shadow 150ms, border-color 150ms, transform 100ms",
+                flexShrink: 0,
               }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 3px color-mix(in srgb, var(--brand) 25%, transparent)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "none"; }}
+              onMouseDown={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.94)"; }}
+              onMouseUp={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)"; }}
             >
               {initials}
             </button>
 
-            {/* Dropdown popover */}
             {dropdownOpen && (
               <div
                 role="menu"
                 style={{
                   position: "absolute",
-                  top: "calc(100% + 8px)",
+                  top: "calc(100% + 10px)",
                   right: 0,
-                  width: "240px",
-                  backgroundColor: "var(--bg-elevated)",
+                  width: "248px",
+                  background: "var(--bg-elevated)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
                   border: "1px solid var(--border)",
                   borderRadius: "12px",
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                  boxShadow: "var(--shadow-lg)",
                   overflow: "hidden",
                   zIndex: 100,
                 }}
               >
-                {/* Header: name / email / role */}
-                <div
-                  style={{
-                    padding: "16px",
-                    borderBottom: "1px solid var(--border)",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                    }}
-                  >
-                    {/* Mini avatar */}
+                {/* Header */}
+                <div style={{ padding: "16px", borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div
                       style={{
                         width: "40px",
                         height: "40px",
                         borderRadius: "50%",
-                        backgroundColor: "var(--brand)",
+                        background: "var(--brand)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         flexShrink: 0,
-                        fontFamily: "ui-monospace, 'Cascadia Code', monospace",
+                        fontFamily: "'Manrope', sans-serif",
                         fontWeight: 700,
                         fontSize: "0.875rem",
                         color: "#ffffff",
@@ -383,32 +371,12 @@ export default function Navbar() {
                       {initials}
                     </div>
                     <div style={{ minWidth: 0 }}>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: "0.875rem",
-                          fontWeight: 600,
-                          color: "var(--text-primary)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
+                      <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 700, fontFamily: "'Manrope', sans-serif", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {user.name || "User"}
                       </p>
-                      <p
-                        style={{
-                          margin: "2px 0 6px",
-                          fontSize: "0.75rem",
-                          color: "var(--text-muted)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
+                      <p style={{ margin: "2px 0 6px", fontSize: "0.75rem", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {user.email}
                       </p>
-                      {/* Role badge */}
                       <span
                         style={{
                           display: "inline-block",
@@ -416,7 +384,7 @@ export default function Navbar() {
                           borderRadius: "999px",
                           fontSize: "0.6875rem",
                           fontWeight: 600,
-                          backgroundColor: badge.bg,
+                          background: badge.bg,
                           color: badge.text,
                           textTransform: "capitalize",
                         }}
@@ -428,7 +396,7 @@ export default function Navbar() {
                 </div>
 
                 {/* Links */}
-                <div style={{ padding: "8px" }}>
+                <div style={{ padding: "6px" }}>
                   <Link
                     href="/profile"
                     role="menuitem"
@@ -443,21 +411,18 @@ export default function Navbar() {
                       color: "var(--text-primary)",
                       textDecoration: "none",
                       fontWeight: 500,
+                      transition: "background-color 120ms",
                     }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "var(--bg-muted)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "transparent";
-                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--bg-muted)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; }}
                   >
-                    {/* User icon */}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
                     </svg>
                     Profile
                   </Link>
+
+                  <div style={{ height: "1px", background: "var(--border)", margin: "4px 6px" }} />
 
                   <button
                     role="menuitem"
@@ -476,19 +441,13 @@ export default function Navbar() {
                       cursor: "pointer",
                       fontWeight: 500,
                       textAlign: "left",
+                      transition: "background-color 120ms",
                     }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--danger-surface)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent";
-                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--danger-surface)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
                   >
-                    {/* Log out icon */}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                      <polyline points="16 17 21 12 16 7" />
-                      <line x1="21" y1="12" x2="9" y2="12" />
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
                     </svg>
                     Sign out
                   </button>
@@ -501,18 +460,25 @@ export default function Navbar() {
         {/* Not logged in */}
         {!isLoading && !user && (
           <Link
-            href="/register"
+            href="/login"
             style={{
-              padding: "6px 16px",
+              padding: "7px 18px",
               borderRadius: "8px",
-              fontSize: "0.875rem",
-              fontWeight: 600,
+              fontSize: "0.8125rem",
+              fontWeight: 700,
+              fontFamily: "'Manrope', sans-serif",
               color: "#ffffff",
-              backgroundColor: "var(--brand)",
+              background: "var(--brand)",
               textDecoration: "none",
+              transition: "background-color 150ms, box-shadow 150ms, transform 100ms",
+              letterSpacing: "0.01em",
             }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--brand-hover)"; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "var(--shadow-brand)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--brand)"; (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none"; }}
+            onMouseDown={(e) => { (e.currentTarget as HTMLAnchorElement).style.transform = "scale(0.95)"; }}
+            onMouseUp={(e) => { (e.currentTarget as HTMLAnchorElement).style.transform = "scale(1)"; }}
           >
-            Login
+            Sign In
           </Link>
         )}
       </div>

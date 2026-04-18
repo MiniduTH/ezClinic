@@ -597,7 +597,7 @@ export default function DoctorDashboard() {
                           <Link
                             href={`/prescriptions?patientId=${apt.patientId}&appointmentId=${apt.id}`}
                             className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-white transition-colors"
-                            style={{ background: "#1e293b" }}
+                            style={{ background: "var(--bg-muted)", color: "var(--text-secondary)" }}
                           >
                             + Issue Rx
                           </Link>

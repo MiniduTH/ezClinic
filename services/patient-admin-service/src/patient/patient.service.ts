@@ -61,9 +61,8 @@ export class PatientService {
     }
   }
 
-  async create(auth0Sub: string, createPatientDto: CreatePatientDto): Promise<Patient> {
-    // Idempotent on sub: if this Auth0 user already registered, return existing profile
-    const existing = await this.patientRepository.findOne({ where: { id: auth0Sub } });
+  async create(userId: string, createPatientDto: CreatePatientDto): Promise<Patient> {
+    const existing = await this.patientRepository.findOne({ where: { id: userId } });
     if (existing) return existing;
 
     // Guard against email collision from a different account
@@ -81,7 +80,7 @@ export class PatientService {
 
     const newPatient = this.patientRepository.create({
       ...createPatientDto,
-      id: auth0Sub,
+      id: userId,
       dob: dobDate,
     });
 
@@ -100,8 +99,8 @@ export class PatientService {
     return patient;
   }
 
-  async findByAuth0Id(auth0Id: string): Promise<Patient> {
-    const patient = await this.patientRepository.findOne({ where: { id: auth0Id } });
+  async findByUserId(userId: string): Promise<Patient> {
+    const patient = await this.patientRepository.findOne({ where: { id: userId } });
     if (!patient) {
       throw new NotFoundException(`Patient not found`);
     }
@@ -132,21 +131,14 @@ export class PatientService {
     await this.patientRepository.remove(patient);
   }
 
-  /**
-   * Update the profile of the currently authenticated patient using their Auth0 sub.
-   */
-  async updateMe(auth0Id: string, dto: UpdatePatientDto): Promise<Patient> {
-    const patient = await this.findByAuth0Id(auth0Id);
+  async updateMe(userId: string, dto: UpdatePatientDto): Promise<Patient> {
+    const patient = await this.findByUserId(userId);
     return this.update(patient.id, dto);
   }
 
   // ─── Avatar Upload ─────────────────────────────────────────────
 
-  /**
-   * Upload or replace the avatar for the authenticated patient.
-   * Only JPEG / PNG accepted; max 2 MB.
-   */
-  async uploadAvatar(auth0Id: string, file: Express.Multer.File): Promise<Patient> {
+  async uploadAvatar(userId: string, file: Express.Multer.File): Promise<Patient> {
     if (!ALLOWED_AVATAR_MIMES.has(file.mimetype)) {
       throw new BadRequestException('Only JPEG and PNG images are accepted for avatars');
     }
@@ -154,7 +146,7 @@ export class PatientService {
       throw new BadRequestException('Avatar file must be under 2 MB');
     }
 
-    const patient = await this.findByAuth0Id(auth0Id);
+    const patient = await this.findByUserId(userId);
 
     // Remove old avatar file if stored locally
     if (patient.avatarUrl) {
@@ -285,19 +277,13 @@ export class PatientService {
     await this.reportRepository.save(report);
   }
 
-  /**
-   * Upload a medical report using the Auth0 sub of the authenticated patient.
-   */
-  async uploadReportByAuth0Id(auth0Id: string, dto: UploadReportDto, file: Express.Multer.File): Promise<MedicalReport> {
-    const patient = await this.findByAuth0Id(auth0Id);
+  async uploadReportByUserId(userId: string, dto: UploadReportDto, file: Express.Multer.File): Promise<MedicalReport> {
+    const patient = await this.findByUserId(userId);
     return this.uploadReport(patient.id, dto, file);
   }
 
-  /**
-   * List reports for the authenticated patient using their Auth0 sub.
-   */
-  async getReportsByAuth0Id(auth0Id: string, filter: ReportFilter = {}): Promise<PaginatedReports> {
-    const patient = await this.findByAuth0Id(auth0Id);
+  async getReportsByUserId(userId: string, filter: ReportFilter = {}): Promise<PaginatedReports> {
+    const patient = await this.findByUserId(userId);
     return this.getReports(patient.id, filter);
   }
 }

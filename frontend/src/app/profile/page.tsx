@@ -26,7 +26,6 @@ interface Patient {
   emergencyContact: string | null;
   status: "active" | "inactive" | "suspended";
   createdAt: string;
-  auth0Id?: string | null;
 }
 
 interface Doctor {
@@ -39,7 +38,6 @@ interface Doctor {
   consultationFee?: number | null;
   isVerified?: boolean;
   createdAt?: string;
-  auth0Id?: string | null;
 }
 
 interface Report {
@@ -744,7 +742,7 @@ function DoctorProfile() {
           if (doctorRes.status === 404) {
             setIsNewDoctor(true);
             setIsEditing(true);
-            setFormData({ name: user?.name || "", email: user?.email || "", auth0Id: user?.sub });
+            setFormData({ name: user?.name || "", email: user?.email || "" });
             return;
           }
           if (doctorRes.status === 403) throw new Error("This profile is only available to doctor accounts.");
@@ -779,7 +777,6 @@ function DoctorProfile() {
         ...formData,
         name: formData.name || user?.name || "",
         email: formData.email || user?.email || "",
-        auth0Id: formData.auth0Id || user?.sub,
         consultationFee: formData.consultationFee == null ? 0 : Number(formData.consultationFee),
       };
       const url = isNewDoctor ? `${DOCTOR_API}/doctors/register` : `${DOCTOR_API}/doctors/${doctor!.id}`;

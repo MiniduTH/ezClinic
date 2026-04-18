@@ -36,10 +36,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Register a new admin' })
   @ApiResponse({ status: 201, description: 'Admin successfully registered.' })
   @ApiResponse({ status: 409, description: 'Email already exists.' })
-  create(@Body() createAdminDto: CreateAdminDto, @Req() req: any) {
-    if (req.user?.sub) {
-      createAdminDto.auth0Id = req.user.sub;
-    }
+  create(@Body() createAdminDto: CreateAdminDto) {
     return this.adminService.create(createAdminDto);
   }
 
