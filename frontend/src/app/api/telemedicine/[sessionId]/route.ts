@@ -1,14 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import { resolveServiceApiBase } from '@/lib/service-url';
 
-function resolveTelemedicineBaseUrl(): string {
-  const rawBaseUrl =
-    process.env.TELEMEDICINE_SERVICE_URL ||
-    process.env.NEXT_PUBLIC_TELEMEDICINE_API ||
-    'http://localhost:8090';
-  const normalized = rawBaseUrl.replace(/\/+$/, '');
-  return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
-}
+const TELEMEDICINE_API = resolveServiceApiBase('telemedicine');
 
 /**
  * The FE links to /telemedicine/{appointmentId} so the param coming in is an
@@ -44,7 +38,6 @@ export async function GET(
       return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
     }
 
-    const backendUrl = resolveTelemedicineBaseUrl();
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
@@ -52,13 +45,13 @@ export async function GET(
 
     // Try appointment-based lookup first (most common path from FE)
     let response = await fetch(
-      `${backendUrl}/sessions/appointment/${sessionId}`,
+      `${TELEMEDICINE_API}/sessions/appointment/${sessionId}`,
       { method: 'GET', headers }
     );
 
     // Fall back to session-by-id if appointment lookup returned 4xx
     if (!response.ok && response.status >= 400 && response.status < 500) {
-      response = await fetch(`${backendUrl}/sessions/${sessionId}`, {
+      response = await fetch(`${TELEMEDICINE_API}/sessions/${sessionId}`, {
         method: 'GET',
         headers,
       });

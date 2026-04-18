@@ -21,7 +21,9 @@ RUN npm install --omit=dev && npm cache clean --force
 COPY --from=builder /usr/src/app/dist ./dist
 
 # Run as non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+    && mkdir -p /usr/src/app/uploads/medical-reports \
+    && chown -R appuser:appgroup /usr/src/app/uploads
 USER appuser
 
 EXPOSE 3005

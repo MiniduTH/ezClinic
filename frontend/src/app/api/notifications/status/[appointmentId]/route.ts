@@ -1,14 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import { resolveServiceApiBase } from '@/lib/service-url';
 
-function resolveTelemedicineBaseUrl(): string {
-  const rawBaseUrl =
-    process.env.TELEMEDICINE_SERVICE_URL ||
-    process.env.NEXT_PUBLIC_TELEMEDICINE_API ||
-    'http://localhost:8090';
-  const normalized = rawBaseUrl.replace(/\/+$/, '');
-  return normalized.endsWith('/api/v1') ? normalized : `${normalized}/api/v1`;
-}
+const TELEMEDICINE_API = resolveServiceApiBase('telemedicine');
 
 export async function GET(
   request: Request,
@@ -34,9 +28,7 @@ export async function GET(
       return NextResponse.json({ error: 'Appointment ID is required' }, { status: 400 });
     }
 
-    const backendUrl = resolveTelemedicineBaseUrl();
-    
-    const response = await fetch(`${backendUrl}/notifications/status/${appointmentId}`, {
+    const response = await fetch(`${TELEMEDICINE_API}/notifications/status/${appointmentId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

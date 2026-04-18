@@ -9,6 +9,11 @@ version: '3.9'
 # Frontend           : http://localhost:3000
 # RabbitMQ UI        : http://localhost:15672  (guest / guest)
 #
+# All application databases are remote:
+#   patient-admin, appointment, telemedicine → Supabase PostgreSQL (cloud)
+#   doctor                                   → MongoDB Atlas (cloud)
+# Only RabbitMQ runs locally in Docker.
+#
 # Set KONG_URL in .env to change the public base URL baked into the frontend
 # build (default: http://localhost:8000).
 # ─────────────────────────────────────────────────────────────────────────────
@@ -35,23 +40,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  mongodb:
-    image: mongo:7-jammy
-    container_name: ezclinic-mongodb
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-password}
-    volumes:
-      - mongodb_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    restart: unless-stopped
-
   # ── Backend Services ────────────────────────────────────────────────────────
 
   patient-admin-service:
@@ -65,6 +53,10 @@ services:
       NODE_ENV: production
       PORT: 3005
       DATABASE_URL: ${PATIENT_DB_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3005}
+      UPLOAD_DIR: uploads/medical-reports
       DOCTOR_SERVICE_URL: http://doctor-service:3002/api/v1
     depends_on:
       rabbitmq:
@@ -86,12 +78,12 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3002
-      MONGO_URI: ${MONGO_URI:-mongodb://admin:password@mongodb:27017/doctor_db?authSource=admin}
+      MONGO_URI: ${MONGO_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
       APPOINTMENT_SERVICE_URL: http://appointment-booking-service:3004/api/v1
       PATIENT_SERVICE_URL: http://patient-admin-service:3005/api/v1
     depends_on:
-      mongodb:
-        condition: service_healthy
       rabbitmq:
         condition: service_healthy
     healthcheck:
@@ -110,8 +102,9 @@ services:
       - "3004:3004"
     environment:
       SUPABASE_DB_URL: ${APPOINTMENT_DB_URL}
-      SUPABASE_DB_USER: ${APPOINTMENT_DB_USER:-postgres}
+      SUPABASE_DB_USER: ${APPOINTMENT_DB_USER}
       SUPABASE_DB_PASSWORD: ${APPOINTMENT_DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
@@ -142,7 +135,7 @@ services:
       - "8090:8090"
     environment:
       PORT: 8090
-      DB_USER: ${TELEMEDICINE_DB_USER:-postgres}
+      DB_USER: ${TELEMEDICINE_DB_USER}
       DB_PASSWORD: ${TELEMEDICINE_DB_PASSWORD}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
@@ -154,6 +147,7 @@ services:
       JITSI_APP_ID: ${JITSI_APP_ID}
       JITSI_APP_SECRET: ${JITSI_APP_SECRET}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       APPOINTMENT_SERVICE_URL: http://appointment-booking-service:3004/api/v1
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
     depends_on:
@@ -218,6 +212,7 @@ services:
     environment:
       NODE_ENV: production
       APP_BASE_URL: ${FRONTEND_URL:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET}
       # Server-side calls from Next.js API routes use internal Docker DNS —
       # these bypass Kong and hit services directly.
       INTERNAL_DOCTOR_API: http://doctor-service:3002/api/v1
@@ -236,4 +231,3 @@ services:
 
 volumes:
   rabbitmq_data:
-  mongodb_data:

@@ -115,12 +115,12 @@ function HeroSection() {
       minHeight: "100vh",
       display: "flex", alignItems: "center",
       padding: "88px 40px 72px",
-      background: "linear-gradient(160deg,#E0F2F1 0%,#e0f2fe 45%,var(--bg-surface) 100%)",
+      background: "var(--landing-hero-bg)",
       position: "relative", overflow: "hidden",
     }}>
       {/* Decorative blobs */}
-      <div style={{ position:"absolute", top:"-8%",  right:"-4%", width:640, height:640, borderRadius:"50%", background:"radial-gradient(circle,rgba(0,121,107,0.07) 0%,transparent 70%)", pointerEvents:"none" }} />
-      <div style={{ position:"absolute", bottom:"-8%", left:"-4%", width:520, height:520, borderRadius:"50%", background:"radial-gradient(circle,rgba(3,105,161,0.05) 0%,transparent 70%)", pointerEvents:"none" }} />
+      <div style={{ position:"absolute", top:"-8%",  right:"-4%", width:640, height:640, borderRadius:"50%", background:"var(--landing-hero-blob-1)", pointerEvents:"none" }} />
+      <div style={{ position:"absolute", bottom:"-8%", left:"-4%", width:520, height:520, borderRadius:"50%", background:"var(--landing-hero-blob-2)", pointerEvents:"none" }} />
 
       <div style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
         <div className="landing-hero-grid">
