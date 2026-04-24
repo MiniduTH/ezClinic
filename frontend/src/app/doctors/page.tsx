@@ -380,24 +380,7 @@ function DoctorCard({
   const ctaDisabled = isLoggedIn && slotCount === 0;
 
   return (
-    <div
-      className="group rounded-2xl border flex flex-col overflow-hidden transition-all duration-200"
-      style={{
-        background: "var(--bg-elevated)",
-        borderColor: "var(--border)",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = "var(--brand)";
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
-        (e.currentTarget as HTMLDivElement).style.boxShadow =
-          "0 8px 24px rgba(0,0,0,0.08)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)";
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
-      }}
-    >
+    <div className="glass-card-premium group flex flex-col overflow-hidden hover:-translate-y-0.5">
       {/* Card body */}
       <div className="p-5 flex-1 flex flex-col">
         {/* Avatar + identity */}
@@ -720,30 +703,20 @@ export default function DoctorsPage() {
         )}
 
         {/* ── Page Header ── */}
-        <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div className="page-header">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              Find a Doctor
-            </h1>
-            <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-              Browse our verified healthcare professionals
-            </p>
+            <h1 className="page-title">Find a Doctor</h1>
+            <p className="page-subtitle">Browse our verified healthcare professionals</p>
           </div>
           {pagination && !loading && (
-            <span
-              className="text-sm font-medium tabular-nums"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <span className="badge badge-brand tabular-nums">
               {pagination.totalItems} doctor{pagination.totalItems !== 1 ? "s" : ""} available
             </span>
           )}
         </div>
 
         {/* ── Filter Bar ── */}
-        <div
-          className="rounded-2xl border p-3"
-          style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
-        >
+        <div className="glass-card-premium p-3">
           <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1 relative">
               <Search
@@ -792,44 +765,25 @@ export default function DoctorsPage() {
             ))}
           </div>
         ) : error ? (
-          <div
-            className="rounded-2xl border py-16 text-center"
-            style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
-          >
-            <div
-              className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-              style={{ background: "var(--bg-muted)" }}
-            >
-              <Stethoscope size={24} style={{ color: "var(--text-muted)" }} />
+          <div className="glass-card-premium">
+            <div className="empty-state">
+              <div className="empty-state-icon">
+                <Stethoscope size={26} />
+              </div>
+              <div className="empty-state-title">Something went wrong</div>
+              <div className="empty-state-desc">{error}</div>
+              <button onClick={fetchDoctors} className="btn-ghost mt-2">Try again</button>
             </div>
-            <p className="text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
-              {error}
-            </p>
-            <button
-              onClick={fetchDoctors}
-              className="text-sm underline underline-offset-2 mt-1"
-              style={{ color: "var(--brand-text)" }}
-            >
-              Try again
-            </button>
           </div>
         ) : doctors.length === 0 ? (
-          <div
-            className="rounded-2xl border py-16 text-center"
-            style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
-          >
-            <div
-              className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-              style={{ background: "var(--bg-muted)" }}
-            >
-              <Stethoscope size={24} style={{ color: "var(--text-muted)" }} />
+          <div className="glass-card-premium">
+            <div className="empty-state">
+              <div className="empty-state-icon">
+                <Stethoscope size={26} />
+              </div>
+              <div className="empty-state-title">No doctors found</div>
+              <div className="empty-state-desc">Try adjusting your search term or specialty filter.</div>
             </div>
-            <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-              No doctors found
-            </p>
-            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-              Try adjusting your search or filters.
-            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

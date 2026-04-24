@@ -241,33 +241,23 @@ export default function AvailabilityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 p-6 font-sans">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
 
         {/* Header */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+        <header className="page-header">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Availability Schedule
-            </h1>
-            <p className="text-slate-500 mt-1 text-sm">
+            <h1 className="page-title">Availability Schedule</h1>
+            <p className="page-subtitle">
               Define your weekly consultation hours and manage patient appointment slots.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             {!fetched && (
-              <button
-                onClick={fetchSlots}
-                disabled={loading}
-                className="px-5 py-2.5 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all"
-              >
+              <button onClick={fetchSlots} disabled={loading} className="btn-ghost">
                 {loading ? "Loading..." : "Load Schedule"}
               </button>
             )}
-            <button
-              onClick={() => openAddModal()}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 rounded-xl shadow-sm hover:-translate-y-0.5 transition-all active:translate-y-0"
-            >
+            <button onClick={() => openAddModal()} className="btn-gradient">
               + Add Time Slot
             </button>
           </div>
@@ -543,7 +533,6 @@ export default function AvailabilityPage() {
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 }

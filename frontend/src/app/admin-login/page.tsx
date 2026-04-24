@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const ACCENT = "#7c3aed";
-const ACCENT_SURFACE = "rgba(124,58,237,0.08)";
-const ACCENT_BORDER  = "rgba(124,58,237,0.2)";
+const ACCENT = "var(--brand)";
+const ACCENT_SURFACE = "var(--brand-surface)";
+const ACCENT_BORDER  = "var(--brand-border)";
 
 export default function AdminLoginPage() {
   const router      = useRouter();
@@ -41,8 +41,8 @@ export default function AdminLoginPage() {
   return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"var(--bg-surface)", position:"relative", overflow:"hidden", padding:24 }}>
       {/* Decorative blobs */}
-      <div style={{ position:"fixed", top:"-15%", right:"-8%",  width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle,rgba(124,58,237,0.07) 0%,transparent 70%)", pointerEvents:"none" }} />
-      <div style={{ position:"fixed", bottom:"-15%", left:"-8%", width:440, height:440, borderRadius:"50%", background:"radial-gradient(circle,rgba(0,121,107,0.06) 0%,transparent 70%)", pointerEvents:"none" }} />
+      <div style={{ position:"fixed", top:"-15%", right:"-8%",  width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle,rgba(0,121,107,0.12) 0%,transparent 70%)", pointerEvents:"none" }} />
+      <div style={{ position:"fixed", bottom:"-15%", left:"-8%", width:440, height:440, borderRadius:"50%", background:"radial-gradient(circle,rgba(3,105,161,0.08) 0%,transparent 70%)", pointerEvents:"none" }} />
 
       <div style={{ width:"100%", maxWidth:420, position:"relative", zIndex:1 }} className="anim-fade-up">
         {/* Header */}
@@ -105,12 +105,8 @@ export default function AdminLoginPage() {
               </div>
             )}
 
-            <button type="submit" disabled={loading}
-              style={{ height:48, borderRadius:12, background:ACCENT, color:"white", fontWeight:700, fontSize:"0.9375rem", border:"none", cursor:loading?"not-allowed":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:loading?0.75:1, transition:"opacity 0.2s, transform 0.15s" }}
-              onMouseEnter={e=>{if(!loading)(e.currentTarget as HTMLButtonElement).style.opacity="0.9";}}
-              onMouseLeave={e=>{if(!loading)(e.currentTarget as HTMLButtonElement).style.opacity="1";}}
-              onMouseDown={e=>{if(!loading)(e.currentTarget as HTMLButtonElement).style.transform="scale(0.97)";}}
-              onMouseUp={e=>{(e.currentTarget as HTMLButtonElement).style.transform="scale(1)";}}>
+            <button type="submit" disabled={loading} className="btn-gradient"
+              style={{ height:48, fontSize:"0.9375rem", fontWeight:700 }}>
               {loading ? (
                 <>
                   <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>

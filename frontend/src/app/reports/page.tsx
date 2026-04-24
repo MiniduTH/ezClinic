@@ -334,21 +334,24 @@ export default function ReportsPage() {
   const totalPages = Math.ceil(total / LIMIT);
 
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+    <div className="max-w-5xl mx-auto space-y-6">
       <ToastContainer toasts={toasts} dismiss={dismiss} />
       {selectedReport && <ReportModal report={selectedReport} onClose={() => setSelectedReport(null)} />}
 
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Medical Reports</h1>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          Upload, view, and manage your medical documents. {total > 0 && <span className="font-medium text-gray-900 dark:text-white">{total} total</span>}
-        </p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Medical Reports</h1>
+          <p className="page-subtitle">
+            Upload, view, and manage your medical documents.{" "}
+            {total > 0 && <span className="font-medium" style={{ color: "var(--brand-text)" }}>{total} total</span>}
+          </p>
+        </div>
       </div>
 
       {/* Upload dropzone */}
-      <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Upload New Report</h2>
+      <div className="glass-card-premium p-6">
+        <h2 className="section-heading mb-4">Upload New Report</h2>
         <form onSubmit={handleUpload} className="space-y-4">
           {/* Dropzone */}
           <div
@@ -436,7 +439,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm p-4">
+      <div className="glass-card-premium p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[150px]">
             <label htmlFor="f-type" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Type</label>
@@ -469,22 +472,24 @@ export default function ReportsPage() {
       </div>
 
       {/* Report list */}
-      <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+      <div className="glass-card-premium overflow-hidden">
         {error ? (
           <div className="p-8 text-center text-red-500 dark:text-red-400">{error}</div>
         ) : loading ? (
           <div className="p-6"><ReportsSkeleton /></div>
         ) : reports.length === 0 ? (
-          <div className="p-16 flex flex-col items-center text-center">
-            <svg className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">No reports found</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div className="empty-state-title">No reports found</div>
+            <div className="empty-state-desc">
               {filterType || filterDateFrom || filterDateTo
                 ? "Try adjusting your filters."
                 : "Upload your first medical report using the form above."}
-            </p>
+            </div>
           </div>
         ) : (
           <>

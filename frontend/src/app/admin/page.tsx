@@ -20,21 +20,21 @@ interface DashboardStats {
 
 function StatSkeleton() {
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:20 }}>
+    <div className="flex flex-col gap-5">
+      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))" }}>
         {[...Array(5)].map((_, i) => (
-          <div key={i} style={{ borderRadius:16, background:"var(--bg-muted)", height:112, animation:"pulse 1.5s ease-in-out infinite" }} />
+          <div key={i} className="h-28 rounded-2xl" style={{ background: "var(--bg-muted)", animation: "pulse 1.5s ease-in-out infinite" }} />
         ))}
       </div>
-      <div style={{ borderRadius:16, background:"var(--bg-muted)", height:256 }} />
+      <div className="h-64 rounded-2xl" style={{ background: "var(--bg-muted)" }} />
     </div>
   );
 }
 
-const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  active:    { bg:"var(--success-surface)", color:"var(--success-text)" },
-  inactive:  { bg:"var(--bg-muted)",        color:"var(--text-secondary)" },
-  suspended: { bg:"var(--danger-surface)",  color:"var(--danger-text)" },
+const STATUS_BADGE: Record<string, string> = {
+  active: "badge badge-success",
+  inactive: "badge badge-muted",
+  suspended: "badge badge-danger",
 };
 
 export default function AdminDashboard() {
@@ -67,87 +67,116 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
 
-  const metricCards = stats ? [
-    { label:"Total Patients",    value:stats.totalPatients,       color:"var(--brand)",   bg:"var(--brand-surface)" },
-    { label:"Active Patients",   value:stats.activePatients,      color:"var(--success)", bg:"var(--success-surface)" },
-    { label:"Suspended",         value:stats.suspendedPatients,   color:"var(--danger)",  bg:"var(--danger-surface)" },
-    { label:"New This Week",     value:stats.newPatientsThisWeek, color:"#0369a1",        bg:"#e0f2fe" },
-    { label:"Admins",            value:stats.totalAdmins,         color:"var(--text-secondary)", bg:"var(--bg-muted)" },
-  ] : [];
+  const metricCards = stats
+    ? [
+        { label: "Total Patients", value: stats.totalPatients, hint: "All registered patients" },
+        { label: "Active Patients", value: stats.activePatients, hint: "Currently active" },
+        { label: "Suspended", value: stats.suspendedPatients, hint: "Locked accounts" },
+        { label: "New This Week", value: stats.newPatientsThisWeek, hint: "Signups in last 7 days" },
+        { label: "Admins", value: stats.totalAdmins, hint: "Platform administrators" },
+      ]
+    : [];
 
   return (
-    <div style={{ maxWidth:1100, margin:"0 auto", padding:"32px 24px", display:"flex", flexDirection:"column", gap:32 }}>
-      <div>
-        <h1 style={{ fontSize:"1.75rem", fontWeight:800, color:"var(--text-primary)", letterSpacing:"-0.02em", marginBottom:4 }}>Admin Dashboard</h1>
-        <p style={{ fontSize:"0.875rem", color:"var(--text-muted)" }}>Platform-wide statistics and recent activity.</p>
+    <div className="max-w-[1100px] mx-auto flex flex-col gap-6">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Admin Dashboard</h1>
+          <p className="page-subtitle">Platform-wide statistics and recent activity.</p>
+        </div>
+        <span className="badge badge-brand">Admin</span>
       </div>
 
       {loading ? (
         <StatSkeleton />
       ) : error ? (
-        <div style={{ padding:32, textAlign:"center", color:"var(--danger)", background:"var(--danger-surface)", borderRadius:16, border:"1px solid var(--danger-border)" }}>
+        <div
+          className="glass-card-premium"
+          style={{
+            padding: 32,
+            textAlign: "center",
+            color: "var(--danger)",
+            background: "var(--danger-surface)",
+            borderColor: "var(--danger-border)",
+          }}
+        >
           {error}
         </div>
       ) : stats ? (
-        <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
+        <div className="flex flex-col gap-6">
           {/* Metrics */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:16 }}>
-            {metricCards.map(({ label, value, color, bg }) => (
-              <div key={label} style={{ borderRadius:16, background:"var(--bg-elevated)", border:"1px solid var(--border)", padding:"20px 24px", boxShadow:"var(--shadow-sm)" }}>
-                <p style={{ fontSize:"0.75rem", fontWeight:600, color:"var(--text-muted)", marginBottom:8, textTransform:"uppercase", letterSpacing:"0.05em" }}>{label}</p>
-                <p style={{ fontSize:"2.5rem", fontWeight:800, color, lineHeight:1 }}>{value}</p>
-                <div style={{ marginTop:12, height:3, borderRadius:2, background:bg }} />
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))" }}>
+            {metricCards.map(({ label, value, hint }) => (
+              <div key={label} className="stat-tile">
+                <div className="stat-tile-label">{label}</div>
+                <div className="stat-tile-value">{value}</div>
+                <div className="stat-tile-hint">{hint}</div>
               </div>
             ))}
           </div>
 
           {/* Quick actions */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr" }}>
             {[
-              { href:"/admin/patients", title:"Manage Patients",       desc:"View, search, and update patient accounts" },
-              { href:"/admin/doctors",  title:"Doctor Verification",   desc:"Review and approve / reject pending doctors" },
+              { href: "/admin/patients", title: "Manage Patients", desc: "View, search, and update patient accounts" },
+              { href: "/admin/doctors", title: "Doctor Verification", desc: "Review and approve / reject pending doctors" },
             ].map(({ href, title, desc }) => (
-              <Link key={href} href={href}
-                style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderRadius:16, border:"1px solid var(--border)", background:"var(--bg-elevated)", padding:20, textDecoration:"none", boxShadow:"var(--shadow-sm)", transition:"border-color 0.15s, box-shadow 0.15s" }}
-                onMouseEnter={e=>{(e.currentTarget as HTMLAnchorElement).style.borderColor="var(--brand)";(e.currentTarget as HTMLAnchorElement).style.boxShadow="var(--shadow-brand)";}}
-                onMouseLeave={e=>{(e.currentTarget as HTMLAnchorElement).style.borderColor="var(--border)";(e.currentTarget as HTMLAnchorElement).style.boxShadow="var(--shadow-sm)";}}>
-                <div>
-                  <p style={{ fontWeight:600, fontSize:"0.9375rem", color:"var(--text-primary)", marginBottom:4 }}>{title}</p>
-                  <p style={{ fontSize:"0.8125rem", color:"var(--text-muted)" }}>{desc}</p>
+              <Link
+                key={href}
+                href={href}
+                className="glass-card-premium flex items-center justify-between gap-4 p-5 no-underline"
+              >
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="icon-circle">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      {href.includes("patients") ? (
+                        <>
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                          <circle cx="12" cy="7" r="4" />
+                        </>
+                      ) : (
+                        <>
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                          <polyline points="22 4 12 14.01 9 11.01" />
+                        </>
+                      )}
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[0.9375rem]" style={{ color: "var(--text-primary)" }}>{title}</p>
+                    <p className="text-[0.8125rem] mt-0.5" style={{ color: "var(--text-muted)" }}>{desc}</p>
+                  </div>
                 </div>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><path d="M9 5l7 7-7 7"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><path d="M9 5l7 7-7 7" /></svg>
               </Link>
             ))}
           </div>
 
           {/* Recent patients */}
-          <div style={{ borderRadius:16, background:"var(--bg-elevated)", border:"1px solid var(--border)", boxShadow:"var(--shadow-sm)", overflow:"hidden" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 24px", borderBottom:"1px solid var(--border)" }}>
-              <h2 style={{ fontSize:"1rem", fontWeight:700, color:"var(--text-primary)" }}>Recent Patients</h2>
-              <Link href="/admin/patients" style={{ fontSize:"0.8125rem", fontWeight:600, color:"var(--brand-text)", textDecoration:"none" }}>
+          <div className="glass-card-premium overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+              <h2 className="section-heading">Recent Patients</h2>
+              <Link href="/admin/patients" className="text-[0.8125rem] font-semibold no-underline" style={{ color: "var(--brand-text)" }}>
                 View All →
               </Link>
             </div>
             {stats.recentPatients.length > 0 ? (
-              <ul style={{ listStyle:"none", margin:0, padding:0 }}>
+              <ul className="list-none m-0 p-0">
                 {stats.recentPatients.map((patient, i) => (
-                  <li key={patient.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 24px", borderTop: i > 0 ? "1px solid var(--border-subtle)" : "none", transition:"background-color 0.15s" }}
-                    onMouseEnter={e=>{(e.currentTarget as HTMLLIElement).style.background="var(--bg-surface)";}}
-                    onMouseLeave={e=>{(e.currentTarget as HTMLLIElement).style.background="transparent";}}>
-                    <div>
-                      <p style={{ fontSize:"0.875rem", fontWeight:600, color:"var(--text-primary)", marginBottom:2 }}>{patient.name}</p>
-                      <p style={{ fontSize:"0.75rem", color:"var(--text-muted)" }}>{patient.email}</p>
+                  <li
+                    key={patient.id}
+                    className="flex items-center justify-between px-6 py-3.5 transition-colors"
+                    style={{ borderTop: i > 0 ? "1px solid var(--border-subtle)" : "none" }}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>{patient.name}</p>
+                      <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>{patient.email}</p>
                     </div>
-                    <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                      <span style={{
-                        background:(STATUS_COLORS[patient.status] ?? STATUS_COLORS["active"]).bg,
-                        color:(STATUS_COLORS[patient.status] ?? STATUS_COLORS["active"]).color,
-                        fontSize:"0.6875rem", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em",
-                        padding:"3px 10px", borderRadius:999,
-                      }}>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={STATUS_BADGE[patient.status] ?? STATUS_BADGE["active"]}>
                         {patient.status ?? "active"}
                       </span>
-                      <Link href="/admin/patients" style={{ fontSize:"0.8125rem", fontWeight:600, color:"var(--brand-text)", textDecoration:"none" }}>
+                      <Link href="/admin/patients" className="text-[0.8125rem] font-semibold no-underline" style={{ color: "var(--brand-text)" }}>
                         View
                       </Link>
                     </div>
@@ -155,7 +184,16 @@ export default function AdminDashboard() {
                 ))}
               </ul>
             ) : (
-              <p style={{ padding:"32px 24px", fontSize:"0.875rem", color:"var(--text-muted)" }}>No recent patients found.</p>
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+                <div className="empty-state-title">No recent patients</div>
+                <div className="empty-state-desc">New patient signups will appear here.</div>
+              </div>
             )}
           </div>
         </div>

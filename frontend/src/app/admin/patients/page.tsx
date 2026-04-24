@@ -135,18 +135,20 @@ export default function AdminPatientList() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-7xl mx-auto">
       <ToastContainer toasts={toasts} dismiss={dismiss} />
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Patient Management</h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          {loading ? "Loading…" : `${patients.length} patient${patients.length !== 1 ? "s" : ""} found`}
-        </p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Patient Management</h1>
+          <p className="page-subtitle">
+            {loading ? "Loading…" : `${patients.length} patient${patients.length !== 1 ? "s" : ""} found`}
+          </p>
+        </div>
       </div>
 
       {/* Search + filter bar */}
-      <form onSubmit={handleSearchSubmit} className="mb-6 flex flex-wrap gap-3">
+      <form onSubmit={handleSearchSubmit} className="glass-card-premium p-3 mb-6 flex flex-wrap gap-3">
         <div className="flex-1 min-w-[200px]">
           <label htmlFor="search" className="sr-only">Search patients</label>
           <input
@@ -172,15 +174,10 @@ export default function AdminPatientList() {
             <option value="suspended">Suspended</option>
           </select>
         </div>
-        <button
-          type="submit"
-          className="rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
-        >
-          Search
-        </button>
+        <button type="submit" className="btn-gradient">Search</button>
       </form>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+      <div className="glass-card-premium overflow-hidden">
         {loading ? (
           <TableSkeleton />
         ) : error ? (

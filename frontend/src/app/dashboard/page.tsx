@@ -477,46 +477,16 @@ export default function DoctorDashboard() {
   const totalCount = appointments.length;
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}
-    >
-      <div className="max-w-[1200px] mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-[1200px] mx-auto space-y-6">
 
         {/* ── Header ── */}
-        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <header className="page-header">
           <div>
-            <h1
-              className="text-2xl font-medium"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Good morning, {doctorName}
-            </h1>
-            <p
-              className="mt-1 text-sm"
-              style={{ color: "var(--text-muted)" }}
-            >
-              Your patient queue for today
-            </p>
+            <h1 className="page-title">Good morning, {doctorName}</h1>
+            <p className="page-subtitle">Your patient queue for today</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/availability"
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border transition-colors"
-              style={{
-                borderColor: "var(--brand)",
-                color: "var(--brand-text)",
-                background: "transparent",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.background =
-                  "var(--brand-surface)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.background =
-                  "transparent";
-              }}
-            >
+          <div className="flex items-center gap-3 flex-wrap">
+            <Link href="/availability" className="btn-ghost">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                 <line x1="16" y1="2" x2="16" y2="6" />
@@ -525,23 +495,7 @@ export default function DoctorDashboard() {
               </svg>
               Manage Schedule
             </Link>
-            <Link
-              href="/prescriptions"
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border transition-colors"
-              style={{
-                borderColor: "var(--brand)",
-                color: "var(--brand-text)",
-                background: "transparent",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.background =
-                  "var(--brand-surface)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.background =
-                  "transparent";
-              }}
-            >
+            <Link href="/prescriptions" className="btn-gradient">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
@@ -562,104 +516,20 @@ export default function DoctorDashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Pending */}
-            <div
-              className="rounded-xl border p-5 flex items-start justify-between"
-              style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--border)",
-              }}
-            >
-              <div>
-                <p
-                  className="text-xs uppercase tracking-wider font-medium mb-2"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  Pending
-                </p>
-                <p
-                  className="text-3xl font-semibold"
-                  style={{ color: "var(--accent)" }}
-                >
-                  {pendingCount}
-                </p>
-              </div>
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: "var(--accent-surface)" }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-              </div>
+            <div className="stat-tile">
+              <div className="stat-tile-label">Pending</div>
+              <div className="stat-tile-value" style={{ color: "var(--accent)" }}>{pendingCount}</div>
+              <div className="stat-tile-hint">Awaiting your confirmation</div>
             </div>
-
-            {/* Confirmed */}
-            <div
-              className="rounded-xl border p-5 flex items-start justify-between"
-              style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--border)",
-              }}
-            >
-              <div>
-                <p
-                  className="text-xs uppercase tracking-wider font-medium mb-2"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  Confirmed
-                </p>
-                <p
-                  className="text-3xl font-semibold"
-                  style={{ color: "var(--brand)" }}
-                >
-                  {confirmedCount}
-                </p>
-              </div>
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: "var(--brand-surface)" }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </div>
+            <div className="stat-tile">
+              <div className="stat-tile-label">Confirmed</div>
+              <div className="stat-tile-value" style={{ color: "var(--brand)" }}>{confirmedCount}</div>
+              <div className="stat-tile-hint">Ready to see today</div>
             </div>
-
-            {/* Total Today */}
-            <div
-              className="rounded-xl border p-5 flex items-start justify-between"
-              style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--border)",
-              }}
-            >
-              <div>
-                <p
-                  className="text-xs uppercase tracking-wider font-medium mb-2"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  Total Today
-                </p>
-                <p
-                  className="text-3xl font-semibold"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {totalCount}
-                </p>
-              </div>
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: "var(--bg-muted)" }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              </div>
+            <div className="stat-tile">
+              <div className="stat-tile-label">Total Today</div>
+              <div className="stat-tile-value">{totalCount}</div>
+              <div className="stat-tile-hint">All appointments on the day</div>
             </div>
           </div>
         )}
@@ -667,20 +537,9 @@ export default function DoctorDashboard() {
         {/* ── Patient Queue ── */}
         <section>
           <div className="flex items-center gap-3 mb-4">
-            <h2
-              className="text-lg font-medium"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Patient Queue
-            </h2>
+            <h2 className="section-heading">Patient Queue</h2>
             {!loading && (
-              <span
-                className="text-xs font-medium px-2 py-0.5 rounded-full"
-                style={{
-                  background: "var(--bg-muted)",
-                  color: "var(--text-secondary)",
-                }}
-              >
+              <span className="badge badge-brand">
                 {totalCount} appointment{totalCount !== 1 ? "s" : ""}
               </span>
             )}
@@ -693,36 +552,19 @@ export default function DoctorDashboard() {
               <SkeletonAppointmentRow />
             </div>
           ) : appointments.length === 0 ? (
-            <div
-              className="rounded-xl border p-12 text-center"
-              style={{
-                background: "var(--bg-elevated)",
-                borderColor: "var(--border)",
-              }}
-            >
-              <div
-                className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-                style={{ background: "var(--bg-muted)" }}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
+            <div className="glass-card-premium">
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                </div>
+                <div className="empty-state-title">No appointments today</div>
+                <div className="empty-state-desc">Your confirmed bookings will appear here. Manage your availability to open more slots.</div>
               </div>
-              <p
-                className="font-medium text-sm"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                No appointments scheduled for today
-              </p>
-              <p
-                className="text-xs mt-1"
-                style={{ color: "var(--text-muted)" }}
-              >
-                Your confirmed bookings will appear here.
-              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -859,8 +701,6 @@ export default function DoctorDashboard() {
             </div>
           )}
         </section>
-
-      </div>
 
       {reportsModal && (
         <PatientReportsModal

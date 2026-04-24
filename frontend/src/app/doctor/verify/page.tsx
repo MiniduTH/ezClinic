@@ -726,13 +726,8 @@ export default function DoctorVerifyPage() {
 
         {/* Card */}
         <div
-          className="p-6 sm:p-8"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            minHeight: "400px",
-          }}
+          className="glass-card-premium p-6 sm:p-8"
+          style={{ minHeight: "400px" }}
         >
           {/* ── STEP 1 ── */}
           {currentStep === 1 && (

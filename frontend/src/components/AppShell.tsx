@@ -17,10 +17,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="min-h-screen pt-16 transition-[padding] duration-200"
+      className="portal-bg min-h-screen pt-16 transition-[padding] duration-200"
       style={{ paddingLeft: "var(--sidebar-w, 240px)" }}
     >
-      <main className="mx-auto max-w-[1200px] px-6 py-6 min-h-screen">
+      <main className="mx-auto max-w-[1280px] px-6 py-8 min-h-screen">
         {children}
       </main>
     </div>

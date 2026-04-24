@@ -99,15 +99,15 @@ export default function TelemedicineDashboard() {
   const pastSessions = appointments.filter(a => a.status === "COMPLETED");
 
   return (
-    <div className="max-w-6xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-      <div className="mb-8 border-b border-gray-200 pb-5">
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-          <Video className="w-8 h-8 text-blue-600" />
-          Virtual Clinic Dashboard
-        </h1>
-        <p className="mt-2 text-lg text-gray-500">
-          Manage your virtual waiting room and initiate telemedicine sessions.
-        </p>
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title flex items-center gap-3">
+            <Video className="w-8 h-8" style={{ color: "var(--brand)" }} />
+            Virtual Clinic Dashboard
+          </h1>
+          <p className="page-subtitle">Manage your virtual waiting room and initiate telemedicine sessions.</p>
+        </div>
       </div>
 
       {error && (
@@ -127,13 +127,19 @@ export default function TelemedicineDashboard() {
           </h2>
 
           {activeQueue.length === 0 ? (
-            <div className="bg-white border text-center p-12 border-gray-200 shadow-sm rounded-2xl">
-              <p className="text-gray-500 font-medium">Your virtual waiting room is empty.</p>
+            <div className="glass-card-premium">
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  <Video className="w-7 h-7" />
+                </div>
+                <div className="empty-state-title">Waiting room is empty</div>
+                <div className="empty-state-desc">Confirmed telemedicine appointments for today will appear here.</div>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
               {activeQueue.map((apt) => (
-                <div key={apt.id} className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6 transition-all hover:shadow-md">
+                <div key={apt.id} className="glass-card-premium p-6">
                   <div className="flex flex-col sm:flex-row justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 mb-2">

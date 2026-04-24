@@ -269,18 +269,14 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
     const filtered = filter === "ALL" ? appointments : appointments.filter((a) => a.status === filter);
 
     return (
-        <div className="max-w-[1200px] mx-auto py-8 px-4 space-y-6" style={{ backgroundColor: "var(--bg-surface)" }}>
+        <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-start justify-between gap-4">
+            <div className="page-header">
                 <div>
-                    <h1 className="text-2xl font-medium" style={{ color: "var(--text-primary)" }}>
-                        My Appointments
-                    </h1>
-                    <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-                        Manage your upcoming patient appointments
-                    </p>
+                    <h1 className="page-title">My Appointments</h1>
+                    <p className="page-subtitle">Manage your upcoming patient appointments</p>
                 </div>
-                <Link href="/dashboard" className="text-sm font-medium shrink-0 transition-colors" style={{ color: "var(--brand)" }}>
+                <Link href="/dashboard" className="btn-ghost shrink-0">
                     ← Back to Dashboard
                 </Link>
             </div>
@@ -320,22 +316,16 @@ function DoctorAppointments({ accessToken }: { accessToken: string }) {
                     {error}
                 </div>
             ) : filtered.length === 0 ? (
-                <div
-                    className="p-12 text-center rounded-2xl border"
-                    style={{
-                        backgroundColor: "var(--bg-elevated)",
-                        borderColor: "var(--border)",
-                        color: "var(--text-muted)",
-                    }}
-                >
-                    <svg className="mx-auto mb-4 h-12 w-12 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5"
-                        />
-                    </svg>
-                    <p className="text-sm font-medium">No appointments found.</p>
+                <div className="glass-card-premium">
+                    <div className="empty-state">
+                        <div className="empty-state-icon">
+                            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" />
+                            </svg>
+                        </div>
+                        <div className="empty-state-title">No appointments found</div>
+                        <div className="empty-state-desc">You don&apos;t have any appointments matching this filter yet.</div>
+                    </div>
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -894,22 +884,14 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
     };
 
     return (
-        <div className="max-w-[1200px] mx-auto py-8 px-4 space-y-6" style={{ backgroundColor: "var(--bg-surface)" }}>
+        <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-start justify-between gap-4">
+            <div className="page-header">
                 <div>
-                    <h1 className="text-2xl font-medium" style={{ color: "var(--text-primary)" }}>
-                        My Appointments
-                    </h1>
-                    <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-                        View and manage your consultations
-                    </p>
+                    <h1 className="page-title">My Appointments</h1>
+                    <p className="page-subtitle">View and manage your consultations</p>
                 </div>
-                <button
-                    onClick={() => setShowBooking(true)}
-                    className="shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                    style={{ backgroundColor: "var(--brand)", color: "#ffffff" }}
-                >
+                <button onClick={() => setShowBooking(true)} className="btn-gradient shrink-0">
                     + Book Appointment
                 </button>
             </div>
@@ -1230,37 +1212,17 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                     {error}
                 </div>
             ) : filtered.length === 0 ? (
-                <div
-                    className="p-12 text-center rounded-2xl border"
-                    style={{
-                        backgroundColor: "var(--bg-elevated)",
-                        borderColor: "var(--border)",
-                    }}
-                >
-                    <svg
-                        className="mx-auto mb-4 h-12 w-12 opacity-40"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={1.5}
-                        style={{ color: "var(--text-muted)" }}
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5"
-                        />
-                    </svg>
-                    <p className="text-base font-medium" style={{ color: "var(--text-secondary)" }}>
-                        No appointments yet
-                    </p>
-                    <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-                        Click{" "}
-                        <button onClick={() => setShowBooking(true)} className="underline" style={{ color: "var(--brand)" }}>
-                            Book Appointment
-                        </button>{" "}
-                        to get started.
-                    </p>
+                <div className="glass-card-premium">
+                    <div className="empty-state">
+                        <div className="empty-state-icon">
+                            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5" />
+                            </svg>
+                        </div>
+                        <div className="empty-state-title">No appointments yet</div>
+                        <div className="empty-state-desc">Book your first consultation with one of our verified doctors.</div>
+                        <button onClick={() => setShowBooking(true)} className="btn-gradient mt-2">+ Book Appointment</button>
+                    </div>
                 </div>
             ) : (
                 <div className="space-y-3">

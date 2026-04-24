@@ -131,12 +131,14 @@ function ProfileSkeleton() {
 
 function PageShell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">{title}</h1>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
+    <div className="max-w-5xl mx-auto">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">{title}</h1>
+          <p className="page-subtitle">{subtitle}</p>
+        </div>
       </div>
-      <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+      <div className="glass-card-premium overflow-hidden">
         <div className="p-6 sm:p-8">{children}</div>
       </div>
     </div>

@@ -269,7 +269,7 @@ export default function AdminDoctorsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+    <div className="max-w-7xl mx-auto space-y-6">
       <ToastContainer toasts={toasts} dismiss={dismiss} />
       {selectedDoctor && (
         <VerifyModal
@@ -279,12 +279,14 @@ export default function AdminDoctorsPage() {
         />
       )}
 
-      <div>
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Doctor Verification Queue</h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Review and approve or reject doctor registration applications.
-          {!loading && !error && ` ${doctors.length} pending.`}
-        </p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Doctor Verification Queue</h1>
+          <p className="page-subtitle">Review and approve or reject doctor registration applications.</p>
+        </div>
+        {!loading && !error && (
+          <span className="badge badge-warning">{doctors.length} pending</span>
+        )}
       </div>
 
       {loading ? (
@@ -295,20 +297,21 @@ export default function AdminDoctorsPage() {
           <button onClick={fetchPendingDoctors} className="block mx-auto mt-3 text-sm text-teal-600 dark:text-teal-400 underline">Retry</button>
         </div>
       ) : doctors.length === 0 ? (
-        <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-16 flex flex-col items-center text-center shadow-sm">
-          <svg className="h-14 w-14 text-gray-300 dark:text-gray-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">All clear!</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">No pending doctor applications at this time.</p>
+        <div className="glass-card-premium">
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="empty-state-title">All clear!</div>
+            <div className="empty-state-desc">No pending doctor applications at this time.</div>
+          </div>
         </div>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {doctors.map((doctor) => (
-            <div
-              key={doctor.id}
-              className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 space-y-3 hover:border-teal-300 dark:hover:border-teal-700 transition-colors"
-            >
+            <div key={doctor.id} className="glass-card-premium p-5 space-y-3">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center text-teal-700 dark:text-teal-300 font-bold text-sm shrink-0">
                   {doctor.name.charAt(0).toUpperCase()}

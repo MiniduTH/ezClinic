@@ -357,48 +357,35 @@ export default function SymptomCheckerPage() {
     };
 
     return (
-        <div className="min-h-screen" style={{ background: "var(--bg-surface)" }}>
-            <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-4">
+        <div className="max-w-3xl mx-auto">
+            <div className="flex flex-col gap-4">
                 {/* Header */}
-                <div className="text-center mb-2">
-                    <h1 className="text-2xl font-medium" style={{ color: "var(--text-primary)" }}>
-                        AI Symptom Checker
-                    </h1>
-                    <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-                        Describe your symptoms and our AI will provide initial guidance
-                    </p>
+                <div className="page-header">
+                    <div>
+                        <h1 className="page-title">AI Symptom Checker</h1>
+                        <p className="page-subtitle">Describe your symptoms and our AI will provide initial guidance.</p>
+                    </div>
+                    <span className="badge badge-brand">AI-powered</span>
                 </div>
 
                 {/* Chat container */}
                 <div
-                    className="rounded-xl border flex flex-col gap-3 p-4 overflow-y-auto"
+                    className="glass-card-premium flex flex-col gap-3 p-5 overflow-y-auto"
                     style={{
-                        background: "var(--bg-elevated)",
-                        borderColor: "var(--border)",
-                        minHeight: "400px",
+                        minHeight: "420px",
                         maxHeight: "600px",
                     }}
                 >
                     {messages.length === 0 && !loading && (
-                        <div className="flex-1 flex items-center justify-center text-sm text-center" style={{ color: "var(--text-muted)" }}>
-                            <div>
-                                <div
-                                    className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
-                                    style={{ background: "var(--bg-muted)" }}
-                                >
-                                    <svg
-                                        width="22"
-                                        height="22"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="1.5"
-                                        style={{ color: "var(--text-muted)" }}
-                                    >
-                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        <div className="flex-1 flex items-center justify-center">
+                            <div className="empty-state">
+                                <div className="empty-state-icon">
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                                     </svg>
                                 </div>
-                                No messages yet — describe your symptoms below
+                                <div className="empty-state-title">Tell me what you&apos;re experiencing</div>
+                                <div className="empty-state-desc">Type your symptoms below in plain language. The more detail you give, the better the guidance.</div>
                             </div>
                         </div>
                     )}
