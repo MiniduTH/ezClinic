@@ -131,16 +131,14 @@ function ProfileSkeleton() {
 
 function PageShell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto space-y-6">
       <div className="page-header">
         <div>
           <h1 className="page-title">{title}</h1>
           <p className="page-subtitle">{subtitle}</p>
         </div>
       </div>
-      <div className="glass-card-premium overflow-hidden">
-        <div className="p-6 sm:p-8">{children}</div>
-      </div>
+      {children}
     </div>
   );
 }
@@ -396,28 +394,24 @@ function validate(data: Partial<Patient>): boolean {
     <>
       <ToastContainer toasts={toasts} dismiss={dismiss} />
       <PageShell title="Patient Profile" subtitle="Manage your personal details and medical reports.">
-        <div className="grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
-          {/* ── Sidebar ── */}
-          <div className="space-y-5 border-b border-gray-100 dark:border-gray-700 pb-6 lg:border-b-0 lg:border-r lg:pr-8 lg:pb-0">
-            {/* Avatar */}
-            <div className="relative w-24">
+
+        {/* ── Hero ── */}
+        <div className="profile-hero">
+          <div className="profile-hero-banner" />
+          <div className="profile-hero-body">
+            <div className="profile-avatar-xl">
               {avatarPreview || patient?.avatarUrl ? (
-                <img
-                  src={avatarPreview ?? patient!.avatarUrl!}
-                  alt={`${displayName} avatar`}
-                  className="h-24 w-24 rounded-full object-cover ring-2 ring-teal-500"
-                />
+                <img src={avatarPreview ?? patient!.avatarUrl!} alt={`${displayName} avatar`} />
               ) : (
-                <div className="h-24 w-24 rounded-full bg-teal-600 text-white flex items-center justify-center text-3xl font-bold">
-                  {initials}
-                </div>
+                <span>{initials}</span>
               )}
               <label
                 htmlFor="avatar-upload"
-                className="absolute -bottom-1 -right-1 cursor-pointer rounded-full bg-white dark:bg-gray-700 p-1.5 shadow ring-1 ring-gray-200 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                className="absolute -bottom-1 -right-1 cursor-pointer rounded-full p-2 shadow ring-1 transition-colors"
+                style={{ background: "var(--bg-elevated)", borderColor: "var(--border)" }}
                 aria-label="Change profile photo"
               >
-                <svg className="h-4 w-4 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="h-4 w-4" style={{ color: "var(--text-secondary)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -430,61 +424,48 @@ function validate(data: Partial<Patient>): boolean {
                 onChange={handleAvatarChange}
               />
             </div>
-            {avatarFile && (
-              <button
-                onClick={handleAvatarUpload}
-                disabled={uploadingAvatar}
-                className="w-full rounded-xl bg-teal-600 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:bg-teal-400"
-              >
-                {uploadingAvatar ? "Uploading…" : "Save Avatar"}
-              </button>
-            )}
 
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{displayName}</h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 break-all">{displayEmail}</p>
-            </div>
-            <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <p>Status: <span className="font-medium text-gray-900 dark:text-white capitalize">{isNewPatient ? "Profile incomplete" : patient?.status ?? "active"}</span></p>
-              {patient?.createdAt && (
-                <p>Joined: <span className="font-medium text-gray-900 dark:text-white">{new Date(patient.createdAt).toLocaleDateString()}</span></p>
-              )}
-              {patient?.phone && (
-                <p>Phone: <span className="font-medium text-gray-900 dark:text-white">{patient.phone}</span></p>
-              )}
-            </div>
-
-            {/* Medical summary card */}
-            {!isNewPatient && patient && (
-              <div className="rounded-2xl bg-teal-50 dark:bg-teal-900/30 border border-teal-100 dark:border-teal-800 p-4 space-y-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-400">Medical Summary</h3>
-                <dl className="space-y-1 text-sm">
-                  <div>
-                    <dt className="text-gray-500 dark:text-gray-400 inline">Blood Type: </dt>
-                    <dd className="inline font-medium text-gray-900 dark:text-white">{patient.bloodType || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500 dark:text-gray-400">Allergies</dt>
-                    <dd className="font-medium text-gray-900 dark:text-white text-xs mt-0.5">{patient.allergies || "None recorded"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500 dark:text-gray-400">Emergency Contact</dt>
-                    <dd className="font-medium text-gray-900 dark:text-white text-xs mt-0.5">{patient.emergencyContact || "Not provided"}</dd>
-                  </div>
-                </dl>
+            <div className="profile-hero-info">
+              <h2 className="profile-hero-name">{displayName}</h2>
+              <p className="profile-hero-email">{displayEmail}</p>
+              <div className="profile-hero-meta">
+                <span className={`badge ${isNewPatient ? "badge-warning" : "badge-success"}`}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" /></svg>
+                  {isNewPatient ? "Profile incomplete" : (patient?.status ?? "active")}
+                </span>
+                {patient?.createdAt && (
+                  <span className="meta-pill">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                    Joined <span className="meta-pill-strong">{new Date(patient.createdAt).toLocaleDateString()}</span>
+                  </span>
+                )}
+                {patient?.phone && (
+                  <span className="meta-pill">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                    </svg>
+                    <span className="meta-pill-strong">{patient.phone}</span>
+                  </span>
+                )}
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* ── Main content ── */}
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Personal Information</h3>
-              {!isEditing ? (
-                <button
-                  onClick={() => { setIsEditing(true); setStep(1); }}
-                  className="rounded-xl border border-teal-200 dark:border-teal-700 px-4 py-2 text-sm font-medium text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30"
-                >
+            <div className="flex gap-2 shrink-0 pb-1">
+              {avatarFile ? (
+                <button onClick={handleAvatarUpload} disabled={uploadingAvatar} className="btn-gradient">
+                  {uploadingAvatar ? "Uploading…" : "Save Avatar"}
+                </button>
+              ) : !isEditing ? (
+                <button onClick={() => { setIsEditing(true); setStep(1); }} className="btn-gradient">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
                   Edit Profile
                 </button>
               ) : (
@@ -496,29 +477,105 @@ function validate(data: Partial<Patient>): boolean {
                     setFormErrors({});
                     setFormData({ ...patient, dob: patient?.dob ? patient.dob.split("T")[0] : "" });
                   }}
-                  className={`rounded-xl border px-4 py-2 text-sm font-medium ${isNewPatient ? "hidden" : "border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"}`}
+                  className="btn-ghost"
                   disabled={isNewPatient}
                 >
                   Cancel
                 </button>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* ── Medical Summary ── */}
+        {!isNewPatient && patient && (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="glass-card-premium p-5 flex items-center gap-4">
+              <div className="info-tile-icon" style={{ width: 44, height: 44 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2s6 7 6 12a6 6 0 0 1-12 0c0-5 6-12 6-12z"/>
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="info-tile-label">Blood Type</div>
+                <div className="info-tile-value truncate">{patient.bloodType || "—"}</div>
+              </div>
+            </div>
+            <div className="glass-card-premium p-5 flex items-center gap-4">
+              <div className="info-tile-icon" style={{ width: 44, height: 44 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="info-tile-label">Allergies</div>
+                <div className="info-tile-value truncate">{patient.allergies || "None recorded"}</div>
+              </div>
+            </div>
+            <div className="glass-card-premium p-5 flex items-center gap-4">
+              <div className="info-tile-icon" style={{ width: 44, height: 44 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="info-tile-label">Emergency Contact</div>
+                <div className="info-tile-value truncate">{patient.emergencyContact || "Not provided"}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Personal Information ── */}
+        <div className="glass-card-premium p-6 sm:p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <h3 className="section-heading">Personal Information</h3>
+          </div>
 
             {!isEditing && patient ? (
-              <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {[
-                  { label: "Full name", value: patient.name },
-                  { label: "Gender", value: patient.gender || "Not specified", capitalize: true },
-                  { label: "Date of Birth", value: patient.dob ? new Date(patient.dob).toLocaleDateString() : "Not specified" },
-                  { label: "Phone", value: patient.phone || "Not specified" },
-                  { label: "Address", value: patient.address || "No address provided", wide: true },
-                  { label: "Blood Type", value: patient.bloodType || "Not specified" },
-                  { label: "Allergies", value: patient.allergies || "None recorded", wide: true },
-                  { label: "Emergency Contact", value: patient.emergencyContact || "Not provided", wide: true },
-                ].map(({ label, value, capitalize, wide }) => (
-                  <div key={label} className={`rounded-2xl bg-gray-50 dark:bg-gray-700/50 p-4 ${wide ? "sm:col-span-2" : ""}`}>
-                    <dt className="text-sm text-gray-500 dark:text-gray-400">{label}</dt>
-                    <dd className={`mt-1 font-medium text-gray-900 dark:text-white ${capitalize ? "capitalize" : ""}`}>{value}</dd>
+                  {
+                    label: "Full name", value: patient.name,
+                    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+                  },
+                  {
+                    label: "Gender", value: patient.gender || "Not specified", capitalize: true,
+                    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="14" r="5"/><path d="M19 5l-5.6 5.6"/><path d="M19 5h-4"/><path d="M19 5v4"/></svg>,
+                  },
+                  {
+                    label: "Date of Birth", value: patient.dob ? new Date(patient.dob).toLocaleDateString() : "Not specified",
+                    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+                  },
+                  {
+                    label: "Phone", value: patient.phone || "Not specified",
+                    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
+                  },
+                  {
+                    label: "Address", value: patient.address || "No address provided", wide: true,
+                    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+                  },
+                  {
+                    label: "Blood Type", value: patient.bloodType || "Not specified",
+                    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2s6 7 6 12a6 6 0 0 1-12 0c0-5 6-12 6-12z"/></svg>,
+                  },
+                  {
+                    label: "Allergies", value: patient.allergies || "None recorded", wide: true,
+                    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+                  },
+                  {
+                    label: "Emergency Contact", value: patient.emergencyContact || "Not provided", wide: true,
+                    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="7" r="4"/></svg>,
+                  },
+                ].map(({ label, value, capitalize, wide, icon }) => (
+                  <div key={label} className={`info-tile ${wide ? "sm:col-span-2" : ""}`}>
+                    <div className="info-tile-icon">{icon}</div>
+                    <div className="min-w-0 flex-1">
+                      <dt className="info-tile-label">{label}</dt>
+                      <dd className={`info-tile-value ${capitalize ? "capitalize" : ""}`}>{value}</dd>
+                    </div>
                   </div>
                 ))}
               </dl>
@@ -644,26 +701,28 @@ function validate(data: Partial<Patient>): boolean {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="rounded-xl bg-teal-600 px-6 py-3 text-sm font-medium text-white hover:bg-teal-700 disabled:bg-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                    className="btn-gradient"
+                    style={{ padding: "12px 24px" }}
                   >
                     {step < TOTAL_STEPS ? "Next →" : saving ? "Saving…" : "Save Changes"}
                   </button>
                 </div>
               </form>
             )}
+        </div>
 
-            {/* ── Medical Reports ── */}
-            {!isNewPatient && patient && (
-              <div className="border-t border-gray-100 dark:border-gray-700 pt-8 space-y-6">
+        {/* ── Medical Reports ── */}
+        {!isNewPatient && patient && (
+          <div className="glass-card-premium p-6 sm:p-8 space-y-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Medical Reports</h3>
-                  <Link href="/reports" className="text-sm font-medium text-teal-600 dark:text-teal-400 hover:underline">
+                  <h3 className="section-heading">Medical Reports</h3>
+                  <Link href="/reports" className="text-sm font-medium hover:underline" style={{ color: "var(--brand-text)" }}>
                     View All →
                   </Link>
                 </div>
 
                 {/* Upload form */}
-                <form onSubmit={handleReportUpload} className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-600 p-5 space-y-4">
+                <form onSubmit={handleReportUpload} className="rounded-2xl border border-dashed p-5 space-y-4" style={{ borderColor: "var(--border)" }}>
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Upload a new report (PDF, JPEG, PNG — max 10 MB)</p>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
@@ -720,7 +779,7 @@ function validate(data: Partial<Patient>): boolean {
                   <button
                     type="submit"
                     disabled={uploadingReport || !reportFile || !reportForm.title}
-                    className="rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-700 disabled:bg-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="btn-gradient disabled:opacity-60"
                   >
                     {uploadingReport ? "Uploading…" : "Upload Report"}
                   </button>
@@ -759,15 +818,13 @@ function validate(data: Partial<Patient>): boolean {
                     ))
                   )}
                   {reports.length > 5 && (
-                    <Link href="/reports" className="block text-center text-sm text-teal-600 dark:text-teal-400 hover:underline py-2">
+                    <Link href="/reports" className="block text-center text-sm hover:underline py-2" style={{ color: "var(--brand-text)" }}>
                       View all {reports.length} reports →
                     </Link>
                   )}
                 </div>
-              </div>
-            )}
           </div>
-        </div>
+        )}
       </PageShell>
     </>
   );
