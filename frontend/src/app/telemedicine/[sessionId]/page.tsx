@@ -27,7 +27,7 @@ export default async function TelemedicineSessionPage({ params }: { params: Prom
         const cookieString = headersList.get("cookie") || "";
         const host = headersList.get("host") || "localhost:3000";
         const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-        const baseUrl = `${protocol}://${host}`;
+        const baseUrl = process.env.APP_BASE_URL || `${protocol}://${host}`;
 
         const res = await fetch(`${baseUrl}/api/telemedicine/${sessionId}`, {
             method: "GET",

@@ -20,7 +20,10 @@ RUN npm install --omit=dev && npm cache clean --force
 
 COPY --from=builder /usr/src/app/dist ./dist
 
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    mkdir -p /usr/src/app/uploads/credentials && \
+    chown -R appuser:appgroup /usr/src/app/uploads
+
 USER appuser
 
 EXPOSE 3002

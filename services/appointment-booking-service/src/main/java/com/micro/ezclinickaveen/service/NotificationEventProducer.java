@@ -17,8 +17,8 @@ public class NotificationEventProducer {
     public void sendPaymentSuccessNotification(PaymentSuccessEvent event) {
         log.info("Publishing PaymentSuccessEvent to RabbitMQ for appointment: {}", event.getAppointmentId());
         try {
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, event);
-            log.info("Message successfully published to exchange: {}", RabbitMQConfig.EXCHANGE_NAME);
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EVENTS_EXCHANGE, RabbitMQConfig.PAYMENT_ROUTING_KEY, event);
+            log.info("Message published to {}/{}", RabbitMQConfig.EVENTS_EXCHANGE, RabbitMQConfig.PAYMENT_ROUTING_KEY);
         } catch (Exception e) {
             log.error("Failed to publish message to RabbitMQ", e);
         }

@@ -11,6 +11,8 @@ import lombok.Data;
 @Data
 @Builder
 public class PaymentSuccessEvent implements Serializable {
+    @Builder.Default
+    private String eventType = "PAYMENT_COMPLETED";
     private UUID appointmentId;
     private String patientId;
     private String doctorId;

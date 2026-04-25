@@ -14,13 +14,16 @@ FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
 
-COPY --from=build /app/target/ezclinic-kaveen-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build --chown=appuser:appgroup /app/target/ezclinic-kaveen-0.0.1-SNAPSHOT.jar app.jar
+COPY --chown=appuser:appgroup entrypoint.sh entrypoint.sh
+RUN chmod +x entrypoint.sh
+
+USER appuser
 
 EXPOSE 3004
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
   CMD wget -qO- http://localhost:3004/health || exit 1
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["/app/entrypoint.sh"]

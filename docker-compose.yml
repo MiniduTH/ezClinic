@@ -40,6 +40,26 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # ── Tunnel ─────────────────────────────────────────────────────────────────
+
+  tunnel:
+    build:
+      context: ./services/tunnel
+      dockerfile: Dockerfile
+    container_name: ezclinic-tunnel
+    volumes:
+      - tunnel_shared:/shared
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "sh", "-c", "test -s /shared/payhere_notify_url"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    restart: unless-stopped
+
   # ── Backend Services ────────────────────────────────────────────────────────
 
   patient-admin-service:
@@ -85,6 +105,8 @@ services:
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
       APPOINTMENT_SERVICE_URL: http://appointment-booking-service:3004/api/v1
       PATIENT_SERVICE_URL: http://patient-admin-service:3005/api/v1
+    volumes:
+      - doctor_uploads:/usr/src/app/uploads
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -113,19 +135,27 @@ services:
       RABBITMQ_PASSWORD: guest
       PAYHERE_MERCHANT_ID: ${PAYHERE_MERCHANT_ID}
       PAYHERE_MERCHANT_SECRET: ${PAYHERE_MERCHANT_SECRET}
+      # PAYHERE_NOTIFY_URL is overridden at runtime by entrypoint.sh from the tunnel service.
       PAYHERE_NOTIFY_URL: ${PAYHERE_NOTIFY_URL:-http://localhost:8000/api/payments/payhere/notify}
       PAYHERE_RETURN_URL: ${PAYHERE_RETURN_URL:-http://localhost:3000/appointments?status=success}
       PAYHERE_CANCEL_URL: ${PAYHERE_CANCEL_URL:-http://localhost:3000/appointments?status=cancelled}
       DOCTOR_SERVICE_URL: http://doctor-service:3002/api/v1/doctors
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    volumes:
+      - tunnel_shared:/shared:ro
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      tunnel:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3004/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
     restart: unless-stopped
 
   telemedicine-notification-service:
@@ -241,3 +271,5 @@ services:
 volumes:
   rabbitmq_data:
   patient_uploads:
+  doctor_uploads:
+  tunnel_shared:

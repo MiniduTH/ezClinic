@@ -22,6 +22,15 @@ public class PayHereConfig {
     @Value("${payhere.sandbox:true}")
     private boolean sandbox;
 
+    @Value("${payhere.notify.url:http://localhost:8000/api/payments/payhere/notify}")
+    private String notifyUrl;
+
+    @Value("${payhere.return.url:http://localhost:3000/appointments?status=success}")
+    private String returnUrl;
+
+    @Value("${payhere.cancel.url:http://localhost:3000/appointments?status=cancelled}")
+    private String cancelUrl;
+
     public String generateHash(String orderId, double amount, String currency) {
         try {
             DecimalFormat df = new DecimalFormat("0.00");

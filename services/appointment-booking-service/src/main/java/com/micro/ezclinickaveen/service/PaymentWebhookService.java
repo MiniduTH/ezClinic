@@ -41,9 +41,9 @@ public class PaymentWebhookService {
 
         return PayHereDTO.builder()
                 .merchant_id(payHereConfig.getMerchantId())
-                .return_url("http://localhost:3000/appointments?status=success")
-                .cancel_url("http://localhost:3000/checkout?status=cancelled")
-                .notify_url("https://<YOUR_NGROK_ID>.ngrok.app/api/payments/payhere/notify")
+                .return_url(payHereConfig.getReturnUrl())
+                .cancel_url(payHereConfig.getCancelUrl())
+                .notify_url(payHereConfig.getNotifyUrl())
                 .first_name("Patient")
                 .last_name("")
                 .email("patient@example.com")

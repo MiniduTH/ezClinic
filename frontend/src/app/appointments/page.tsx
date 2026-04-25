@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useUser } from "@/lib/session-context";
 import { getUserRole } from "@/lib/roles";
 import Link from "next/link";
@@ -566,7 +567,6 @@ function PayNowButton({ appointmentId, accessToken }: { appointmentId: string; a
             const form = document.createElement("form");
             form.method = "POST";
             form.action = "https://sandbox.payhere.lk/pay/checkout";
-            form.target = "_blank";
             Object.entries(params).forEach(([key, val]) => {
                 const input = document.createElement("input");
                 input.type = "hidden";
@@ -600,6 +600,8 @@ function PayNowButton({ appointmentId, accessToken }: { appointmentId: string; a
 
 function PatientAppointments({ accessToken }: { accessToken: string }) {
     const { user } = useUser();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [loading, setLoading] = useState(true);
@@ -607,6 +609,7 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
     const [patientId, setPatientId] = useState<string | null>(null);
     const [showBooking, setShowBooking] = useState(false);
     const [filter, setFilter] = useState("ALL");
+    const [paymentSuccess, setPaymentSuccess] = useState(false);
 
     // Booking form state
     const [selectedDoctor, setSelectedDoctor] = useState("");
@@ -803,6 +806,16 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
         fetchAll();
     }, [fetchAll]);
 
+    useEffect(() => {
+        if (searchParams.get("status") === "success") {
+            setPaymentSuccess(true);
+            fetchAll();
+            router.replace("/appointments");
+            const timer = setTimeout(() => setPaymentSuccess(false), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [searchParams, fetchAll, router]);
+
     const handleBook = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!patientId || !selectedDoctor || !bookDate || !selectedSlot) {
@@ -895,6 +908,17 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
                     + Book Appointment
                 </button>
             </div>
+
+            {/* Payment success banner */}
+            {paymentSuccess && (
+                <div
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+                    style={{ backgroundColor: "var(--success-surface, #d1fae5)", color: "var(--success-text, #065f46)" }}
+                >
+                    <span>✓</span>
+                    <span>Payment successful! Your appointment has been confirmed.</span>
+                </div>
+            )}
 
             {/* Filter tabs */}
             <div className="flex gap-2 flex-wrap">
@@ -1289,8 +1313,8 @@ function PatientAppointments({ accessToken }: { accessToken: string }) {
 
                                 {/* Right: actions */}
                                 <div className="flex gap-2 shrink-0 items-center flex-wrap justify-end">
-                                    {/* Pay Now — shown when payment is still pending */}
-                                    {apt.paymentStatus === "PENDING" && apt.status !== "CANCELLED" && (
+                                    {/* Pay Now — shown only while payment and appointment are both still pending */}
+                                    {apt.paymentStatus === "PENDING" && apt.status === "PENDING" && (
                                         <PayNowButton appointmentId={apt.id} accessToken={accessToken} />
                                     )}
                                     {apt.status === "CONFIRMED" && apt.type === "VIRTUAL" && (
