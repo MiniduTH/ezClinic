@@ -137,6 +137,13 @@ services:
       - "8090:8090"
     environment:
       PORT: 8090
+      # If TELEMEDICINE_DB_URL is set in .env, it overrides DB_HOST/DB_PORT/DB_NAME.
+      # Use the Supabase pooler URL for IPv4-only environments, e.g.:
+      #   TELEMEDICINE_DB_URL=jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres
+      TELEMEDICINE_DB_URL: ${TELEMEDICINE_DB_URL:-}
+      DB_HOST: ${TELEMEDICINE_DB_HOST:-db.oaokleeqgamubczymgaf.supabase.co}
+      DB_PORT: ${TELEMEDICINE_DB_PORT:-5432}
+      DB_NAME: ${TELEMEDICINE_DB_NAME:-postgres}
       DB_USER: ${TELEMEDICINE_DB_USER}
       DB_PASSWORD: ${TELEMEDICINE_DB_PASSWORD}
       RABBITMQ_HOST: rabbitmq
