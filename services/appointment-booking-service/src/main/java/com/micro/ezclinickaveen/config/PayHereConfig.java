@@ -44,6 +44,19 @@ public class PayHereConfig {
         }
     }
 
+    public String generateNotificationHash(String orderId, double amount, String currency, String statusCode) {
+        try {
+            DecimalFormat df = new DecimalFormat("0.00");
+            String formattedAmount = df.format(amount);
+            
+            String hashedSecret = getMd5(merchantSecret).toUpperCase();
+            String hashString = merchantId + orderId + formattedAmount + currency + statusCode + hashedSecret;
+            return getMd5(hashString).toUpperCase();
+        } catch (Exception e) {
+            throw new RuntimeException("Error generating PayHere Notification MD5 Hash", e);
+        }
+    }
+
     private String getMd5(String input) {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");

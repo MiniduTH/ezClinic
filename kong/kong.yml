@@ -29,6 +29,12 @@ services:
           - /api/v1/doctors
         strip_path: false
 
+      # Patient prescriptions endpoint — specific path to avoid conflict with patient-admin-service
+      - name: patient-prescriptions-api
+        paths:
+          - ~/api/v1/patients/[^/]+/prescriptions
+        strip_path: false
+
       # Credential documents uploaded via multipart — served as static files
       - name: doctor-uploads
         paths:

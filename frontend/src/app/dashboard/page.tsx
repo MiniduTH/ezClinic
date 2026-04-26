@@ -356,6 +356,14 @@ export default function DoctorDashboard() {
 
   const doctorName = (user as any)?.name || "Doctor";
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    if (hour < 21) return "Good evening";
+    return "Good night";
+  };
+
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
@@ -482,8 +490,18 @@ export default function DoctorDashboard() {
         {/* ── Header ── */}
         <header className="page-header">
           <div>
-            <h1 className="page-title">Good morning, {doctorName}</h1>
-            <p className="page-subtitle">Your patient queue for today</p>
+            <h1
+              className="text-2xl font-medium"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {getGreeting()}, {doctorName}
+            </h1>
+            <p
+              className="mt-1 text-sm"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Your patient queue for today
+            </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <Link href="/availability" className="btn-ghost">

@@ -33,7 +33,6 @@ function DoctorPrescriptions() {
   const [showForm, setShowForm] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patientLoading, setPatientLoading] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [viewRx, setViewRx] = useState<Prescription | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -145,11 +144,6 @@ function DoctorPrescriptions() {
     finally { setSubmitting(false); }
   };
 
-  const handleDelete = async (id: string) => {
-    // Doctor service doesn't expose DELETE /prescriptions/:id yet — show info toast
-    setDeleteId(null);
-    showToast("Delete not yet supported by the API.", false);
-  };
 
   const resetForm = () => { setForm({ patientId: "", patientName: "", appointmentId: "", diagnosis: "", medications: [emptyMed()], notes: "", followUpDate: "" }); setSelectedPatient(null); setFormError(null); };
   const openForm = () => { resetForm(); setShowForm(true); };
@@ -188,19 +182,6 @@ function DoctorPrescriptions() {
         </div>
       )}
 
-      {/* Delete confirm */}
-      {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full space-y-4">
-            <h3 className="text-base font-bold text-gray-900">Delete Prescription?</h3>
-            <p className="text-sm text-gray-500">This action cannot be undone.</p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteId(null)} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200">Cancel</button>
-              <button onClick={() => handleDelete(deleteId)} className="px-4 py-2 text-sm text-white bg-red-600 rounded-xl hover:bg-red-700">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* View prescription modal */}
       {viewRx && (
@@ -455,9 +436,6 @@ function DoctorPrescriptions() {
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => setViewRx(rx)} title="View" className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-teal-100 text-gray-500 hover:text-teal-700 transition-colors text-sm">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                      </button>
-                      <button onClick={() => setDeleteId(rxId)} title="Delete" className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-red-100 text-gray-500 hover:text-red-600 transition-colors text-sm">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       </button>
                     </div>
                   </div>

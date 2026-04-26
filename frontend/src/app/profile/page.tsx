@@ -30,6 +30,7 @@ interface Patient {
 
 interface Doctor {
   id: string;
+  _id?: string;
   name: string;
   email: string;
   specialization?: string | null;
@@ -870,8 +871,10 @@ function DoctorProfile() {
         }
         const json = await doctorRes.json();
         const data: Doctor = json.data ?? json;
-        setDoctor(data);
-        setFormData(data);
+        // Map _id to id for consistency
+        const doctorWithId = { ...data, id: data._id || data.id };
+        setDoctor(doctorWithId);
+        setFormData(doctorWithId);
       } catch (err) {
         setError(getErrorMessage(err, "An error occurred."));
       } finally {
@@ -909,8 +912,10 @@ function DoctorProfile() {
       if (!res.ok) throw new Error("Failed to save doctor profile.");
       const resJson = await res.json();
       const updated: Doctor = resJson.data ?? resJson;
-      setDoctor(updated);
-      setFormData(updated);
+      // Map _id to id for consistency
+      const updatedWithId = { ...updated, id: updated._id || updated.id };
+      setDoctor(updatedWithId);
+      setFormData(updatedWithId);
       setIsEditing(false);
       setIsNewDoctor(false);
       push("Profile saved successfully!", "success");

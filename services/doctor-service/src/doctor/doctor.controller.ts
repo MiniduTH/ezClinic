@@ -163,6 +163,9 @@ export class DoctorController {
     @Body() updateDoctorDto: UpdateDoctorDto,
   ) {
     delete updateDoctorDto['userId'];
+    delete updateDoctorDto['_id'];
+    delete updateDoctorDto['createdAt'];
+    delete updateDoctorDto['updatedAt'];
     return this.doctorService.update(id, updateDoctorDto);
   }
 

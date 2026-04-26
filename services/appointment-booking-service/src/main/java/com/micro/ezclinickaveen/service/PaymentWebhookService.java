@@ -71,7 +71,7 @@ public class PaymentWebhookService {
         String paymentId = payload.get("payment_id");
 
         // Verify Hash
-        String generatedHash = payHereConfig.generateHash(orderId, Double.parseDouble(payhereAmount), payhereCurrency);
+        String generatedHash = payHereConfig.generateNotificationHash(orderId, Double.parseDouble(payhereAmount), payhereCurrency, statusCode);
 
         if (!generatedHash.equals(md5sig)) {
             log.warn("Invalid PayHere hash! Expected: {}, got: {}", generatedHash, md5sig);

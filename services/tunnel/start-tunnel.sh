@@ -10,7 +10,7 @@ set -e
 rm -f /shared/payhere_notify_url
 
 echo "[tunnel] Connecting to Cloudflare — http://kong:8000"
-cloudflared tunnel --no-autoupdate --url http://kong:8000 >/tmp/cf.log 2>&1 &
+cloudflared tunnel --no-autoupdate --protocol http2 --url http://kong:8000 >/tmp/cf.log 2>&1 &
 CF_PID=$!
 
 TIMEOUT=90
